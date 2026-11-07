@@ -54,3 +54,17 @@ Invoke-Pester tests/WebContract.Tests.ps1
 | `1` | #44 | First contract: the core files as they were; the envelope adds `schemaVersion`, `id`, `kind`, `createdUtc`. |
 | `2` | #51 (ADR 0009) | Every core file has `SchemaVersion`, `Kind` and `CreatedUtc`; plans also carry `SchemaVersion` and `Kind` inside. One plan shape for all kinds: same fields, same summary counters (0 when unused), `Licences` in every plan (reset: `Checked = false`), `Properties` always an object. Plans carry `TargetTenant` (shortened) and `TargetTenantHash` instead of the full `TargetTenantId`. Licence views share `Checked`, `Readable`, `Error`, `Available`. The suitability check uses `SchemaVersion`/`Kind` instead of `Schema`. `Operation`, `Status` and the audit counters are closed lists; every audit line has the same counters. Plan files of version 1 are refused with "make a new plan" (`Read-ApplyPlanFile`, apply gate). |
 
+
+## Start the backend (issue #55)
+
+The read-only server in `web/api` (FastAPI) serves exactly the routes of `web/openapi.json`. It reads the files below `History/` (set another folder with `M365CLONING_HISTORY`), masks every tenant ID and every GUID in its answers (ADR 0009: the cross-tenant partner and the protected partner entry keep the full Prod ID in the files, never in the API), and validates every answer against the schema before it is sent; a body that does not match goes out as the `Error` schema with status 500. It has no write routes, no CORS and no generated docs, and binds to `127.0.0.1` unless `M365CLONING_API_HOST` says otherwise (port: `M365CLONING_API_PORT`, default 8000).
+
+```bash
+cd web/api
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest                 # contract test: routes, schema, masking, path checks
+python -m m365api      # http://127.0.0.1:8000/api/status
+```
+
+The contract test builds a `History` folder from `web/mock/responses.json` and checks that every answer equals the example (masked) and matches the schema, that the app has no route outside `web/openapi.json`, that no answer contains a full GUID or the Prod tenant ID of the fixtures, and that ids outside `^[a-z0-9-]+$` or outside `History/reports` are refused.
