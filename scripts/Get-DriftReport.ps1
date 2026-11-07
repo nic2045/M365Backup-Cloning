@@ -5,7 +5,8 @@
 .DESCRIPTION
     Online: takes a UTCM snapshot of the Prod and the Dev tenant (the only POST is createSnapshot, which
     only reads), keeps both under History\Tenants\<Prod|Dev>\<timestamp>\, compares them and
-    writes drift-*.json / drift-*.md to History\reports\.
+    writes drift-*.json / drift-*.md to History\reports\ plus one audit line (History\audit.jsonl, mode 'report',
+    issue #13): counts of added, removed and changed resources only, no names or properties.
     Offline: -SourceSnapshotPath / -TargetSnapshotPath compare two saved snapshot.json files, no network.
     -DryRun prints what would be called and does nothing else.
     Tokens: app-only Graph tokens (scope https://graph.microsoft.com/.default) from the app registration of
@@ -54,6 +55,8 @@ else {
 
 $report = Compare-TenantSnapshot -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile)
 $files = Export-DriftReport -Report $report -HistoryRoot $HistoryRoot
+$sum = $report.Summary
+Write-ApplyAudit -HistoryRoot $HistoryRoot -Mode report -TargetTenantId ([string]$entry.Dev.TenantId) -Reason ("drift Prod -> Dev ({0}): {1} added, {2} removed, {3} changed" -f $(if ($offline) { 'offline' } else { 'online' }), $sum.Added, $sum.Removed, $sum.Changed)
 $report.Summary | Format-Table | Out-String | Write-Host
 Write-Host "Report: $($files.Markdown)"
 if ($report.IsIdentical) { Write-Host 'No differences.' }

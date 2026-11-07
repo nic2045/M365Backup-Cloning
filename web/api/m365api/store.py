@@ -230,7 +230,8 @@ class Store:
 
     # --- audit -----------------------------------------------------------------------------------------------
 
-    def audit_page(self, mode: str | None, since: datetime | None, page: int, page_size: int) -> dict[str, Any]:
+    def audit_page(self, mode: str | None, since: datetime | None, page: int, page_size: int,
+                   plan_hash: str | None = None) -> dict[str, Any]:
         entries: list[tuple[int, dict[str, Any]]] = []
         if self.audit_file.is_file():
             for number, line in enumerate(self.audit_file.read_text(encoding="utf-8-sig").splitlines()):
@@ -249,6 +250,8 @@ class Store:
             entries = [e for e in entries if e[1]["Mode"] == mode]
         if since:
             entries = [e for e in entries if parse_utc(e[1]["Timestamp"]) >= since]
+        if plan_hash:
+            entries = [e for e in entries if e[1]["PlanHash"] == plan_hash]
         # Newest first; equal times keep the reverse file order (the file is append only).
         entries.sort(key=lambda e: (parse_utc(e[1]["Timestamp"]), e[0]), reverse=True)
         start = (page - 1) * page_size

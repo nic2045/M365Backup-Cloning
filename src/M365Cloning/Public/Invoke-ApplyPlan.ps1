@@ -11,6 +11,8 @@ function Invoke-ApplyPlan {
         the Dev app registration (client ID, certificate thumbprint) from the config; no secret is passed.
         -ProcessStarter replaces the real process start (tests). It is called with the parameters of
         Start-DscApplyProcess and returns the exit code; the child writes its results to -ResultPath.
+        Audit (issue #13): one line per result (status, resource type and name; no properties, IDs or error
+        text) and one summary line. What changed (before/after) is in the plan, found by its plan hash.
     #>
     [CmdletBinding()]
     param(
@@ -45,6 +47,11 @@ function Invoke-ApplyPlan {
     $results = @()
     if (Test-Path -LiteralPath $resultPath -PathType Leaf) {
         $results = @(Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json)
+    }
+    foreach ($r in $results) {
+        $verb = switch ([string]$r.Status) { 'applied' { 'applied' } 'unchanged' { 'unchanged' } default { 'failed to apply' } }
+        $what = if ([string]$r.ResourceType) { "$($r.ResourceType): $($r.Name)" } else { [string]$r.Name }
+        Write-ApplyAudit -HistoryRoot $HistoryRoot -Mode apply -PlanHash $hash -TargetTenantId $target -Reason "$verb $what"
     }
     $failed = @($results | Where-Object { $_.Status -eq 'failed' }).Count
     if ($results.Count -eq 0) { $failed = $planned.Count }

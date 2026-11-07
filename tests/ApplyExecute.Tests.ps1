@@ -126,12 +126,36 @@ Describe 'Invoke-ApplyPlan: confirmed apply' {
         $text | Should -Not -Match 'thumb-dev-0001'
         $text | Should -Not -Match 'client-dev-0001'
         $text | Should -Not -Match 'tenant-dev-0001'
-        $entry = (script:Read-Audit $script:Root)[0]
+        $entry = (script:Read-Audit $script:Root)[-1]   # the summary line comes last
         $entry.Mode | Should -Be 'apply'
         $entry.PlanHash | Should -Be $script:Hash
         $entry.TargetTenant | Should -Be 'tenant-d...'
         $entry.Counts.Applied | Should -Be 1
         $entry.User | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Invoke-ApplyPlan: one audit line per result (issue #13)' {
+    BeforeAll {
+        $script:Root = Join-Path $TestDrive 'per-result'
+        $script:Plan = script:New-Plan
+        $script:Hash = Get-ApplyPlanHash -Plan $script:Plan
+        $twoResults = { param($PlanPath, $ResultPath, $TenantId, $ClientId, $CertThumbprint)
+            ConvertTo-Json -InputObject @(
+                @{ Name = 'Planned'; ResourceType = 'IntuneDeviceConfigurationPolicyWindows10'; Status = 'applied'; Message = '' },
+                @{ Name = 'Other'; ResourceType = 'IntuneDeviceConfigurationPolicyWindows10'; Status = 'failed'; Message = 'boom secret-detail' }) | Set-Content -LiteralPath $ResultPath; 1 }
+        $null = Invoke-ApplyPlan -Plan $script:Plan -Config (script:New-Config) -ConfirmPlanHash $script:Hash -ProcessStarter $twoResults -HistoryRoot $script:Root
+        $script:Lines = @(script:Read-Audit $script:Root)
+    }
+    It 'writes one line per result and the summary line last' {
+        $script:Lines.Count | Should -Be 3
+        $script:Lines[0].Reason | Should -Be 'applied IntuneDeviceConfigurationPolicyWindows10: Planned'
+        $script:Lines[1].Reason | Should -Be 'failed to apply IntuneDeviceConfigurationPolicyWindows10: Other'
+        $script:Lines[2].Reason | Should -Be 'finished with failures'
+        foreach ($l in $script:Lines) { $l.Mode | Should -Be 'apply'; $l.PlanHash | Should -Be $script:Hash }
+    }
+    It 'never writes the error text of a result' {
+        (Get-Content -Raw (Join-Path $script:Root 'audit.jsonl')) | Should -Not -Match 'secret-detail'
     }
 }
 
@@ -143,5 +167,11 @@ Describe 'Write-ApplyAudit' {
         @(Get-Content (Join-Path $root 'audit.jsonl')).Count | Should -Be 2
         (Get-Content -Raw (Join-Path $root 'audit.jsonl')) | Should -Not -Match 'secret-value'
         (script:Read-Audit $root)[0].Counts.Planned | Should -Be 2
+    }
+    It 'knows the mode report (drift report, issue #13)' {
+        $root = Join-Path $TestDrive 'audit-report'
+        Write-ApplyAudit -HistoryRoot $root -Mode report -TargetTenantId 'tenant-dev-0001' -Reason 'drift Prod -> Dev (offline): 1 added, 0 removed, 2 changed'
+        (script:Read-Audit $root)[0].Mode | Should -Be 'report'
+        { Write-ApplyAudit -HistoryRoot $root -Mode export } | Should -Throw
     }
 }

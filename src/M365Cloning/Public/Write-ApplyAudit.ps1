@@ -10,7 +10,7 @@ function Write-ApplyAudit {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$HistoryRoot,
-        [Parameter(Mandatory)][ValidateSet('plan', 'apply', 'refused', 'reset', 'fitcheck')][string]$Mode,
+        [Parameter(Mandatory)][ValidateSet('report', 'plan', 'apply', 'refused', 'reset', 'fitcheck')][string]$Mode,
         [string]$PlanHash = '',
         [string]$TargetTenantId = '',
         [System.Collections.IDictionary]$Counts = @{},

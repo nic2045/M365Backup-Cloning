@@ -79,7 +79,7 @@
     </ul>
     <p><a href="/audit">{{ _("Show the audit log") }}</a></p>
     {% elif audit_ok %}
-      {{ empty(_("No audit entries yet"), _("Every plan, apply, reset and suitability check writes an entry."), "audit") }}
+      {{ empty(_("No audit entries yet"), _("Every drift report, plan, apply, reset and suitability check writes an entry."), "audit") }}
     {% else %}
       <p class="meta">{{ _("The audit log could not be read.") }}</p>
     {% endif %}

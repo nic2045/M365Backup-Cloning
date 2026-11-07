@@ -10,7 +10,8 @@
   <dt>{{ _("Created") }}</dt><dd>{{ env.createdUtc|when }}</dd>
   <dt>{{ _("Direction") }}</dt><dd>{{ plan.Direction }}</dd>
   <dt>{{ _("Target tenant") }}</dt><dd>{{ plan.TargetTenant }}</dd>
-  <dt>{{ _("Plan hash") }}</dt><dd><code class="hash">{{ env.planHash }}</code></dd>
+  <dt>{{ _("Plan hash") }}</dt><dd><code class="hash">{{ env.planHash }}</code>
+    <br><a href="/audit?plan={{ env.planHash }}">{{ icon("audit") }} {{ _("Audit entries of this plan") }}</a></dd>
 </dl>
 
 <h2>{{ _("Summary") }}</h2>
