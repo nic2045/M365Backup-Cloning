@@ -1,0 +1,34 @@
+{
+  "displayName": "fixture prod",
+  "resources": [
+    {
+      "displayName": "Windows baseline",
+      "resourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+      "properties": {
+        "DisplayName": "Windows baseline",
+        "Id": "id-prod-0001",
+        "PasswordRequired": true,
+        "PasswordMinimumLength": 8,
+        "Assignments": [
+          { "dataType": "#microsoft.graph.groupAssignmentTarget", "groupId": "id-prod-g1", "groupDisplayName": "SW-Ring1" },
+          { "dataType": "#microsoft.graph.groupAssignmentTarget", "groupId": "id-prod-g2", "groupDisplayName": "SW-Ring2" }
+        ]
+      }
+    },
+    {
+      "displayName": "Compliance win",
+      "resourceType": "microsoft.intune.devicecompliancepolicywindows10",
+      "properties": { "DisplayName": "Compliance win", "Id": "id-prod-0002", "BitLockerEnabled": true }
+    },
+    {
+      "displayName": "SW-Ring1",
+      "resourceType": "microsoft.entra.group",
+      "properties": { "DisplayName": "SW-Ring1", "Id": "id-prod-g1" }
+    },
+    {
+      "displayName": "CA require MFA",
+      "resourceType": "microsoft.entra.conditionalaccesspolicy",
+      "properties": { "DisplayName": "CA require MFA", "Id": "id-prod-ca1", "State": "enabled" }
+    }
+  ]
+}
