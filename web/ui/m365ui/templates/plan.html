@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, filter_form, select, short_type, icon %}
+{% from "_macros.html" import badge, filter_form, select, short_type, icon, crumbs, empty, type_badge %}
 {% block title %}{{ _("Plan") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Plans"), "/plans"), (env.id, "")]) }}{% endblock %}
 {% block content %}
-<p><a class="button button-secondary" href="/plans">{{ icon("back") }} {{ _("All plans") }}</a></p>
 <h1>{{ plan.Title or _("Plan") }}</h1>
 <dl class="pairs">
   <dt>{{ _("Plan") }}</dt><dd>{{ env.id }}</dd>
   <dt>{{ _("Kind") }}</dt><dd>{{ env.kind }}{% if plan.Mode %} ({{ plan.Mode }}){% endif %}</dd>
-  <dt>{{ _("Created (UTC)") }}</dt><dd><time>{{ env.createdUtc }}</time></dd>
+  <dt>{{ _("Created") }}</dt><dd>{{ env.createdUtc|when }}</dd>
   <dt>{{ _("Direction") }}</dt><dd>{{ plan.Direction }}</dd>
   <dt>{{ _("Target tenant") }}</dt><dd>{{ plan.TargetTenant }}</dd>
   <dt>{{ _("Plan hash") }}</dt><dd><code class="hash">{{ env.planHash }}</code></dd>
@@ -57,9 +57,9 @@
 {% if rows %}
 <div class="table-wrap"><table>
   <thead><tr><th scope="col">{{ _("Status") }}</th><th scope="col">{{ _("Operation") }}</th><th scope="col">{{ _("Resource type") }}</th><th scope="col">{{ _("Name") }}</th><th scope="col">{{ _("Reason") }}</th></tr></thead>
-  <tbody>{% for a in rows %}<tr><td data-label="{{ _('Status') }}">{{ badge(a.Status) }}</td><td data-label="{{ _('Operation') }}">{{ a.Operation }}</td><td data-label="{{ _('Resource type') }}">{{ short_type(a.ResourceType) }}</td><td data-label="{{ _('Name') }}">{{ a.Name }}</td><td data-label="{{ _('Reason') }}">{{ a.Reason }}</td></tr>{% endfor %}</tbody>
+  <tbody>{% for a in rows %}<tr><td data-label="{{ _('Status') }}">{{ badge(a.Status) }}</td><td data-label="{{ _('Operation') }}">{{ a.Operation }}</td><td data-label="{{ _('Resource type') }}">{{ type_badge(a.ResourceType) }} {{ short_type(a.ResourceType) }}</td><td data-label="{{ _('Name') }}">{{ a.Name }}</td><td data-label="{{ _('Reason') }}">{{ a.Reason }}</td></tr>{% endfor %}</tbody>
 </table></div>
-{% else %}<p>{{ _("No action matches the filter.") }}</p>{% endif %}
+{% else %}{{ empty(_("No action matches the filter"), _("Clear the filter to see all actions."), "filter") }}{% endif %}
 </div>
 
 {% if plan.Protected %}

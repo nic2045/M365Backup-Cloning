@@ -201,7 +201,7 @@ def test_outdated_entries_and_409_page():
     web = signed_in(OutdatedClient())
     plans = web.get("/plans")
     assert plans.status_code == 200
-    assert "badge-warn" in plans.text and "Outdated" in plans.text and "⟳" in plans.text
+    assert "badge-warn" in plans.text and "Outdated" in plans.text and '<svg class="icon" aria-hidden="true"' in plans.text
     reports = web.get("/reports")
     assert "Outdated" in reports.text and "regenerate the report with the script" in reports.text
     for page in ("/plans/apply-plan-20200101-000000", "/reports/drift-20200101-000000"):

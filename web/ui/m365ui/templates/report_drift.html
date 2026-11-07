@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, filter_form, select, short_type, icon %}
+{% from "_macros.html" import badge, filter_form, select, short_type, icon, crumbs, empty, type_badge %}
 {% block title %}{{ _("Drift report") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Compare and check"), "/reports"), (env.id, "")]) }}{% endblock %}
 {% block content %}
-<p><a class="button button-secondary" href="/reports">{{ icon("back") }} {{ _("All reports") }}</a></p>
 <h1>{{ _("Drift report") }}</h1>
 <dl class="pairs">
   <dt>{{ _("Report") }}</dt><dd>{{ env.id }}</dd>
-  <dt>{{ _("Created (UTC)") }}</dt><dd><time>{{ env.createdUtc }}</time></dd>
+  <dt>{{ _("Created") }}</dt><dd>{{ env.createdUtc|when }}</dd>
   <dt>{{ _("Direction") }}</dt><dd>{{ report.Direction }}</dd>
   <dt>{{ _("Result") }}</dt><dd>{% if report.IsIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</dd>
 </dl>
@@ -23,7 +23,7 @@
 <div id="results">
 {% for t in rows %}
   <section class="type">
-    <h2>{{ short_type(t.ResourceType) }}</h2>
+    <h2><span class="type-name">{{ short_type(t.ResourceType) }}</span> {{ type_badge(t.ResourceType) }}</h2>
     <p class="meta">{{ t.Added|length }} {{ _("only in Prod") }} · {{ t.Removed|length }} {{ _("only in Dev") }} · {{ t.Changed|length }} {{ _("changed") }} · {{ t.Unchanged }} {{ _("unchanged") }}</p>
     {% if t.Added %}<h3>{{ _("Only in Prod") }}</h3><ul>{% for n in t.Added %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
     {% if t.Removed %}<h3>{{ _("Only in Dev") }}</h3><ul>{% for n in t.Removed %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
@@ -35,6 +35,6 @@
       </table></div>
     {% endfor %}
   </section>
-{% else %}<p>{{ _("No resource type matches the filter.") }}</p>{% endfor %}
+{% else %}{{ empty(_("No resource type matches the filter"), _("Clear the filter to see all resource types."), "filter") }}{% endfor %}
 </div>
 {% endblock %}

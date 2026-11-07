@@ -16,7 +16,8 @@ from __future__ import annotations
 import hmac
 import re
 from pathlib import Path
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Callable
 
 from urllib.parse import parse_qs
 
@@ -30,6 +31,7 @@ from . import auth as authmod
 from .api_client import ApiResponse, BaseClient, client_from_env
 from .auth import Session, SignInError, UiAuth
 from .i18n import _
+from . import view
 
 HERE = Path(__file__).resolve().parent
 ID_RE = re.compile(r"^[a-z0-9-]{1,100}$")
@@ -59,6 +61,9 @@ def _pick(value: str | None, allowed: tuple[str, ...]) -> str:
     return value if value in allowed else ""
 
 
+NAV_PAGES = frozenset({"overview", "reports", "plans", "audit"})
+RECENT_PLANS = 3
+RECENT_AUDIT = 5
 PUBLIC_PATHS = frozenset({"/login", "/login/local", "/auth/start", "/auth/callback"})
 MAX_FORM_BYTES = 4096
 
@@ -71,7 +76,9 @@ def _host(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-def create_app(client: BaseClient | None = None, auth: UiAuth | None = None) -> FastAPI:
+def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
+               clock: Callable[[], datetime] | None = None) -> FastAPI:
+    """``clock`` returns the current time in UTC (tests pass a fixed one)."""
     api = client or client_from_env()
     signin = auth if auth is not None else UiAuth.from_env()
     # No sign-in configured: only the mock may be shown, to an example person. A real server needs sign-in.
@@ -80,7 +87,11 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None) -> 
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.finalize = mask_guids
-    templates.env.globals.update(_=_, mock=api.mock)
+    now = clock or (lambda: datetime.now(timezone.utc))
+    icons = view.load_icons()
+    templates.env.globals.update(_=_, mock=api.mock, icon_svg=lambda name, label="": view.icon_markup(icons, name, label),
+                                 type_family=view.type_family)
+    templates.env.filters["when"] = lambda value: view.time_markup(value, now())
 
     def secure(request: Request) -> bool:
         return signin.secure_cookies if signin.secure_cookies is not None else request.url.scheme == "https"
@@ -116,7 +127,18 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None) -> 
         s = current(request)
         ctx.setdefault("user", s)
         ctx.setdefault("csrf_token", s.csrf if s else "")
+        if s is not None and ctx.get("nav") in NAV_PAGES and "counts" not in ctx:
+            ctx["counts"] = nav_counts(request)
         return templates.TemplateResponse(request, name, ctx, status_code=http_status)
+
+    def nav_counts(request: Request) -> dict[str, int]:
+        """Counter badges of the menu, from the list routes; a failed call shows no counter."""
+        counts = {}
+        for key, path in (("reports", "/api/reports"), ("plans", "/api/plans")):
+            res = call(request, path)
+            if res.ok and isinstance(res.body, dict):
+                counts[key] = len(res.body.get("items", []))
+        return counts
 
     def failed(request: Request, res: ApiResponse) -> Response:
         if res.status == 401:
@@ -219,8 +241,19 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None) -> 
         if not status.ok:
             return failed(request, status)
         fit = call(request, "/api/fitcheck/latest")
-        return render(request, "overview.html", nav="overview", status=status.body,
-                      fit=fit.body if fit.ok else None)
+        fit_body = fit.body if fit.ok else None
+        plans_res = call(request, "/api/plans")
+        plans = view.newest_first(plans_res.body.get("items", []), "createdUtc") if plans_res.ok else []
+        audit_res = call(request, "/api/audit", {"pageSize": RECENT_AUDIT})
+        audit = view.newest_first(audit_res.body.get("items", []), "Timestamp")[:RECENT_AUDIT] if audit_res.ok else []
+        counts = {"plans": len(plans)} if plans_res.ok else {}
+        reports_res = call(request, "/api/reports")
+        if reports_res.ok:
+            counts["reports"] = len(reports_res.body.get("items", []))
+        steps = view.next_steps(view.facts(status.body, fit_body, plans, now()))
+        return render(request, "overview.html", nav="overview", status=status.body, fit=fit_body, steps=steps,
+                      counts=counts, recent_plans=plans[:RECENT_PLANS], recent_audit=audit,
+                      plans_ok=plans_res.ok, audit_ok=audit_res.ok, stale_days=view.STALE_DAYS)
 
     @app.get("/reports", response_class=HTMLResponse)
     def reports(request: Request, kind: str | None = None):
@@ -228,7 +261,7 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None) -> 
         res = call(request, "/api/reports", {"kind": kind})
         if not res.ok:
             return failed(request, res)
-        return render(request, "reports.html", nav="reports", items=res.body.get("items", []),
+        return render(request, "reports.html", nav="reports", items=view.newest_first(res.body.get("items", []), "createdUtc"),
                       kind=kind, kinds=REPORT_KINDS)
 
     @app.get("/reports/{report_id}", response_class=HTMLResponse)
@@ -257,7 +290,7 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None) -> 
         res = call(request, "/api/plans", {"kind": kind})
         if not res.ok:
             return failed(request, res)
-        return render(request, "plans.html", nav="plans", items=res.body.get("items", []),
+        return render(request, "plans.html", nav="plans", items=view.newest_first(res.body.get("items", []), "createdUtc"),
                       kind=kind, kinds=PLAN_KINDS)
 
     @app.get("/plans/{plan_id}", response_class=HTMLResponse)

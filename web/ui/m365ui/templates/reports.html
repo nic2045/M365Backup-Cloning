@@ -1,8 +1,10 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, filter_form, select %}
-{% block title %}{{ _("Reports") }}{% endblock %}
+{% from "_macros.html" import badge, filter_form, select, crumbs, empty, type_badge, icon %}
+{% block title %}{{ _("Compare and check") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Compare and check"), "/reports")]) }}{% endblock %}
 {% block content %}
-<h1>{{ _("Reports") }}</h1>
+<h1>{{ _("Compare and check") }}</h1>
+<p class="lead">{{ _("Drift reports compare Prod with Dev. Suitability reports say whether Dev can mirror what Prod uses. Both are written by the scripts and change nothing.") }}</p>
 {% call filter_form("/reports", []) %}
   {{ select("kind", _("Kind"), kinds, kind, _("All kinds")) }}
 {% endcall %}
@@ -10,18 +12,19 @@
 {% if items %}
 <div class="table-wrap"><table>
   <caption class="sr-only">{{ _("Reports") }}</caption>
-  <thead><tr><th scope="col">{{ _("Report") }}</th><th scope="col">{{ _("Kind") }}</th><th scope="col">{{ _("Created (UTC)") }}</th><th scope="col">{{ _("Result") }}</th></tr></thead>
+  <thead><tr><th scope="col">{{ _("Report") }}</th><th scope="col">{{ _("Kind") }}</th><th scope="col">{{ _("Created") }}</th><th scope="col">{{ _("Result") }}</th></tr></thead>
   <tbody>
   {% for r in items %}
     <tr>
       <td data-label="{{ _('Report') }}"><a href="/reports/{{ r.id }}">{{ r.id }}</a></td>
       <td data-label="{{ _('Kind') }}">{{ r.kind }}</td>
-      <td data-label="{{ _('Created (UTC)') }}"><time>{{ r.createdUtc }}</time></td>
+      <td data-label="{{ _('Created') }}">{{ r.createdUtc|when }}</td>
       <td data-label="{{ _('Result') }}">{% if r.state == "outdated" %}{{ badge("outdated") }} <span class="meta">{{ _("Older format: regenerate the report with the script.") }}</span>{% elif r.kind == "tenantfit" %}{{ badge(r.status) }}{% elif r.isIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>
 </table></div>
-{% else %}<p>{{ _("No reports.") }}</p>{% endif %}
+{% elif kind %}{{ empty(_("No report of this kind"), _("Clear the filter to see all reports."), "filter") }}
+{% else %}{{ empty(_("No reports yet"), _("Run the drift report with the script; it reads both tenants and changes nothing."), "reports", "scripts/Get-DriftReport.ps1") }}{% endif %}
 </div>
 {% endblock %}

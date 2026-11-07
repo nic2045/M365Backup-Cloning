@@ -1,29 +1,88 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge %}
+{% from "_macros.html" import badge, icon, empty %}
 {% block title %}{{ _("Overview") }}{% endblock %}
 {% block content %}
 <h1>{{ _("Overview") }}</h1>
-<section class="cards">
+<p class="lead">{{ _("Where your Dev tenant stands against Prod, and what to do next.") }}</p>
+
+{% set first = steps[0] %}
+<section class="next card card-accent" aria-labelledby="next-title">
+  <div class="next-pic" aria-hidden="true">{{ icon("ok" if first.id == "done" else "step") }}</div>
+  <div class="next-body">
+    <p class="eyebrow">{{ _("Next step") }}</p>
+    <h2 id="next-title">{{ first.title }}</h2>
+    <p>{{ first.detail }}</p>
+    {% if first.command %}<p class="meta">{{ _("Run on the admin machine") }}:</p><p><code class="cmd">{{ first.command }}</code></p>{% endif %}
+    {% if first.link %}<p class="button-row"><a class="button" href="{{ first.link }}">{{ icon("next") }} {{ first.link_text }}</a></p>{% endif %}
+    {% if steps|length > 1 %}
+    <details class="later"><summary>{{ _("After that") }} ({{ steps|length - 1 }})</summary>
+      <ol class="later-list">{% for s in steps[1:] %}<li><strong>{{ s.title }}</strong> <span class="meta">{{ s.detail }}</span>{% if s.command %} <code class="cmd">{{ s.command }}</code>{% endif %}</li>{% endfor %}</ol>
+    </details>
+    {% endif %}
+  </div>
+</section>
+
+<section class="cards" aria-label="{{ _('State') }}">
   <article class="card">
-    <h2>{{ _("Is the Dev tenant enough?") }}</h2>
-    {% if fit %}
-      <p class="big">{{ badge(fit.report.Status) }}</p>
-      <p>{{ fit.report.Verdict }}</p>
-      <p class="meta">{{ _("Checked") }}: <time>{{ fit.createdUtc }}</time></p>
-      <p><a href="/reports/{{ fit.id }}">{{ _("Show the suitability report") }}</a></p>
+    <h2 class="card-title">{{ icon("compare") }} {{ _("Prod and Dev") }}</h2>
+    {% if status.reportId %}
+      <p class="big">{% if status.differences == 0 %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</p>
+      <dl class="pairs">
+        <dt>{{ _("Differences") }}</dt><dd>{{ status.differences }}</dd>
+        <dt>{{ _("Last comparison") }}</dt><dd>{{ status.lastComparisonUtc|when }}</dd>
+      </dl>
+      <p><a href="/reports/{{ status.reportId }}">{{ _("Show the drift report") }}</a></p>
     {% else %}
-      <p>{{ badge("grey") }}</p>
-      <p>{{ _("No suitability check yet.") }}</p>
+      {{ empty(_("Not compared yet"), _("Run the drift report with the script; the result shows up here."), "compare", "scripts/Get-DriftReport.ps1") }}
     {% endif %}
   </article>
   <article class="card">
-    <h2>{{ _("Prod and Dev") }}</h2>
-    {% if status.differences == 0 %}<p class="big">{{ badge("identical") }}</p>{% else %}<p class="big">{{ badge("different") }}</p>{% endif %}
-    <dl class="pairs">
-      <dt>{{ _("Differences") }}</dt><dd>{{ status.differences }}</dd>
-      <dt>{{ _("Last comparison") }}</dt><dd><time>{{ status.lastComparisonUtc or _("never") }}</time></dd>
-    </dl>
-    {% if status.reportId %}<p><a href="/reports/{{ status.reportId }}">{{ _("Show the drift report") }}</a></p>{% endif %}
+    <h2 class="card-title">{{ icon("reports") }} {{ _("Is the Dev tenant enough?") }}</h2>
+    {% if fit %}
+      <p class="big">{{ badge(fit.report.Status) }}</p>
+      <p>{{ fit.report.Verdict }}</p>
+      <p class="meta">{{ _("Checked") }}: {{ fit.createdUtc|when }}</p>
+      <p><a href="/reports/{{ fit.id }}">{{ _("Show the suitability report") }}</a></p>
+    {% else %}
+      <p>{{ badge("grey") }}</p>
+      {{ empty(_("No suitability check yet"), _("The check compares the licences of Prod and Dev and changes nothing."), "reports", "scripts/Invoke-TenantFitCheck.ps1") }}
+    {% endif %}
+  </article>
+</section>
+
+<section class="cards tiles">
+  <article class="card" aria-labelledby="recent-plans">
+    <h2 class="card-title" id="recent-plans">{{ icon("plans") }} {{ _("Recent plans") }}</h2>
+    {% if recent_plans %}
+    <ul class="recent">
+      {% for p in recent_plans %}
+      <li><a href="/plans/{{ p.id }}">{{ p.kind }}{% if p.mode %} ({{ p.mode }}){% endif %}</a>
+        {% if p.state == "outdated" %}{{ badge("outdated") }}{% elif p.summary %}<span class="meta">{{ p.summary.Planned }} {{ _("planned") }}{% if p.summary.Blocked %} · {{ p.summary.Blocked }} {{ _("blocked") }}{% endif %}</span>{% endif %}
+        <br><span class="meta">{{ p.createdUtc|when }}</span></li>
+      {% endfor %}
+    </ul>
+    <p><a href="/plans">{{ _("All plans") }}</a></p>
+    {% elif plans_ok %}
+      {{ empty(_("No plans yet"), _("A plan is a preview of what the script would change in Dev."), "plans", "scripts/Invoke-ApplyDev.ps1") }}
+    {% else %}
+      <p class="meta">{{ _("The plans could not be read.") }}</p>
+    {% endif %}
+  </article>
+  <article class="card" aria-labelledby="recent-audit">
+    <h2 class="card-title" id="recent-audit">{{ icon("audit") }} {{ _("Recent audit entries") }}</h2>
+    {% if recent_audit %}
+    <ul class="recent">
+      {% for e in recent_audit %}
+      <li><span class="mode">{{ e.Mode }}</span> <span>{{ e.Reason }}</span>
+        <br><span class="meta">{{ e.Timestamp|when }} · {{ e.User }}</span></li>
+      {% endfor %}
+    </ul>
+    <p><a href="/audit">{{ _("Show the audit log") }}</a></p>
+    {% elif audit_ok %}
+      {{ empty(_("No audit entries yet"), _("Every plan, apply, reset and suitability check writes an entry."), "audit") }}
+    {% else %}
+      <p class="meta">{{ _("The audit log could not be read.") }}</p>
+    {% endif %}
   </article>
 </section>
 {% endblock %}
