@@ -1,0 +1,382 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "M365Backup-Cloning API",
+    "version": "1",
+    "description": "Read-only API of one toolkit instance (ADR 0002, ADR 0008). Write actions (apply, reset) follow with issue #14. Every route has a schema for 200 and the Error schema for 400 and 500."
+  },
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/reports": {
+      "get": {
+        "operationId": "listReports",
+        "summary": "List drift reports and suitability checks, newest first",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "Reports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportKind"
+            }
+          }
+        ]
+      }
+    },
+    "/api/reports/{id}": {
+      "get": {
+        "operationId": "getReport",
+        "summary": "Read one report",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "File base name below History/reports, e.g. apply-plan-20261107-165032.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/plans": {
+      "get": {
+        "operationId": "listPlans",
+        "summary": "List plans, newest first",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "Plans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PlanKind"
+            }
+          }
+        ]
+      }
+    },
+    "/api/plans/{id}": {
+      "get": {
+        "operationId": "getPlan",
+        "summary": "Read one plan with its hash",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "File base name below History/reports, e.g. apply-plan-20261107-165032.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "operationId": "listAudit",
+        "summary": "Read the audit log, newest first, paged",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "plan",
+                "apply",
+                "refused",
+                "reset",
+                "fitcheck"
+              ]
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 50
+            }
+          }
+        ]
+      }
+    },
+    "/api/fitcheck/latest": {
+      "get": {
+        "operationId": "getLatestFitCheck",
+        "summary": "Read the latest suitability check",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The latest check",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitCheckResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "operationId": "getStatus",
+        "summary": "Read-only status for consumers (ADR 0002 point 8)",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "Status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/Error"
+      },
+      "ReportList": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/ReportList"
+      },
+      "ReportResponse": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/ReportResponse"
+      },
+      "PlanList": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/PlanList"
+      },
+      "PlanResponse": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/PlanResponse"
+      },
+      "AuditPage": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/AuditPage"
+      },
+      "FitCheckResponse": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/FitCheckResponse"
+      },
+      "Status": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/Status"
+      },
+      "ReportKind": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/ReportKind"
+      },
+      "PlanKind": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/PlanKind"
+      },
+      "AuditEntry": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/AuditEntry"
+      },
+      "DriftReport": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/DriftReport"
+      },
+      "Plan": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/Plan"
+      },
+      "FitCheck": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/FitCheck"
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid parameter",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

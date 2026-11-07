@@ -1,0 +1,1804 @@
+{
+  "description": "Example responses for the read-only API (web/openapi.json), made offline from the test fixtures with invented values. Key: '<METHOD> <path>'. Validated by tests/WebContract.Tests.ps1.",
+  "responses": {
+    "GET /api/audit": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "items": [
+          {
+            "Timestamp": "2026-11-07T12:00:00Z",
+            "User": "DOMAIN\\operator",
+            "Mode": "plan",
+            "PlanHash": "8827337c8c981de18a745b2f1dcd0275e6b2e2e85d47ea97a033bc5691dc2ba1",
+            "TargetTenant": "tenant-d...",
+            "Counts": {
+              "Blocked": 0,
+              "Exists": 0,
+              "Planned": 4,
+              "Skipped": 0
+            },
+            "Reason": "dev users"
+          },
+          {
+            "Timestamp": "2026-11-07T12:00:00Z",
+            "User": "DOMAIN\\operator",
+            "Mode": "fitcheck",
+            "PlanHash": "",
+            "TargetTenant": "tenant-d...",
+            "Counts": {
+              "Info": 0,
+              "Red": 0,
+              "Yellow": 1
+            },
+            "Reason": "yellow: Dev is enough with gaps: the listed parts of Prod cannot be mirrored."
+          },
+          {
+            "Timestamp": "2026-11-07T12:00:00Z",
+            "User": "DOMAIN\\operator",
+            "Mode": "plan",
+            "PlanHash": "f000ea22c1f45fb24055ecdf41c77c1eec8cc4dcc8680c929415b68cd3f6444f",
+            "TargetTenant": "tenant-d...",
+            "Counts": {
+              "Planned": 0,
+              "Protected": 17,
+              "Skipped": 18
+            },
+            "Reason": "dev reset (Align)"
+          },
+          {
+            "Timestamp": "2026-11-07T12:00:00Z",
+            "User": "DOMAIN\\operator",
+            "Mode": "plan",
+            "PlanHash": "4a811f7f4bb1e40f0801a8d2308f1a8f6385d559a3da36c6eca8d10b63916782",
+            "TargetTenant": "tenant-d...",
+            "Counts": {
+              "Planned": 9,
+              "Protected": 17,
+              "Skipped": 9
+            },
+            "Reason": "dev reset (Full)"
+          },
+          {
+            "Timestamp": "2026-11-07T12:00:00Z",
+            "User": "DOMAIN\\operator",
+            "Mode": "plan",
+            "PlanHash": "dcbdaa88b783e734af9ac98dcdc236a229bfa392f75c057be90fa060170e61c7",
+            "TargetTenant": "tenant-d...",
+            "Counts": {
+              "Blocked": 0,
+              "Planned": 8,
+              "Skipped": 0
+            },
+            "Reason": "dev baseline"
+          },
+          {
+            "Timestamp": "2026-11-07T12:00:00Z",
+            "User": "DOMAIN\\operator",
+            "Mode": "plan",
+            "PlanHash": "90dce6e35fe9aa91c7e068e0b147c248925b0466fe6c5b5121e8a29b997ed547",
+            "TargetTenant": "tenant-d...",
+            "Counts": {
+              "Blocked": 0,
+              "Excluded": 0,
+              "Planned": 4,
+              "Skipped": 1
+            },
+            "Reason": ""
+          }
+        ],
+        "page": 1,
+        "pageSize": 50,
+        "total": 6
+      }
+    },
+    "GET /api/audit?pageSize=0": {
+      "status": 400,
+      "body": {
+        "code": "invalid-parameter",
+        "message": "pageSize must be between 1 and 500."
+      }
+    },
+    "GET /api/fitcheck/latest": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "tenantfit-20261107-120000",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "report": {
+          "Schema": "m365cloning.tenantfit/1",
+          "CreatedUtc": "2026-11-07T12:00:00Z",
+          "Status": "yellow",
+          "Verified": true,
+          "Verdict": "Dev is enough with gaps: the listed parts of Prod cannot be mirrored.",
+          "ProdUsageSource": "snapshot",
+          "Summary": {
+            "Red": 0,
+            "Yellow": 1,
+            "Info": 0,
+            "FeaturesUsedInProd": 2,
+            "FeaturesMissingInDev": 0
+          },
+          "Findings": [
+            {
+              "Id": "sku:EXAMPLE_SKU_LOCKED",
+              "Severity": "yellow",
+              "Category": "sku-status",
+              "Feature": "",
+              "Message": "Dev SKU EXAMPLE_SKU_LOCKED is LockedOut. Locked out (subscription cancelled): its service plans are not available.",
+              "ServicePlans": [
+                "AAD_PREMIUM_P2"
+              ],
+              "AffectedTypes": [],
+              "AffectedCount": 0,
+              "Source": "https://learn.microsoft.com/graph/api/resources/subscribedsku"
+            }
+          ],
+          "Licences": {
+            "Prod": {
+              "Readable": true,
+              "Error": "",
+              "Available": [
+                "AAD_PREMIUM",
+                "EXCHANGE_S_FOUNDATION",
+                "INTUNE_A"
+              ],
+              "Skus": [
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_LOCKED",
+                  "CapabilityStatus": "LockedOut",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM_P2"
+                  ],
+                  "ProvidedPlans": []
+                },
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_P1_INTUNE",
+                  "CapabilityStatus": "Enabled",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ],
+                  "ProvidedPlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ]
+                }
+              ]
+            },
+            "Dev": {
+              "Readable": true,
+              "Error": "",
+              "Available": [
+                "AAD_PREMIUM",
+                "EXCHANGE_S_FOUNDATION",
+                "INTUNE_A"
+              ],
+              "Skus": [
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_LOCKED",
+                  "CapabilityStatus": "LockedOut",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM_P2"
+                  ],
+                  "ProvidedPlans": []
+                },
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_P1_INTUNE",
+                  "CapabilityStatus": "Enabled",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ],
+                  "ProvidedPlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "GET /api/plans": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "items": [
+          {
+            "id": "apply-plan-20261107-120000",
+            "kind": "apply",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "planHash": "90dce6e35fe9aa91c7e068e0b147c248925b0466fe6c5b5121e8a29b997ed547",
+            "summary": {
+              "Planned": 4,
+              "Blocked": 0,
+              "Skipped": 1,
+              "Excluded": 0
+            }
+          },
+          {
+            "id": "dev-baseline-plan-20261107-120000",
+            "kind": "baseline",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "planHash": "dcbdaa88b783e734af9ac98dcdc236a229bfa392f75c057be90fa060170e61c7",
+            "summary": {
+              "Planned": 8,
+              "Blocked": 0,
+              "Skipped": 0,
+              "Exists": 0,
+              "InBaseline": false
+            }
+          },
+          {
+            "id": "dev-reset-plan-align-20261107-120000",
+            "kind": "reset",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "planHash": "f000ea22c1f45fb24055ecdf41c77c1eec8cc4dcc8680c929415b68cd3f6444f",
+            "summary": {
+              "Planned": 0,
+              "Blocked": 0,
+              "Skipped": 18,
+              "Invite": 2,
+              "Protected": 17,
+              "Devices": {
+                "Keep": 1,
+                "Protected": 0,
+                "Remove": 0,
+                "Retire": 0,
+                "Wipe": 0
+              }
+            },
+            "mode": "Align"
+          },
+          {
+            "id": "dev-reset-plan-full-20261107-120000",
+            "kind": "reset",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "planHash": "4a811f7f4bb1e40f0801a8d2308f1a8f6385d559a3da36c6eca8d10b63916782",
+            "summary": {
+              "Planned": 9,
+              "Blocked": 0,
+              "Skipped": 9,
+              "Invite": 2,
+              "Protected": 17,
+              "Devices": {
+                "Keep": 1,
+                "Protected": 0,
+                "Remove": 0,
+                "Retire": 0,
+                "Wipe": 0
+              }
+            },
+            "mode": "Full"
+          },
+          {
+            "id": "dev-users-plan-20261107-120000",
+            "kind": "users",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "planHash": "8827337c8c981de18a745b2f1dcd0275e6b2e2e85d47ea97a033bc5691dc2ba1",
+            "summary": {
+              "Planned": 4,
+              "Blocked": 0,
+              "Skipped": 0,
+              "Exists": 0
+            }
+          }
+        ]
+      }
+    },
+    "GET /api/plans/apply-plan-19990101-000000": {
+      "status": 404,
+      "body": {
+        "code": "not-found",
+        "message": "No plan with this id."
+      }
+    },
+    "GET /api/plans/apply-plan-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "apply-plan-20261107-120000",
+        "kind": "apply",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "planHash": "90dce6e35fe9aa91c7e068e0b147c248925b0466fe6c5b5121e8a29b997ed547",
+        "plan": {
+          "Direction": "Prod -> Dev",
+          "TargetTenantId": "tenant-dev-0001",
+          "Actions": [
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "BG-Group",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "empty static copy (persona BreakGlass): a Conditional Access policy refers to it; no members",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "BG-Group",
+                "MailNickname": "BG-Group",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Empty copy for Conditional Access (persona BreakGlass); no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "SW-Ring2",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "empty static copy: Intune policy 'Windows baseline' assigns to it; no members",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "SW-Ring2",
+                "MailNickname": "SW-Ring2",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Empty copy for an Intune assignment; no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecompliancepolicywindows10",
+              "Name": "Old dev only policy",
+              "Operation": "SkipDelete",
+              "Status": "skipped",
+              "Reason": "exists only in Dev; an apply never deletes",
+              "DscResource": "IntuneDeviceCompliancePolicyWindows10",
+              "AssignmentClass": "MSFT_DeviceManagementConfigurationPolicyAssignments",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+              "Name": "Windows baseline",
+              "Operation": "Update",
+              "Status": "planned",
+              "Reason": "",
+              "DscResource": "IntuneDeviceConfigurationPolicyWindows10",
+              "AssignmentClass": "MSFT_DeviceManagementConfigurationPolicyAssignments",
+              "Differences": [
+                {
+                  "Property": "PasswordMinimumLength",
+                  "Source": "8",
+                  "Target": "12"
+                }
+              ],
+              "Properties": {
+                "Assignments": [
+                  {
+                    "dataType": "#microsoft.graph.groupAssignmentTarget",
+                    "groupDisplayName": "SW-Ring1"
+                  },
+                  {
+                    "dataType": "#microsoft.graph.groupAssignmentTarget",
+                    "groupDisplayName": "SW-Ring2"
+                  }
+                ],
+                "DisplayName": "Windows baseline",
+                "PasswordMinimumLength": 8,
+                "PasswordRequired": true,
+                "Ensure": "Present"
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.conditionalaccesspolicy",
+              "Name": "CA require MFA",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "",
+              "DscResource": "AADConditionalAccessPolicy",
+              "AssignmentClass": "MSFT_DeviceManagementConfigurationPolicyAssignments",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA require MFA",
+                "State": "enabledForReportingButNotEnforced",
+                "Ensure": "Present",
+                "ExcludeUsers": [
+                  "bg-user-0001"
+                ],
+                "ExcludeGroups": [
+                  "BG-Group"
+                ]
+              }
+            }
+          ],
+          "Notes": [],
+          "TypeSummary": [
+            {
+              "ResourceType": "microsoft.entra.conditionalaccesspolicy",
+              "Planned": 1,
+              "Blocked": 0,
+              "Skipped": 0,
+              "Excluded": 0
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Planned": 2,
+              "Blocked": 0,
+              "Skipped": 0,
+              "Excluded": 0
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecompliancepolicywindows10",
+              "Planned": 0,
+              "Blocked": 0,
+              "Skipped": 1,
+              "Excluded": 0
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+              "Planned": 1,
+              "Blocked": 0,
+              "Skipped": 0,
+              "Excluded": 0
+            }
+          ],
+          "ExcludedTypes": [
+            {
+              "ResourceType": "microsoft.entra.administrativeunit",
+              "Reason": "administrative units hold members and scoped role members (identities)"
+            },
+            {
+              "ResourceType": "microsoft.entra.application",
+              "Reason": "app registrations carry credentials and tenant-specific redirect and owner data"
+            },
+            {
+              "ResourceType": "microsoft.entra.authorizationpolicy",
+              "Reason": "tenant-wide authorization policy (default user permissions, consent); one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.crosstenantaccesspolicy",
+              "Reason": "cross-tenant access is set by the base configuration (Invoke-DevBaseline), not copied"
+            },
+            {
+              "ResourceType": "microsoft.entra.crosstenantaccesspolicyconfigurationdefault",
+              "Reason": "cross-tenant access is set by the base configuration (Invoke-DevBaseline), not copied"
+            },
+            {
+              "ResourceType": "microsoft.entra.crosstenantaccesspolicyconfigurationpartner",
+              "Reason": "cross-tenant access is set by the base configuration (Invoke-DevBaseline), not copied"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackage",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackageassignmentpolicy",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackagecatalog",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackagecatalogresource",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementconnectedorganization",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.externalidentitypolicy",
+              "Reason": "tenant-wide external identity policy; one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.grouplifecyclepolicy",
+              "Reason": "tenant-wide group expiry: it can delete groups in Dev"
+            },
+            {
+              "ResourceType": "microsoft.entra.groupsnamingpolicy",
+              "Reason": "tenant-wide group naming policy; one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.groupssettings",
+              "Reason": "tenant-wide group settings; one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.roleeligibilityschedulerequest",
+              "Reason": "PIM eligibility names principals; roles and PIM wait for issue #4"
+            },
+            {
+              "ResourceType": "microsoft.entra.rolesetting",
+              "Reason": "PIM role settings; roles and PIM wait for issue #4"
+            },
+            {
+              "ResourceType": "microsoft.entra.securitydefaults",
+              "Reason": "tenant-wide security defaults; switching them can lock users out or turn off Conditional Access"
+            },
+            {
+              "ResourceType": "microsoft.entra.serviceprincipal",
+              "Reason": "service principals belong to the app registrations and consents of each tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.socialidentityprovider",
+              "Reason": "identity providers carry client secrets"
+            },
+            {
+              "ResourceType": "microsoft.entra.tenantdetails",
+              "Reason": "tenant details (name, contacts, notification addresses) belong to each tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.tokenlifetimepolicy",
+              "Reason": "token lifetime policies can apply tenant-wide to every sign-in"
+            },
+            {
+              "ResourceType": "microsoft.entra.user",
+              "Reason": "users are not mirrored; test users and admin guests come from the positive list (Invoke-DevUsers)"
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecleanuprule",
+              "Reason": "tenant-wide device clean-up rule: it removes devices in Dev"
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationdefenderforendpointonboardingpolicywindows10",
+              "Reason": "the Defender for Endpoint onboarding package belongs to the tenant of the Defender instance"
+            },
+            {
+              "ResourceType": "microsoft.intune.roleassignment",
+              "Reason": "Intune role assignments name members and scopes; roles wait for issue #4"
+            }
+          ],
+          "Summary": {
+            "Planned": 4,
+            "Blocked": 0,
+            "Skipped": 1,
+            "Excluded": 0
+          },
+          "Licences": {
+            "Readable": true,
+            "Error": "",
+            "Available": [
+              "AAD_PREMIUM",
+              "EXCHANGE_S_FOUNDATION",
+              "INTUNE_A"
+            ],
+            "Missing": [],
+            "Warnings": []
+          }
+        }
+      }
+    },
+    "GET /api/plans/dev-baseline-plan-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "dev-baseline-plan-20261107-120000",
+        "kind": "baseline",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "planHash": "dcbdaa88b783e734af9ac98dcdc236a229bfa392f75c057be90fa060170e61c7",
+        "plan": {
+          "Direction": "Dev base state",
+          "Title": "Dev baseline plan: difference to the base state (preview, nothing was changed)",
+          "ApplyHint": "scripts/Invoke-DevBaseline.ps1 -Apply -ConfirmPlanHash <hash above>",
+          "TargetTenantId": "tenant-dev-0001",
+          "Actions": [
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "BG-Group",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "break-glass group of the base state: static, empty",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "BG-Group",
+                "MailNickname": "BG-Group",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Dev base state: break-glass group; no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "CA-BreakglassAccounts",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "break-glass group of the base state: static, empty",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA-BreakglassAccounts",
+                "MailNickname": "CA-BreakglassAccounts",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Dev base state: break-glass group; no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "CA-Persona-Admins",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "persona group (Admins) of the base state: static, empty",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA-Persona-Admins",
+                "MailNickname": "CA-Persona-Admins",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Dev base state: persona group (Admins); no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "CA-Persona-Externals",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "persona group (Externals) of the base state: static, empty",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA-Persona-Externals",
+                "MailNickname": "CA-Persona-Externals",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Dev base state: persona group (Externals); no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "CA-Persona-Guests",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "persona group (Guests) of the base state: static, empty",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA-Persona-Guests",
+                "MailNickname": "CA-Persona-Guests",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Dev base state: persona group (Guests); no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "CA-Persona-Internals",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "persona group (Internals) of the base state: static, empty",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA-Persona-Internals",
+                "MailNickname": "CA-Persona-Internals",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Dev base state: persona group (Internals); no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "CA-Persona-Microsoft365ServiceAccounts",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "persona group (Microsoft365ServiceAccounts) of the base state: static, empty",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA-Persona-Microsoft365ServiceAccounts",
+                "MailNickname": "CA-Persona-Microsoft365ServiceAccounts",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Dev base state: persona group (Microsoft365ServiceAccounts); no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.crosstenantaccesspolicyconfigurationpartner",
+              "Name": "Prod tenant as partner (tenant-prod-0001)",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "cross-tenant access: B2B collaboration inbound allowed for the Prod tenant, inbound invitations redeemed automatically (no cross-tenant sync)",
+              "DscResource": "AADCrossTenantAccessPolicyConfigurationPartner",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "PartnerTenantId": "tenant-prod-0001",
+                "B2BCollaborationInbound": {
+                  "__CimClass": "MSFT_AADCrossTenantAccessPolicyB2BSetting",
+                  "UsersAndGroups": {
+                    "__CimClass": "MSFT_AADCrossTenantAccessPolicyTargetConfiguration",
+                    "AccessType": "allowed",
+                    "Targets": [
+                      {
+                        "__CimClass": "MSFT_AADCrossTenantAccessPolicyTarget",
+                        "Target": "AllUsers",
+                        "TargetType": "user"
+                      }
+                    ]
+                  },
+                  "Applications": {
+                    "__CimClass": "MSFT_AADCrossTenantAccessPolicyTargetConfiguration",
+                    "AccessType": "allowed",
+                    "Targets": [
+                      {
+                        "__CimClass": "MSFT_AADCrossTenantAccessPolicyTarget",
+                        "Target": "AllApplications",
+                        "TargetType": "application"
+                      }
+                    ]
+                  }
+                },
+                "AutomaticUserConsentSettings": {
+                  "__CimClass": "MSFT_AADCrossTenantAccessPolicyAutomaticUserConsentSettings",
+                  "InboundAllowed": true
+                },
+                "Ensure": "Present"
+              }
+            }
+          ],
+          "Notes": [
+            "Members of the groups are never added or removed by the baseline."
+          ],
+          "Summary": {
+            "Planned": 8,
+            "Blocked": 0,
+            "Skipped": 0,
+            "Exists": 0,
+            "InBaseline": false
+          },
+          "Licences": {
+            "Readable": true,
+            "Error": "",
+            "Available": [
+              "AAD_PREMIUM",
+              "EXCHANGE_S_FOUNDATION",
+              "INTUNE_A"
+            ],
+            "Missing": [],
+            "Warnings": []
+          }
+        }
+      }
+    },
+    "GET /api/plans/dev-reset-plan-align-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "dev-reset-plan-align-20261107-120000",
+        "kind": "reset",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "planHash": "f000ea22c1f45fb24055ecdf41c77c1eec8cc4dcc8680c929415b68cd3f6444f",
+        "plan": {
+          "Direction": "Factory reset of Dev (Align)",
+          "Title": "Dev reset plan, mode Align (preview, nothing was changed)",
+          "ApplyHint": "scripts/Invoke-DevReset.ps1 -Mode Align -Apply -ConfirmPlanHash <hash above> -ConfirmTenant <Dev tenant ID>",
+          "Mode": "Align",
+          "TargetTenantId": "tenant-dev-0001",
+          "Actions": [
+            {
+              "ResourceType": "AssignmentFilter",
+              "Name": "Filter Dev Only",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "ConditionalAccessPolicy",
+              "Name": "CA001-Global-Base",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "ConditionalAccessPolicy",
+              "Name": "CA999-Dev-Only",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "ConfigurationPolicy",
+              "Name": "SC - Defender",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "DeviceCompliancePolicy",
+              "Name": "Win - Compliance",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "DeviceConfiguration",
+              "Name": "Win - Base",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "DeviceConfiguration",
+              "Name": "Win - Dev Trial",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Old Test Group",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Pilot Ring",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not only in Dev (or not in the drift report): kept, the apply aligns it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Role Group",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "role-assignable group: not deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Synced Group",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "synced from on-premises: never deleted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Team Site",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "Microsoft 365 group (mailbox, site, team): not deleted by the reset, delete by hand if wanted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Invite",
+              "Name": "admin.two@prod.example",
+              "Operation": "Invite",
+              "Status": "info",
+              "Reason": "Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Invite",
+              "Name": "bg-user@dev.example",
+              "Operation": "Invite",
+              "Status": "info",
+              "Reason": "Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "ManagedDevice",
+              "Name": "VM-TEST-01",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "kept (default); choose -DeviceAction or -DeviceActionFile to remove, retire or wipe",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "dev.admin@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "someone@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "svc.sync@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "synced@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "synced from on-premises: never deleted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "test.internal@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            }
+          ],
+          "Protected": [
+            {
+              "Kind": "Account",
+              "Name": "admin.one_prod.example#EXT#@dev.example",
+              "Source": "Dev: B2B guest of a Prod Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin.one_prod.example#EXT#@dev.example",
+              "Source": "Dev: guest (guests are never deleted)"
+            },
+            {
+              "Kind": "Account",
+              "Name": "partner_x.example#EXT#@dev.example",
+              "Source": "Dev: guest (guests are never deleted)"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin.one@prod.example",
+              "Source": "Prod: Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin.two@prod.example",
+              "Source": "Prod: Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "bg-user@dev.example",
+              "Source": "Prod: Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "bg-user-0001",
+              "Source": "config: BreakGlass"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin-0001",
+              "Source": "config: ProtectedAccounts"
+            },
+            {
+              "Kind": "App",
+              "Name": "Toolkit Dev",
+              "Source": "Dev: app registration of this toolkit"
+            },
+            {
+              "Kind": "Group",
+              "Name": "BG-Group",
+              "Source": "base state (break-glass)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-BreakglassAccounts",
+              "Source": "base state (break-glass)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Admins",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Externals",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Guests",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Internals",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Microsoft365ServiceAccounts",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Partner",
+              "Name": "tenant-prod-0001",
+              "Source": "Dev: cross-tenant access partner and cross-tenant sync (kept)"
+            }
+          ],
+          "Notes": [
+            "Deleted users, groups and Conditional Access policies stay in the deleted items for 30 days and can be restored; the reset never empties them.",
+            "Conditional Access policies, then named locations and authentication strengths, then Intune policies, filters, groups and users are deleted in this order; a failure stops the later steps.",
+            "Device actions (remove, retire, wipe) run last and only when every earlier step succeeded: retire and wipe cannot be undone. Retire and wipe take effect at the next check-in of the device.",
+            "Align: after the reset run scripts/Invoke-ApplyDev.ps1 to align what differs (or -RebuildAfter)."
+          ],
+          "Summary": {
+            "Planned": 0,
+            "Blocked": 0,
+            "Skipped": 18,
+            "Invite": 2,
+            "Protected": 17,
+            "Devices": {
+              "Keep": 1,
+              "Protected": 0,
+              "Remove": 0,
+              "Retire": 0,
+              "Wipe": 0
+            }
+          }
+        }
+      }
+    },
+    "GET /api/plans/dev-reset-plan-full-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "dev-reset-plan-full-20261107-120000",
+        "kind": "reset",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "planHash": "4a811f7f4bb1e40f0801a8d2308f1a8f6385d559a3da36c6eca8d10b63916782",
+        "plan": {
+          "Direction": "Factory reset of Dev (Full)",
+          "Title": "Dev reset plan, mode Full (preview, nothing was changed)",
+          "ApplyHint": "scripts/Invoke-DevReset.ps1 -Mode Full -Apply -ConfirmPlanHash <hash above> -ConfirmTenant <Dev tenant ID>",
+          "Mode": "Full",
+          "TargetTenantId": "tenant-dev-0001",
+          "Actions": [
+            {
+              "ResourceType": "ConditionalAccessPolicy",
+              "Name": "CA001-Global-Base",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full); switched off first, then deleted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "ca-0001",
+                "Kind": "ConditionalAccessPolicy"
+              }
+            },
+            {
+              "ResourceType": "ConditionalAccessPolicy",
+              "Name": "CA999-Dev-Only",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full); switched off first, then deleted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "ca-0002",
+                "Kind": "ConditionalAccessPolicy"
+              }
+            },
+            {
+              "ResourceType": "ConfigurationPolicy",
+              "Name": "SC - Defender",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "sc-0001",
+                "Kind": "ConfigurationPolicy"
+              }
+            },
+            {
+              "ResourceType": "DeviceCompliancePolicy",
+              "Name": "Win - Compliance",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "cp-0001",
+                "Kind": "DeviceCompliancePolicy"
+              }
+            },
+            {
+              "ResourceType": "DeviceConfiguration",
+              "Name": "Win - Base",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "dc-0001",
+                "Kind": "DeviceConfiguration"
+              }
+            },
+            {
+              "ResourceType": "DeviceConfiguration",
+              "Name": "Win - Dev Trial",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "dc-0002",
+                "Kind": "DeviceConfiguration"
+              }
+            },
+            {
+              "ResourceType": "AssignmentFilter",
+              "Name": "Filter Dev Only",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full); after the policies that use it",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "flt-0001",
+                "Kind": "AssignmentFilter"
+              }
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Old Test Group",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full); goes to the deleted items (restorable for 30 days)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "group-old-0001",
+                "Kind": "Group"
+              }
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Pilot Ring",
+              "Operation": "Delete",
+              "Status": "planned",
+              "Reason": "in the reset scope (Full); goes to the deleted items (restorable for 30 days)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "Id": "group-prod-0001",
+                "Kind": "Group"
+              }
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Role Group",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "role-assignable group: not deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Synced Group",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "synced from on-premises: never deleted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Group",
+              "Name": "Team Site",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "Microsoft 365 group (mailbox, site, team): not deleted by the reset, delete by hand if wanted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Invite",
+              "Name": "admin.two@prod.example",
+              "Operation": "Invite",
+              "Status": "info",
+              "Reason": "Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "Invite",
+              "Name": "bg-user@dev.example",
+              "Operation": "Invite",
+              "Status": "info",
+              "Reason": "Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "ManagedDevice",
+              "Name": "VM-TEST-01",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "kept (default); choose -DeviceAction or -DeviceActionFile to remove, retire or wipe",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "dev.admin@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "someone@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "svc.sync@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "synced@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "synced from on-premises: never deleted",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            },
+            {
+              "ResourceType": "User",
+              "Name": "test.internal@dev.example",
+              "Operation": "Keep",
+              "Status": "skipped",
+              "Reason": "not a test user of the positive list (DevUsers): never deleted by the reset",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": null
+            }
+          ],
+          "Protected": [
+            {
+              "Kind": "Account",
+              "Name": "admin.one_prod.example#EXT#@dev.example",
+              "Source": "Dev: B2B guest of a Prod Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin.one_prod.example#EXT#@dev.example",
+              "Source": "Dev: guest (guests are never deleted)"
+            },
+            {
+              "Kind": "Account",
+              "Name": "partner_x.example#EXT#@dev.example",
+              "Source": "Dev: guest (guests are never deleted)"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin.one@prod.example",
+              "Source": "Prod: Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin.two@prod.example",
+              "Source": "Prod: Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "bg-user@dev.example",
+              "Source": "Prod: Global Administrator"
+            },
+            {
+              "Kind": "Account",
+              "Name": "bg-user-0001",
+              "Source": "config: BreakGlass"
+            },
+            {
+              "Kind": "Account",
+              "Name": "admin-0001",
+              "Source": "config: ProtectedAccounts"
+            },
+            {
+              "Kind": "App",
+              "Name": "Toolkit Dev",
+              "Source": "Dev: app registration of this toolkit"
+            },
+            {
+              "Kind": "Group",
+              "Name": "BG-Group",
+              "Source": "base state (break-glass)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-BreakglassAccounts",
+              "Source": "base state (break-glass)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Admins",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Externals",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Guests",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Internals",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Group",
+              "Name": "CA-Persona-Microsoft365ServiceAccounts",
+              "Source": "base state (persona)"
+            },
+            {
+              "Kind": "Partner",
+              "Name": "tenant-prod-0001",
+              "Source": "Dev: cross-tenant access partner and cross-tenant sync (kept)"
+            }
+          ],
+          "Notes": [
+            "Deleted users, groups and Conditional Access policies stay in the deleted items for 30 days and can be restored; the reset never empties them.",
+            "Conditional Access policies, then named locations and authentication strengths, then Intune policies, filters, groups and users are deleted in this order; a failure stops the later steps.",
+            "Device actions (remove, retire, wipe) run last and only when every earlier step succeeded: retire and wipe cannot be undone. Retire and wipe take effect at the next check-in of the device.",
+            "Full: rebuild with -RebuildAfter (baseline -> apply -> users, each with its own plan and confirmation)."
+          ],
+          "Summary": {
+            "Planned": 9,
+            "Blocked": 0,
+            "Skipped": 9,
+            "Invite": 2,
+            "Protected": 17,
+            "Devices": {
+              "Keep": 1,
+              "Protected": 0,
+              "Remove": 0,
+              "Retire": 0,
+              "Wipe": 0
+            }
+          }
+        }
+      }
+    },
+    "GET /api/plans/dev-users-plan-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "dev-users-plan-20261107-120000",
+        "kind": "users",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "planHash": "8827337c8c981de18a745b2f1dcd0275e6b2e2e85d47ea97a033bc5691dc2ba1",
+        "plan": {
+          "Direction": "Dev users (positive list)",
+          "Title": "Dev users plan (preview, nothing was changed)",
+          "ApplyHint": "scripts/Invoke-DevUsers.ps1 -Apply -ConfirmPlanHash <hash above>",
+          "TargetTenantId": "tenant-dev-0001",
+          "Actions": [
+            {
+              "ResourceType": "microsoft.graph.invitation",
+              "Name": "admin.one@prod.example",
+              "Operation": "InviteGuest",
+              "Status": "planned",
+              "Reason": "admin from Prod as B2B guest (persona Admins); no invitation mail",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "invitedUserEmailAddress": "admin.one@prod.example",
+                "sendInvitationMessage": false,
+                "inviteRedirectUrl": "https://myapps.microsoft.com"
+              }
+            },
+            {
+              "ResourceType": "microsoft.graph.user",
+              "Name": "test.internal@dev.example",
+              "Operation": "CreateUser",
+              "Status": "planned",
+              "Reason": "test user (persona Internals); random initial password, change at first sign-in",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "accountEnabled": true,
+                "displayName": "Test Internals 01",
+                "mailNickname": "test.internal",
+                "userPrincipalName": "test.internal@dev.example"
+              }
+            },
+            {
+              "ResourceType": "microsoft.graph.groupMember",
+              "Name": "admin.one@prod.example -> CA-Persona-Admins",
+              "Operation": "AddMember",
+              "Status": "planned",
+              "Reason": "add to the persona group (persona Admins); never removed",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "GroupId": "group-admins-0001",
+                "GroupName": "CA-Persona-Admins",
+                "UserRef": "admin.one@prod.example",
+                "MemberId": ""
+              }
+            },
+            {
+              "ResourceType": "microsoft.graph.groupMember",
+              "Name": "test.internal@dev.example -> CA-Persona-Internals",
+              "Operation": "AddMember",
+              "Status": "planned",
+              "Reason": "add to the persona group (persona Internals); never removed",
+              "DscResource": "",
+              "Differences": [],
+              "Properties": {
+                "GroupId": "group-internals-0001",
+                "GroupName": "CA-Persona-Internals",
+                "UserRef": "test.internal@dev.example",
+                "MemberId": ""
+              }
+            }
+          ],
+          "Notes": [],
+          "Summary": {
+            "Planned": 4,
+            "Blocked": 0,
+            "Skipped": 0,
+            "Exists": 0
+          },
+          "Licences": {
+            "Readable": true,
+            "Error": "",
+            "Available": [
+              "AAD_PREMIUM",
+              "EXCHANGE_S_FOUNDATION",
+              "INTUNE_A"
+            ],
+            "Missing": [],
+            "Warnings": []
+          }
+        }
+      }
+    },
+    "GET /api/reports": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "items": [
+          {
+            "id": "drift-20261107-120000",
+            "kind": "drift",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "isIdentical": false
+          },
+          {
+            "id": "tenantfit-20261107-120000",
+            "kind": "tenantfit",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "status": "yellow"
+          }
+        ]
+      }
+    },
+    "GET /api/reports/drift-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "drift-20261107-120000",
+        "kind": "drift",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "report": {
+          "Direction": "Prod -> Dev (Source = Prod, Target = Dev)",
+          "Types": [
+            {
+              "ResourceType": "microsoft.entra.conditionalaccesspolicy",
+              "Added": [
+                "CA require MFA"
+              ],
+              "Removed": [],
+              "Changed": [],
+              "Unchanged": 0
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Added": [],
+              "Removed": [],
+              "Changed": [],
+              "Unchanged": 1
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecompliancepolicywindows10",
+              "Added": [],
+              "Removed": [
+                "Old dev only policy"
+              ],
+              "Changed": [],
+              "Unchanged": 1
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+              "Added": [],
+              "Removed": [],
+              "Changed": [
+                {
+                  "Name": "Windows baseline",
+                  "Differences": [
+                    {
+                      "Property": "PasswordMinimumLength",
+                      "Source": "8",
+                      "Target": "12"
+                    }
+                  ]
+                }
+              ],
+              "Unchanged": 0
+            }
+          ],
+          "Summary": {
+            "Added": 1,
+            "Removed": 1,
+            "Changed": 1,
+            "Unchanged": 2
+          },
+          "IsIdentical": false
+        }
+      }
+    },
+    "GET /api/reports/tenantfit-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "id": "tenantfit-20261107-120000",
+        "kind": "tenantfit",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "report": {
+          "Schema": "m365cloning.tenantfit/1",
+          "CreatedUtc": "2026-11-07T12:00:00Z",
+          "Status": "yellow",
+          "Verified": true,
+          "Verdict": "Dev is enough with gaps: the listed parts of Prod cannot be mirrored.",
+          "ProdUsageSource": "snapshot",
+          "Summary": {
+            "Red": 0,
+            "Yellow": 1,
+            "Info": 0,
+            "FeaturesUsedInProd": 2,
+            "FeaturesMissingInDev": 0
+          },
+          "Findings": [
+            {
+              "Id": "sku:EXAMPLE_SKU_LOCKED",
+              "Severity": "yellow",
+              "Category": "sku-status",
+              "Feature": "",
+              "Message": "Dev SKU EXAMPLE_SKU_LOCKED is LockedOut. Locked out (subscription cancelled): its service plans are not available.",
+              "ServicePlans": [
+                "AAD_PREMIUM_P2"
+              ],
+              "AffectedTypes": [],
+              "AffectedCount": 0,
+              "Source": "https://learn.microsoft.com/graph/api/resources/subscribedsku"
+            }
+          ],
+          "Licences": {
+            "Prod": {
+              "Readable": true,
+              "Error": "",
+              "Available": [
+                "AAD_PREMIUM",
+                "EXCHANGE_S_FOUNDATION",
+                "INTUNE_A"
+              ],
+              "Skus": [
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_LOCKED",
+                  "CapabilityStatus": "LockedOut",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM_P2"
+                  ],
+                  "ProvidedPlans": []
+                },
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_P1_INTUNE",
+                  "CapabilityStatus": "Enabled",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ],
+                  "ProvidedPlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ]
+                }
+              ]
+            },
+            "Dev": {
+              "Readable": true,
+              "Error": "",
+              "Available": [
+                "AAD_PREMIUM",
+                "EXCHANGE_S_FOUNDATION",
+                "INTUNE_A"
+              ],
+              "Skus": [
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_LOCKED",
+                  "CapabilityStatus": "LockedOut",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM_P2"
+                  ],
+                  "ProvidedPlans": []
+                },
+                {
+                  "SkuPartNumber": "EXAMPLE_SKU_P1_INTUNE",
+                  "CapabilityStatus": "Enabled",
+                  "AppliesTo": "",
+                  "ConsumedUnits": 0,
+                  "PrepaidEnabled": 0,
+                  "PrepaidWarning": 0,
+                  "PrepaidSuspended": 0,
+                  "PrepaidLockedOut": 0,
+                  "ServicePlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ],
+                  "ProvidedPlans": [
+                    "AAD_PREMIUM",
+                    "EXCHANGE_S_FOUNDATION",
+                    "INTUNE_A"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "GET /api/status": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "1",
+        "lastComparisonUtc": "2026-11-07T12:00:00Z",
+        "differences": 3,
+        "fitStatus": "yellow",
+        "reportId": "drift-20261107-120000"
+      }
+    }
+  }
+}

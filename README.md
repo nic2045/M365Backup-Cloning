@@ -126,3 +126,6 @@ for all, `-DeviceActionFile <.psd1/.json>` per device name (for example `@{ 'LAP
 never touched; device actions run last. Pass the same device options with `-Apply` as with the preview. The Global Administrators of Prod (without break-glass) are always protected. Offline preview:
 `-InventoryPath tests/fixtures/dev.reset-inventory.json` (Align also needs the two snapshot files).
 
+## Web contract (issue #44, ADR 0008)
+
+The web server and interface (ADR 0002) are not built yet. Their contract is: `schema/m365cloning.schema.json` (formats the core writes and the API envelopes), `web/openapi.json` (read routes only) and `web/mock/responses.json` (example responses). `tests/WebContract.Tests.ps1` checks the core's files, the OpenAPI description and the mock against it. See [`docs/web-contract.md`](docs/web-contract.md).
