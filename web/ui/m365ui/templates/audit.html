@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import filter_form, select, icon %}
+{% block title %}{{ _("Audit") }}{% endblock %}
+{% block content %}
+<h1>{{ _("Audit") }}</h1>
+{% call filter_form("/audit", []) %}
+  {{ select("mode", _("Mode"), modes, mode, _("All modes")) }}
+{% endcall %}
+<div id="results">
+<p class="meta">{{ total }} {{ _("entries") }} · {{ _("page") }} {{ page }} / {{ pages }}</p>
+{% if items %}
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Audit") }}</caption>
+  <thead><tr><th scope="col">{{ _("Time (UTC)") }}</th><th scope="col">{{ _("Mode") }}</th><th scope="col">{{ _("User") }}</th><th scope="col">{{ _("Target tenant") }}</th><th scope="col">{{ _("Counts") }}</th><th scope="col">{{ _("Reason") }}</th></tr></thead>
+  <tbody>
+  {% for e in items %}
+    <tr>
+      <td data-label="{{ _('Time (UTC)') }}"><time>{{ e.Timestamp }}</time></td><td data-label="{{ _('Mode') }}">{{ e.Mode }}</td><td data-label="{{ _('User') }}">{{ e.User }}</td><td data-label="{{ _('Target tenant') }}">{{ e.TargetTenant }}</td>
+      <td data-label="{{ _('Counts') }}">{% for k, v in e.Counts.items() if v %}{{ k }} {{ v }}{% if not loop.last %}, {% endif %}{% else %}–{% endfor %}</td>
+      <td data-label="{{ _('Reason') }}">{{ e.Reason }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p>{{ _("No entries.") }}</p>{% endif %}
+<nav class="pager" aria-label="{{ _('Pages') }}">
+  {% if page > 1 %}<a class="button button-secondary" href="/audit?{% if mode %}mode={{ mode }}&amp;{% endif %}page={{ page - 1 }}">{{ icon("prev") }} {{ _("Previous") }}</a>{% endif %}
+  {% if page < pages %}<a class="button button-secondary" href="/audit?{% if mode %}mode={{ mode }}&amp;{% endif %}page={{ page + 1 }}">{{ _("Next") }} {{ icon("next") }}</a>{% endif %}
+</nav>
+</div>
+{% endblock %}

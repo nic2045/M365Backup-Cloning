@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, filter_form, select, short_type, icon %}
+{% block title %}{{ _("Plan") }}{% endblock %}
+{% block content %}
+<p><a class="button button-secondary" href="/plans">{{ icon("back") }} {{ _("All plans") }}</a></p>
+<h1>{{ plan.Title or _("Plan") }}</h1>
+<dl class="pairs">
+  <dt>{{ _("Plan") }}</dt><dd>{{ env.id }}</dd>
+  <dt>{{ _("Kind") }}</dt><dd>{{ env.kind }}{% if plan.Mode %} ({{ plan.Mode }}){% endif %}</dd>
+  <dt>{{ _("Created (UTC)") }}</dt><dd><time>{{ env.createdUtc }}</time></dd>
+  <dt>{{ _("Direction") }}</dt><dd>{{ plan.Direction }}</dd>
+  <dt>{{ _("Target tenant") }}</dt><dd>{{ plan.TargetTenant }}</dd>
+  <dt>{{ _("Plan hash") }}</dt><dd><code class="hash">{{ env.planHash }}</code></dd>
+</dl>
+
+<h2>{{ _("Summary") }}</h2>
+{% set s = plan.Summary %}
+<ul class="counts">
+  <li><strong>{{ s.Planned }}</strong> {{ _("planned (copied)") }}</li>
+  <li><strong>{{ s.Excluded }}</strong> {{ _("excluded") }}</li>
+  <li><strong>{{ s.Blocked }}</strong> {{ _("blocked") }}</li>
+  <li><strong>{{ s.Skipped }}</strong> {{ _("skipped") }}</li>
+  {% if s.Protected %}<li><strong>{{ s.Protected }}</strong> {{ _("protected") }}</li>{% endif %}
+  {% if s.Invite %}<li><strong>{{ s.Invite }}</strong> {{ _("to invite") }}</li>{% endif %}
+  {% if s.Exists %}<li><strong>{{ s.Exists }}</strong> {{ _("exist already") }}</li>{% endif %}
+</ul>
+
+<h2>{{ _("Licences") }}</h2>
+{% set l = plan.Licences %}
+{% if not l.Checked %}<p>{{ badge("grey") }} {{ _("Licences were not checked for this plan.") }}</p>
+{% elif not l.Readable %}<p>{{ badge("grey") }} {{ _("The licence list could not be read.") }} {{ l.Error }}</p>
+{% else %}
+  <p>{% if l.Missing %}{{ badge("blocked") }}{% else %}{{ badge("green") }}{% endif %}
+     {{ _("Available service plans") }}: {{ l.Available|join(", ") or "–" }}</p>
+  {% if l.Missing %}<h3>{{ _("Missing") }}</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{{ _("Feature") }}</th><th scope="col">{{ _("Needs one of") }}</th><th scope="col">{{ _("Blocked entries") }}</th></tr></thead>
+    <tbody>{% for m in l.Missing %}<tr><td data-label="{{ _('Feature') }}">{{ m.Feature }}</td><td data-label="{{ _('Needs one of') }}">{{ m.ServicePlans|join(", ") }}</td><td data-label="{{ _('Blocked entries') }}">{{ m.Entries|join(", ") }}</td></tr>{% endfor %}</tbody>
+  </table></div>{% endif %}
+  {% if l.Warnings %}<h3>{{ _("Warnings") }}</h3><ul>{% for w in l.Warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+{% endif %}
+
+{% if plan.TypeSummary %}
+<h2>{{ _("Per resource type") }}</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{{ _("Resource type") }}</th><th scope="col" class="num">{{ _("Copied") }}</th><th scope="col" class="num">{{ _("Excluded") }}</th><th scope="col" class="num">{{ _("Blocked") }}</th><th scope="col" class="num">{{ _("Skipped") }}</th></tr></thead>
+  <tbody>{% for t in plan.TypeSummary %}<tr><td data-label="{{ _('Resource type') }}">{{ short_type(t.ResourceType) }}</td><td data-label="{{ _('Copied') }}" class="num">{{ t.Planned }}</td><td data-label="{{ _('Excluded') }}" class="num">{{ t.Excluded }}</td><td data-label="{{ _('Blocked') }}" class="num">{{ t.Blocked }}</td><td data-label="{{ _('Skipped') }}" class="num">{{ t.Skipped }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+<h2>{{ _("Actions") }}</h2>
+{% call filter_form("/plans/" ~ env.id, []) %}
+  {{ select("type", _("Resource type"), type_names, type, _("All types")) }}
+  {{ select("state", _("Status"), states, state, _("All")) }}
+{% endcall %}
+<div id="results">
+{% if rows %}
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{{ _("Status") }}</th><th scope="col">{{ _("Operation") }}</th><th scope="col">{{ _("Resource type") }}</th><th scope="col">{{ _("Name") }}</th><th scope="col">{{ _("Reason") }}</th></tr></thead>
+  <tbody>{% for a in rows %}<tr><td data-label="{{ _('Status') }}">{{ badge(a.Status) }}</td><td data-label="{{ _('Operation') }}">{{ a.Operation }}</td><td data-label="{{ _('Resource type') }}">{{ short_type(a.ResourceType) }}</td><td data-label="{{ _('Name') }}">{{ a.Name }}</td><td data-label="{{ _('Reason') }}">{{ a.Reason }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}<p>{{ _("No action matches the filter.") }}</p>{% endif %}
+</div>
+
+{% if plan.Protected %}
+<h2>{{ _("Protected") }}</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{{ _("Kind") }}</th><th scope="col">{{ _("Name") }}</th><th scope="col">{{ _("Why") }}</th></tr></thead>
+  <tbody>{% for p in plan.Protected %}<tr><td data-label="{{ _('Kind') }}">{{ p.Kind }}</td><td data-label="{{ _('Name') }}">{{ p.Name }}</td><td data-label="{{ _('Why') }}">{{ p.Source }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+{% if plan.ExcludedTypes %}
+<details><summary>{{ _("Excluded resource types") }} ({{ plan.ExcludedTypes|length }})</summary>
+<ul>{% for e in plan.ExcludedTypes %}<li>{{ short_type(e.ResourceType) }}: {{ e.Reason }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+{% if plan.Notes %}<h2>{{ _("Notes") }}</h2><ul>{% for n in plan.Notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+{% if plan.ApplyHint %}<h2>{{ _("How to apply") }}</h2><p><code class="hash">{{ plan.ApplyHint }}</code></p>{% endif %}
+{% endblock %}

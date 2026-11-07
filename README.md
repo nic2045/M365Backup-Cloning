@@ -133,3 +133,7 @@ The web server and interface (ADR 0002) are not built yet. Their contract is: `s
 ## Web API (read only, issue #55)
 
 `web/api` is the read-only API server (FastAPI) for the routes of `web/openapi.json`: reports, plans, audit, suitability check and status from `History/`. Tenant IDs and GUIDs are masked in every answer; there are no write routes. Start and test: see `docs/web-contract.md`, section "Start the backend".
+
+## Web interface (read only, issue #12)
+
+`web/ui` is the read-only interface (FastAPI, Jinja2, HTMX): overview, reports, plans and audit. It talks only to `/api/...` of `web/api`; without `M365_UI_API_BASE` it shows the example data of `web/mock/responses.json`. Applying and resetting stay with the scripts. Start and test: see `docs/web-contract.md`, section "Start the frontend".

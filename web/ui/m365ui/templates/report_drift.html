@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, filter_form, select, short_type, icon %}
+{% block title %}{{ _("Drift report") }}{% endblock %}
+{% block content %}
+<p><a class="button button-secondary" href="/reports">{{ icon("back") }} {{ _("All reports") }}</a></p>
+<h1>{{ _("Drift report") }}</h1>
+<dl class="pairs">
+  <dt>{{ _("Report") }}</dt><dd>{{ env.id }}</dd>
+  <dt>{{ _("Created (UTC)") }}</dt><dd><time>{{ env.createdUtc }}</time></dd>
+  <dt>{{ _("Direction") }}</dt><dd>{{ report.Direction }}</dd>
+  <dt>{{ _("Result") }}</dt><dd>{% if report.IsIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</dd>
+</dl>
+<ul class="counts">
+  <li><strong>{{ report.Summary.Added }}</strong> {{ _("only in Prod") }}</li>
+  <li><strong>{{ report.Summary.Removed }}</strong> {{ _("only in Dev") }}</li>
+  <li><strong>{{ report.Summary.Changed }}</strong> {{ _("changed") }}</li>
+  <li><strong>{{ report.Summary.Unchanged }}</strong> {{ _("unchanged") }}</li>
+</ul>
+{% call filter_form("/reports/" ~ env.id, []) %}
+  {{ select("type", _("Resource type"), type_names, type, _("All types")) }}
+  {{ select("state", _("Difference"), states, state, _("All")) }}
+{% endcall %}
+<div id="results">
+{% for t in rows %}
+  <section class="type">
+    <h2>{{ short_type(t.ResourceType) }}</h2>
+    <p class="meta">{{ t.Added|length }} {{ _("only in Prod") }} · {{ t.Removed|length }} {{ _("only in Dev") }} · {{ t.Changed|length }} {{ _("changed") }} · {{ t.Unchanged }} {{ _("unchanged") }}</p>
+    {% if t.Added %}<h3>{{ _("Only in Prod") }}</h3><ul>{% for n in t.Added %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+    {% if t.Removed %}<h3>{{ _("Only in Dev") }}</h3><ul>{% for n in t.Removed %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+    {% for c in t.Changed %}
+      <h3>{{ _("Changed") }}: {{ c.Name }}</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">{{ _("Property") }}</th><th scope="col">{{ _("Prod") }}</th><th scope="col">{{ _("Dev") }}</th></tr></thead>
+        <tbody>{% for d in c.Differences %}<tr><td data-label="{{ _('Property') }}">{{ d.Property }}</td><td data-label="{{ _('Prod') }}">{{ d.Source }}</td><td data-label="{{ _('Dev') }}">{{ d.Target }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    {% endfor %}
+  </section>
+{% else %}<p>{{ _("No resource type matches the filter.") }}</p>{% endfor %}
+</div>
+{% endblock %}

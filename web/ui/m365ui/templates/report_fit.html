@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, short_type %}
+{% block title %}{{ _("Suitability report") }}{% endblock %}
+{% block content %}
+<p><a class="button button-secondary" href="/reports">{{ icon("back") }} {{ _("All reports") }}</a></p>
+<h1>{{ _("Suitability report") }}</h1>
+<p class="big">{{ badge(fit.Status) }}</p>
+<p>{{ fit.Verdict }}</p>
+<dl class="pairs">
+  <dt>{{ _("Report") }}</dt><dd>{{ env.id }}</dd>
+  <dt>{{ _("Created (UTC)") }}</dt><dd><time>{{ env.createdUtc }}</time></dd>
+  <dt>{{ _("Verified") }}</dt><dd>{{ _("yes") if fit.Verified else _("no") }}</dd>
+  <dt>{{ _("Features used in Prod") }}</dt><dd>{{ fit.Summary.FeaturesUsedInProd }}</dd>
+  <dt>{{ _("Missing in Dev") }}</dt><dd>{{ fit.Summary.FeaturesMissingInDev }}</dd>
+</dl>
+<h2>{{ _("Findings") }}</h2>
+{% if fit.Findings %}
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{{ _("Severity") }}</th><th scope="col">{{ _("Category") }}</th><th scope="col">{{ _("Message") }}</th><th scope="col">{{ _("Affected types") }}</th></tr></thead>
+  <tbody>
+  {% for f in fit.Findings %}
+    <tr><td data-label="{{ _('Severity') }}">{{ badge(f.Severity) }}</td><td data-label="{{ _('Category') }}">{{ f.Category }}</td><td data-label="{{ _('Message') }}">{{ f.Message }}</td>
+        <td data-label="{{ _('Affected types') }}">{% for t in f.AffectedTypes %}{{ short_type(t) }}{% if not loop.last %}, {% endif %}{% else %}–{% endfor %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p>{{ _("No findings.") }}</p>{% endif %}
+<h2>{{ _("Licences") }}</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">{{ _("Tenant") }}</th><th scope="col">{{ _("Readable") }}</th><th scope="col">{{ _("Available service plans") }}</th></tr></thead>
+  <tbody>
+  {% for side in ("Prod", "Dev") %}{% set l = fit.Licences[side] %}
+    <tr><td data-label="{{ _('Tenant') }}">{{ side }}</td><td data-label="{{ _('Readable') }}">{{ _("yes") if l.Readable else _("no") }}</td><td data-label="{{ _('Available service plans') }}">{{ l.Available|join(", ") or "–" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

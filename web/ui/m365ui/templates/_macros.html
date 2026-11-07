@@ -1,0 +1,47 @@
+{#- Status shown as symbol + text + colour, never colour alone. -#}
+{% macro badge(value) -%}
+{%- set v = (value or "")|string|lower -%}
+{%- set map = {
+  "green": ("ok", "✓", _("Green")), "yellow": ("warn", "!", _("Yellow")), "red": ("bad", "✕", _("Red")),
+  "grey": ("muted", "?", _("Grey: not verified")),
+  "planned": ("info", "→", _("Planned")), "blocked": ("bad", "✕", _("Blocked")),
+  "skipped": ("muted", "–", _("Skipped")), "excluded": ("muted", "–", _("Excluded")),
+  "exists": ("ok", "✓", _("Exists")), "protected": ("ok", "⛨", _("Protected")),
+  "applied": ("ok", "✓", _("Applied")), "failed": ("bad", "✕", _("Failed")),
+  "identical": ("ok", "✓", _("Identical")), "different": ("warn", "!", _("Different"))
+} -%}
+{%- set m = map.get(v, ("muted", "•", value or _("unknown"))) -%}
+<span class="badge badge-{{ m[0] }}"><span aria-hidden="true">{{ m[1] }}</span> {{ m[2] }}</span>
+{%- endmacro %}
+
+{% macro icon(name) -%}
+{%- if name == "filter" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>
+{%- elif name == "clear" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+{%- elif name == "prev" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+{%- elif name == "next" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+{%- elif name == "back" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M11 5l-7 7 7 7M4 12h16"/></svg>
+{%- endif -%}
+{%- endmacro %}
+
+{#- A filter form: works as a plain GET form; HTMX swaps only the results. -#}
+{% macro filter_form(action, fields) -%}
+<form class="filters" method="get" action="{{ action }}"
+      hx-get="{{ action }}" hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-push-url="true">
+  {{ caller() }}
+  <div class="filter-buttons">
+    <button type="submit" class="button">{{ icon("filter") }} {{ _("Apply filter") }}</button>
+    <a class="button button-secondary" href="{{ action }}">{{ icon("clear") }} {{ _("Clear filter") }}</a>
+  </div>
+</form>
+{%- endmacro %}
+
+{% macro select(name, label, options, current, all_label) -%}
+<label class="field"><span>{{ label }}</span>
+  <select name="{{ name }}">
+    <option value="">{{ all_label }}</option>
+    {%- for o in options %}<option value="{{ o }}"{% if o == current %} selected{% endif %}>{{ o }}</option>{% endfor %}
+  </select>
+</label>
+{%- endmacro %}
+
+{% macro short_type(t) -%}{{ (t or "")|replace("microsoft.", "") }}{%- endmacro %}
