@@ -402,6 +402,10 @@
               },
               "Source": {
                 "type": "string"
+              },
+              "Id": {
+                "type": "string",
+                "description": "Device entries only: the Intune device ID; the run checks device protection by this ID."
               }
             }
           }

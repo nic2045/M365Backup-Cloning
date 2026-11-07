@@ -295,7 +295,7 @@ function New-DevResetPlan {
         elseif ($perDevice.ContainsKey($name)) { $key = $name; $keyKind = 'name' }
         if ($key) { $null = $usedKeys.Add($key) }
         if ($why) {
-            $protected.Add([ordered]@{ Kind = 'Device'; Name = $name; Source = $why })
+            $protected.Add([ordered]@{ Kind = 'Device'; Name = $name; Source = $why; Id = $devId })
             & $add 'ManagedDevice' $name 'Keep' 'protected' "protected device, never touched: $why" $null
             continue
         }
