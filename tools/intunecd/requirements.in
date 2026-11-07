@@ -1,0 +1,2 @@
+# Read-only Intune backup (issue #68, ADR 0014). Lock: pip-compile --generate-hashes requirements.in (Python 3.12)
+IntuneCD==2.6.0

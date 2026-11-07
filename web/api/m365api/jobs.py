@@ -79,6 +79,7 @@ class JobRequest:
 FIELDS_OF = {
     "drift": set(),
     "fitcheck": set(),
+    "intune-backup": set(),
     "plan-apply": {"area"},
     "plan-baseline": set(),
     "plan-users": set(),

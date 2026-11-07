@@ -55,7 +55,8 @@ def mock_ids():
 
 
 REPORTS, PLANS, JOBS = mock_ids()
-GOAL_PAGES = ["/goals/align", "/goals/fresh", "/goals/fill", "/areas/intune", "/jobs"]
+GOAL_PAGES = ["/goals/align", "/goals/fresh", "/goals/fill", "/areas/intune", "/jobs", "/history/intune",
+              "/history/intune?id=intune-backup-20261106-120000"]
 PAGES = ["/", "/reports", "/reports?kind=drift", "/plans", "/plans?kind=reset", "/audit", "/audit?mode=plan"] \
     + [f"/reports/{r}" for r in REPORTS] + [f"/plans/{p}" for p in PLANS] + GOAL_PAGES + [f"/jobs/{j}" for j in JOBS]
 

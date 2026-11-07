@@ -16,7 +16,9 @@
   "outdated": ("warn", "outdated", _("Outdated")),
   "queued": ("info", "time", _("Queued")), "running": ("info", "running", _("Running")),
   "succeeded": ("ok", "ok", _("Succeeded")), "cancelled": ("muted", "stop", _("Cancelled")),
-  "pending": ("muted", "todo", _("Waiting")), "done": ("ok", "ok", _("Done"))
+  "pending": ("muted", "todo", _("Waiting")), "done": ("ok", "ok", _("Done")),
+  "added": ("info", "next", _("Added")), "changed": ("warn", "warn", _("Changed")), "removed": ("bad", "delete", _("Removed")),
+  "unchanged": ("ok", "ok", _("No change"))
 } -%}
 {%- set m = map.get(v, ("muted", "info", value or _("unknown"))) -%}
 <span class="badge badge-{{ m[0] }}">{{ icon(m[1]) }}<span class="badge-text">{{ m[2] }}</span></span>

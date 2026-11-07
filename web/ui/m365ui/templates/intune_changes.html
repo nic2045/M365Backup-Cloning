@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, empty, crumbs %}
+{% from "_macros.html" import start_form, busy with context %}
+{% block title %}{{ _("Intune changes") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("History"), ""), (_("Intune changes"), "")]) }}{% endblock %}
+{% block content %}
+<h1>{{ icon("changes") }} {{ _("Intune changes") }}</h1>
+<p class="lead">{{ _("Each backup reads the Intune configuration of Prod and Dev with IntuneCD and saves it as files in your configuration repository, one commit per run. Here you see what changed since the run before. Nothing in the tenants is changed.") }}</p>
+{{ busy(running) }}
+
+<section class="card" aria-labelledby="backup-now">
+  <h2 class="card-title" id="backup-now">{{ icon("backup") }} {{ _("Back up now") }}</h2>
+  <p class="meta">{{ _("Reads both tenants (read only) and commits the files in your configuration repository. Nothing is pushed.") }}</p>
+  {{ start_form("intune-backup", _("Back up Intune"), "backup", "Applier", running=running) }}
+  <details class="later"><summary>{{ _("Or run it on the admin machine") }}</summary><p><code class="cmd">scripts/Invoke-IntuneBackup.ps1</code></p></details>
+</section>
+
+{% if detail %}
+{% set b = detail.backup %}
+<h2>{{ _("Run of") }} {{ detail.createdUtc|when }}</h2>
+<p class="meta">
+  {% if b.Unchanged %}{{ badge("unchanged") }} {{ _("Nothing changed since the run before; no commit.") }}
+  {% else %}{{ _("Commit in the configuration repository") }}: <code>{{ b.Commit[:12] }}</code>{% endif %}
+</p>
+<section class="cards" aria-label="{{ _('Tenants') }}">
+  {% for t in tenants %}
+  <article class="card">
+    <h3 class="card-title">{{ icon("intune") }} {{ t.Side }}</h3>
+    <dl class="pairs">
+      <dt>{{ _("Added") }}</dt><dd>{{ t.Added }}</dd>
+      <dt>{{ _("Changed") }}</dt><dd>{{ t.Changed }}</dd>
+      <dt>{{ _("Removed") }}</dt><dd>{{ t.Removed }}</dd>
+      <dt>{{ _("Files in the backup") }}</dt><dd>{{ t.Files }}</dd>
+    </dl>
+    <p class="meta">{{ _("Folder") }}: <code>{{ t.Folder }}</code></p>
+  </article>
+  {% endfor %}
+</section>
+
+{% for t in tenants %}
+<h3>{{ t.Side }}: {{ _("changed files") }}</h3>
+{% if t.groups %}
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Changed files of") }} {{ t.Side }}</caption>
+  <thead><tr><th scope="col">{{ _("Type") }}</th><th scope="col">{{ _("Name") }}</th><th scope="col">{{ _("Change") }}</th></tr></thead>
+  <tbody>
+  {% set ns = namespace(n=0) %}
+  {% for g in t.groups %}{% for r in g.rows %}{% set ns.n = ns.n + 1 %}{% if ns.n <= limit %}
+    <tr>
+      <td data-label="{{ _('Type') }}">{{ g.folder }}</td>
+      <td data-label="{{ _('Name') }}">{{ r.name }}</td>
+      <td data-label="{{ _('Change') }}">{{ badge(r.change) }}</td>
+    </tr>
+  {% endif %}{% endfor %}{% endfor %}
+  </tbody>
+</table></div>
+{% if ns.n > limit or t.Truncated %}<p class="meta">{{ _("More changes than shown: see the commit in your configuration repository.") }}</p>{% endif %}
+{% else %}
+{{ empty(_("No change"), _("The backup of this tenant is the same as the run before."), "ok") }}
+{% endif %}
+{% endfor %}
+{% else %}
+{{ empty(_("No backup yet"), _("Start the first backup above. It needs ConfigRepository in config.psd1, Python with IntuneCD and Git on the server."), "backup", "scripts/Invoke-IntuneBackup.ps1") }}
+{% endif %}
+
+{% if runs %}
+<h2>{{ _("Runs") }}</h2>
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Runs of the Intune backup") }}</caption>
+  <thead><tr><th scope="col">{{ _("Run") }}</th><th scope="col">{{ _("Result") }}</th><th scope="col" class="num">{{ _("Added") }}</th><th scope="col" class="num">{{ _("Changed") }}</th><th scope="col" class="num">{{ _("Removed") }}</th></tr></thead>
+  <tbody>
+  {% for r in runs %}
+    <tr{% if r.id == chosen %} aria-current="true"{% endif %}>
+      <td data-label="{{ _('Run') }}">{% if r.state == "outdated" %}{{ r.createdUtc|when }}{% else %}<a href="/history/intune?id={{ r.id }}">{{ r.createdUtc|when }}</a>{% endif %}</td>
+      <td data-label="{{ _('Result') }}">{% if r.state == "outdated" %}{{ badge("outdated") }}{% elif r.unchanged %}{{ badge("unchanged") }}{% else %}{{ badge("different") }}{% endif %}</td>
+      <td data-label="{{ _('Added') }}" class="num">{{ r.added if r.added is defined else "–" }}</td>
+      <td data-label="{{ _('Changed') }}" class="num">{{ r.changed if r.changed is defined else "–" }}</td>
+      <td data-label="{{ _('Removed') }}" class="num">{{ r.removed if r.removed is defined else "–" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

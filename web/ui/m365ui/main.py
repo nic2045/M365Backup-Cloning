@@ -1,4 +1,4 @@
-"""Pages: overview, goals, areas, jobs, reports, plans, audit (issues #12, #14, #66).
+"""Pages: overview, goals, areas, jobs, reports, plans, audit, Intune changes (issues #12, #14, #66, #68).
 
 Run: ``uvicorn m365ui.main:app`` from web/ui. Without ``M365_UI_API_BASE`` the
 pages show the mock answers of web/mock/responses.json and say so.
@@ -66,7 +66,8 @@ def _pick(value: str | None, allowed: tuple[str, ...]) -> str:
     return value if value in allowed else ""
 
 
-NAV_PAGES = frozenset({"overview", "reports", "plans", "audit", "jobs", "align", "fresh", "fill", "intune"})
+NAV_PAGES = frozenset({"overview", "reports", "plans", "audit", "jobs", "align", "fresh", "fill", "intune", "intune-changes"})
+RECENT_BACKUPS = 10
 JOB_POLL_SECONDS = 3
 RECENT_PLANS = 3
 RECENT_AUDIT = 5
@@ -379,8 +380,32 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
             report = res.body if res.ok else None
         rows = view.area_types((report or {}).get("report"), "intune")
         plans = items(request, "/api/plans", {"kind": "apply"}) or []
+        backups = items(request, "/api/intune-backups")
+        backup = next((b for b in view.newest_first(backups or [], "createdUtc") if b.get("state") != "outdated"), None)
         return render(request, "area_intune.html", nav="intune", status=status.body, report=report, rows=rows,
-                      plan=view.latest_plan(plans, "apply", area="Intune"), running=active_job(request))
+                      plan=view.latest_plan(plans, "apply", area="Intune"), running=active_job(request),
+                      backup=backup, backups_ok=backups is not None)
+
+    @app.get("/history/intune", response_class=HTMLResponse)
+    def intune_changes(request: Request, id: str | None = None):  # noqa: A002 - query name of the page
+        """Intune changes (issue #68): what the read-only backup with IntuneCD found changed since the run before."""
+        if id and not view.BACKUP_ID_RE.fullmatch(id):
+            return bad_id(request)
+        res = call(request, "/api/intune-backups")
+        if not res.ok:
+            return failed(request, res)
+        runs = view.newest_first(res.body.get("items", []), "createdUtc")
+        chosen = id or next((r["id"] for r in runs if r.get("state") != "outdated"), "")
+        detail = None
+        if chosen:
+            one = call(request, f"/api/intune-backups/{chosen}")
+            if not one.ok:
+                return failed(request, one)
+            detail = one.body
+        tenants = [dict(t, groups=view.change_groups(t)) for t in (detail or {}).get("backup", {}).get("Tenants", [])]
+        return render(request, "intune_changes.html", nav="intune-changes", runs=runs[:RECENT_BACKUPS], detail=detail,
+                      tenants=tenants, chosen=chosen, running=active_job(request), changes=view.CHANGES,
+                      limit=view.CHANGE_LIMIT)
 
     @app.get("/jobs", response_class=HTMLResponse)
     def jobs(request: Request):

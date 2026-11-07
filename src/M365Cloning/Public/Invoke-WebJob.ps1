@@ -13,7 +13,8 @@ function Invoke-WebJob {
     .DESCRIPTION
         The web API only writes the queued job and starts this runner (scripts/Invoke-WebJob.ps1); it never runs a
         script itself. Steps: check the request, sign in to the tenants, run the script, record the result.
-        - plan-* and the reports run the script without -Apply: nothing is changed in any tenant.
+        - plan-* and the reports run the script without -Apply: nothing is changed in any tenant. intune-backup reads
+          both tenants with IntuneCD and commits the files in the configuration repository (issue #68, ADR 0014).
         - apply: the plan file must exist, its hash must equal the hash the person confirmed in the browser, and for a
           reset plan the hash of the Dev tenant ID the person typed must equal the Dev tenant of the plan and of the
           config (second confirmation). The script then builds the plan again and applies it only if the hash is still
@@ -99,6 +100,7 @@ function Invoke-WebJob {
         switch ([string]$job['action']) {
             'drift' { }
             'fitcheck' { $params['TakeProdSnapshot'] = $true }
+            'intune-backup' { }
             'plan-apply' { $params['Plan'] = $true; $params['Area'] = if ($options['area']) { [string]$options['area'] } else { 'All' } }
             'plan-baseline' { $params['Plan'] = $true }
             'plan-users' { $params['Plan'] = $true }
@@ -193,6 +195,7 @@ function Invoke-WebJob {
         $message = switch -Wildcard ([string]$job['action']) {
             'plan-*' { 'The plan is ready. Nothing was changed; open the plan to check and apply it.' }
             'apply' { 'The plan was applied. Compare again to see the new state.' }
+            'intune-backup' { 'The Intune backup is saved in the configuration repository. Open Intune changes to see what changed.' }
             default { 'The report is ready.' }
         }
         & $finish 'succeeded' $message

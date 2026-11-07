@@ -28,6 +28,8 @@ def write_history(root: Path) -> Path:
             continue
         if url.startswith("/api/reports/"):
             (reports / f"{body['id']}.json").write_text(json.dumps(body["report"]), encoding="utf-8")
+        elif url.startswith("/api/intune-backups/"):
+            (reports / f"{body['id']}.json").write_text(json.dumps(body["backup"]), encoding="utf-8")
         elif url.startswith("/api/plans/"):
             plan_file = {
                 "SchemaVersion": body["schemaVersion"],

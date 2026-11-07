@@ -126,6 +126,19 @@ for all, `-DeviceActionFile <.psd1/.json>` per device name (for example `@{ 'LAP
 never touched; device actions run last. Pass the same device options with `-Apply` as with the preview. The Global Administrators of Prod (without break-glass) are always protected. Offline preview:
 `-InventoryPath tests/fixtures/dev.reset-inventory.json` (Align also needs the two snapshot files).
 
+## Intune backup and change history (read only, issue #68, ADR 0014)
+
+```powershell
+pwsh scripts/Invoke-IntuneBackup.ps1 -DryRun                      # names repository, Python and left-out types
+pwsh scripts/Invoke-IntuneBackup.ps1 -ProdToken $p -DevToken $d
+```
+
+IntuneCD (backup only, never its update) reads the Intune configuration of both tenants into `intune/prod` and
+`intune/dev` of your private configuration repository (`ConfigRepository` in `config.psd1`, ADR 0004), one commit per
+run, nothing pushed. A failed run leaves the repository as it was. What changed is listed in
+`History/reports/intune-backup-*.json` and on the page *History > Intune changes*. Needs Python 3.12 with
+`pip install --require-hashes -r tools/intunecd/requirements.txt` and Git. Check on a real system: `validation/README.md`, part 15.
+
 ## Web contract (issue #44, ADR 0008)
 
 The contract of the web server and interface (ADR 0002) is: `schema/m365cloning.schema.json` (formats the core writes and the API envelopes), `web/openapi.json` (read routes and the job routes) and `web/mock/responses.json` (example responses). `tests/WebContract.Tests.ps1` checks the core's files, the OpenAPI description and the mock against it. See [`docs/web-contract.md`](docs/web-contract.md).
@@ -136,7 +149,7 @@ The contract of the web server and interface (ADR 0002) is: `schema/m365cloning.
 
 ## Web interface (issues #12, #14, #66)
 
-`web/ui` is the interface (FastAPI, Jinja2, HTMX), organised by goals (Bring Dev in line, Start Dev fresh, Fill Dev), areas (Intune now, more later) and history (jobs, plans, reports, audit). Reports, plans, apply and reset start as jobs with steps and progress; nothing changes in Dev without a preview plan and your confirmation, a reset also needs the Dev tenant ID typed. It talks only to `/api/...` of `web/api`; without `M365_UI_API_BASE` it shows the example data of `web/mock/responses.json`. Start and test: see `docs/web-contract.md`, section "Start the frontend".
+`web/ui` is the interface (FastAPI, Jinja2, HTMX), organised by goals (Bring Dev in line, Start Dev fresh, Fill Dev), areas (Intune now, more later) and history (jobs, plans, reports, Intune changes, audit). Reports, plans, apply and reset start as jobs with steps and progress; nothing changes in Dev without a preview plan and your confirmation, a reset also needs the Dev tenant ID typed. It talks only to `/api/...` of `web/api`; without `M365_UI_API_BASE` it shows the example data of `web/mock/responses.json`. Start and test: see `docs/web-contract.md`, section "Start the frontend".
 
 ## Web sign-in (issue #60, ADR 0010)
 

@@ -143,5 +143,24 @@ function Import-M365CloningConfig {
             if ($t -isnot [string] -or $t -notmatch '^microsoft\.[a-z0-9]+\.[a-z0-9]+$') { throw "ExcludeResourceTypes: '$t' is not a resource type name like 'microsoft.intune.devicecategory'." }
         }
     }
+    # Intune backup (issue #68, ADR 0014): the private configuration repository and the IntuneCD settings. Optional
+    # here; Invoke-IntuneBackup refuses to run without ConfigRepository.
+    if ($config.ContainsKey('ConfigRepository') -and $null -ne $config.ConfigRepository -and $config.ConfigRepository -isnot [string]) {
+        throw 'ConfigRepository must be the path of your private configuration repository (a string).'
+    }
+    if ($config.ContainsKey('IntuneBackup') -and $null -ne $config.IntuneBackup) {
+        if ($config.IntuneBackup -isnot [hashtable]) { throw 'IntuneBackup must be a table: @{ Python = ...; Exclude = ... }.' }
+        foreach ($key in $config.IntuneBackup.Keys) {
+            if ([string]$key -notin 'Python', 'Exclude') { throw "IntuneBackup: unknown key '$key' (Python, Exclude)." }
+        }
+        if ($config.IntuneBackup.ContainsKey('Python') -and ($config.IntuneBackup.Python -isnot [string] -or [string]::IsNullOrWhiteSpace($config.IntuneBackup.Python))) {
+            throw 'IntuneBackup.Python must be the Python command or path (a string).'
+        }
+        if ($config.IntuneBackup.ContainsKey('Exclude') -and $null -ne $config.IntuneBackup.Exclude) {
+            foreach ($t in @($config.IntuneBackup.Exclude)) {
+                if ($t -isnot [string] -or $t -notmatch '^[A-Za-z]+$') { throw "IntuneBackup.Exclude: '$t' is not an IntuneCD type name like 'PowershellScripts'." }
+            }
+        }
+    }
     $config
 }

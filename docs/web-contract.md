@@ -14,8 +14,8 @@ interface (Jinja2 + HTMX)  --calls only /api/...   (develops against web/mock/re
 
 | File | Content |
 |---|---|
-| `schema/m365cloning.schema.json` | JSON Schema 2020-12 with one definition per format (`$defs`): `DriftReport`, `PlanFile`, `Plan`, `PlanAction`, `PlanSummary`, `PlanLicences`, `FitCheck`, `TenantLicences`, `AuditEntry`, `JobFile` (issue #14), and the API envelopes (`ReportList`, `ReportResponse`, `PlanList`, `PlanResponse`, `AuditPage`, `FitCheckResponse`, `Status`, `JobList`, `Job`, `JobRequest`, `Error`). |
-| `web/openapi.json` | OpenAPI 3.1: read routes `GET /api/reports`, `/api/reports/{id}`, `/api/plans`, `/api/plans/{id}`, `/api/audit` (filters `mode`, `since`, `planHash`), `/api/fitcheck/latest`, `/api/status`, `/api/jobs`, `/api/jobs/{id}`; job routes `POST /api/jobs` and `POST /api/jobs/{id}/cancel` (issue #14, the only write routes). Its component schemas point into the schema file. |
+| `schema/m365cloning.schema.json` | JSON Schema 2020-12 with one definition per format (`$defs`): `DriftReport`, `PlanFile`, `Plan`, `PlanAction`, `PlanSummary`, `PlanLicences`, `FitCheck`, `TenantLicences`, `AuditEntry`, `JobFile` (issue #14), `IntuneBackup` (issue #68), and the API envelopes (`ReportList`, `ReportResponse`, `PlanList`, `PlanResponse`, `AuditPage`, `FitCheckResponse`, `Status`, `JobList`, `Job`, `JobRequest`, `IntuneBackupList`, `IntuneBackupResponse`, `Error`). |
+| `web/openapi.json` | OpenAPI 3.1: read routes `GET /api/reports`, `/api/reports/{id}`, `/api/plans`, `/api/plans/{id}`, `/api/audit` (filters `mode`, `since`, `planHash`), `/api/fitcheck/latest`, `/api/status`, `/api/intune-backups`, `/api/intune-backups/{id}` (issue #68), `/api/jobs`, `/api/jobs/{id}`; job routes `POST /api/jobs` and `POST /api/jobs/{id}/cancel` (issue #14, the only write routes). Its component schemas point into the schema file. |
 | `web/mock/responses.json` | One example per route (and an example of 400 and 404), made offline from the test fixtures with invented values. Key: `<METHOD> <path>`. |
 | `tests/WebContract.Tests.ps1` | Runs the scripts offline against the fixtures and validates every file they write; checks the OpenAPI description and the mock; checks that nothing carries a secret. |
 
@@ -31,6 +31,7 @@ The `id` is the file base name below `History/reports` (for example `apply-plan-
 | `dev-baseline-plan-` | `baseline` | `/api/plans` |
 | `dev-reset-plan-align-`, `dev-reset-plan-full-` | `reset` (with `mode`) | `/api/plans` |
 | `dev-users-plan-` | `users` | `/api/plans` |
+| `intune-backup-` | `intunebackup` | `/api/intune-backups` (issue #68, ADR 0014): what changed in the Intune backup per tenant, paths and counts only |
 
 `/api/status` is the optional read-only status for consumers (ADR 0002 point 8): time of the latest drift report, number of differences, suitability status.
 
@@ -117,18 +118,18 @@ Both apps need sign-in. Nothing is configured: the API answers 401 to every requ
 
 ## Jobs (issue #14, ADR 0012)
 
-`POST /api/jobs` with a `JobRequest` (`{"action": "drift"}`, `{"action": "plan-apply", "area": "Intune"}`, `{"action": "plan-reset", "mode": "Full", "deviceAction": "Retire"}`, `{"action": "apply", "planId": "...", "confirmPlanHash": "...", "confirmTenant": "<Dev tenant ID, reset only>"}`) writes `History/jobs/<id>.json` and starts the job runner; the answer is 202 with the job. The runner keeps state, steps and result in the same file and writes the script output to `<id>.log` (the process output goes to `<id>.out`). Only one job runs at a time.
+`POST /api/jobs` with a `JobRequest` (`{"action": "drift"}`, `{"action": "intune-backup"}`, `{"action": "plan-apply", "area": "Intune"}`, `{"action": "plan-reset", "mode": "Full", "deviceAction": "Retire"}`, `{"action": "apply", "planId": "...", "confirmPlanHash": "...", "confirmTenant": "<Dev tenant ID, reset only>"}`) writes `History/jobs/<id>.json` and starts the job runner; the answer is 202 with the job. The runner keeps state, steps and result in the same file and writes the script output to `<id>.log` (the process output goes to `<id>.out`). Only one job runs at a time.
 
 | Variable | Meaning |
 |---|---|
 | `M365CLONING_PWSH` | Path of PowerShell 7 (default `pwsh`) |
 | `M365CLONING_CONFIG` | Path of `config.psd1` if it is not the one next to `scripts/` |
 
-The account that runs the API needs the module Az.Accounts and the certificate of each app registration (thumbprints in the config) in its personal certificate store; the runner signs in with it through `Connect-AzAccount` and `Get-AzAccessToken` (ADR 0013). An apply runs Microsoft365DSC, so it needs Windows. Check on a real system: `validation/README.md`, part 14.
+The account that runs the API needs the module Az.Accounts and the certificate of each app registration (thumbprints in the config) in its personal certificate store; the runner signs in with it through `Connect-AzAccount` and `Get-AzAccessToken` (ADR 0013). An apply runs Microsoft365DSC, so it needs Windows. The Intune backup (`intune-backup`, ADR 0014) needs Python 3.12 with `tools/intunecd/requirements.txt`, Git and `ConfigRepository` in the config. Check on a real system: `validation/README.md`, parts 14 and 15.
 
 ## Dependencies and lock files (issue #59)
 
-`web/api` and `web/ui` keep their direct dependencies in `requirements.in` and `requirements-dev.in` (pinned, edited by hand). The `requirements.txt` and `requirements-dev.txt` next to them are lock files made by pip-tools: every package, also the indirect ones, with an exact version and its hashes. CI installs with `pip install --require-hashes`, so a package whose content changed on the index is refused. `web/ui/requirements-dev.in` includes `../api/requirements.in`, so a change of the API dependencies needs a new lock for both.
+`web/api`, `web/ui` and `tools/intunecd` (the IntuneCD backup, ADR 0014; its own lock, never part of the web locks) keep their direct dependencies in `requirements.in` and `requirements-dev.in` (pinned, edited by hand). The `requirements.txt` and `requirements-dev.txt` next to them are lock files made by pip-tools: every package, also the indirect ones, with an exact version and its hashes. CI installs with `pip install --require-hashes`, so a package whose content changed on the index is refused. `web/ui/requirements-dev.in` includes `../api/requirements.in`, so a change of the API dependencies needs a new lock for both.
 
 After changing an `.in` file, make the locks again with Python 3.12 (the CI version):
 
@@ -138,4 +139,8 @@ cd web/api && pip-compile --generate-hashes --strip-extras --no-emit-index-url -
   && pip-compile --generate-hashes --strip-extras --no-emit-index-url -o requirements-dev.txt requirements-dev.in
 cd ../ui  && pip-compile --generate-hashes --strip-extras --no-emit-index-url -o requirements.txt requirements.in \
   && pip-compile --generate-hashes --strip-extras --no-emit-index-url -o requirements-dev.txt requirements-dev.in
+cd ../../tools/intunecd && pip-compile --allow-unsafe --generate-hashes --strip-extras --no-emit-index-url -o requirements.txt requirements.in \
+  && pip-compile --allow-unsafe --generate-hashes --strip-extras --no-emit-index-url -o requirements-dev.txt requirements-dev.in
 ```
+
+`--allow-unsafe` is needed for `tools/intunecd` only: one of IntuneCD's dependencies needs `setuptools` at run time.

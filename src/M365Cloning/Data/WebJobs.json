@@ -15,6 +15,13 @@
       "resultPrefix": "tenantfit-",
       "run": "Read the licences and check the suitability"
     },
+    "intune-backup": {
+      "role": "Applier",
+      "tenants": ["Prod", "Dev"],
+      "script": "Invoke-IntuneBackup.ps1",
+      "resultPrefix": "intune-backup-",
+      "run": "Back up the Intune configuration of both tenants (read only)"
+    },
     "plan-apply": {
       "role": "Applier",
       "tenants": ["Prod", "Dev"],

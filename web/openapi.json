@@ -337,6 +337,92 @@
         "x-required-role": "Reader"
       }
     },
+    "/api/intune-backups": {
+      "get": {
+        "operationId": "listIntuneBackups",
+        "summary": "List the runs of the Intune backup (issue #68), newest first",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The runs; files in an older format are listed with state 'outdated'",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntuneBackupList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-required-role": "Reader"
+      }
+    },
+    "/api/intune-backups/{id}": {
+      "get": {
+        "operationId": "getIntuneBackup",
+        "summary": "Read one run of the Intune backup: what changed per tenant since the run before (paths and counts only)",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntuneBackupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "File base name below History/reports, e.g. intune-backup-20261107-120000.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            }
+          }
+        ],
+        "x-required-role": "Reader"
+      }
+    },
     "/api/status": {
       "get": {
         "operationId": "getStatus",
@@ -612,6 +698,12 @@
       },
       "JobRequest": {
         "$ref": "../schema/m365cloning.schema.json#/$defs/JobRequest"
+      },
+      "IntuneBackupList": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/IntuneBackupList"
+      },
+      "IntuneBackupResponse": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/IntuneBackupResponse"
       }
     },
     "responses": {
