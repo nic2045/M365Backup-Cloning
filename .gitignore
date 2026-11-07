@@ -1,0 +1,12 @@
+# Real configuration, secrets and tenant data never go into the repository
+config.psd1
+config.local.*
+*.pfx
+*.cer
+*.pem
+*.key
+*.env
+History/
+exports/
+snapshots/
+*.log
