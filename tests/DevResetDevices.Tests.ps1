@@ -258,3 +258,46 @@ Describe 'Duplicate device names in the action file (issue #49)' {
         @($script:Writes | Where-Object { $_.Uri -like '*managedDevices*' }).Count | Should -Be 0
     }
 }
+
+Describe 'Run check uses the device ID, not the name (issue #49)' {
+    BeforeEach {
+        $script:Config = script:New-Config
+        $script:Inv = script:New-Inventory
+        # A is protected through its primary user, B has the same name and is not protected.
+        $script:Inv.Dev.ManagedDevices = @(
+            @{ id = 'md-0201'; deviceName = 'TWIN-PC'; serialNumber = 'SN-TWIN-A'; operatingSystem = 'Windows'; userPrincipalName = 'dev.admin@dev.example' }
+            @{ id = 'md-0202'; deviceName = 'TWIN-PC'; serialNumber = 'SN-TWIN-B'; operatingSystem = 'Windows'; userPrincipalName = '' }
+        )
+        $script:Root = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+    }
+    It 'runs an action for B by serial number and leaves the protected A untouched' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SN-TWIN-B' = 'Retire' }
+        @($plan['Protected'] | Where-Object { $_['Kind'] -eq 'Device' -and $_['Id'] -eq 'md-0201' }).Count | Should -Be 1
+        $w = script:New-Writer
+        $r = Invoke-DevResetPlan -Plan $plan -Config $script:Config -ConfirmPlanHash (Get-ApplyPlanHash -Plan $plan) -ConfirmTenant 'tenant-dev-0001' -GraphWriter $w -HistoryRoot $script:Root
+        $r.Retired | Should -Be 1
+        @($script:Writes | ForEach-Object { "$($_.Method) $($_.Uri)" }) | Should -Be @('POST https://graph.microsoft.com/v1.0/deviceManagement/managedDevices/md-0202/retire')
+        @($script:Writes | Where-Object { $_.Uri -like '*md-0201*' }).Count | Should -Be 0
+    }
+    It 'keeps an action by the shared name blocked' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'TWIN-PC' = 'Remove' }
+        $twins = @($plan['Actions'] | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Name'] -eq 'TWIN-PC' })
+        @($twins | Where-Object { $_['Status'] -eq 'protected' }).Count | Should -Be 1
+        @($twins | Where-Object { $_['Status'] -eq 'blocked' -and $_['Reason'] -like 'ambiguous device name*' }).Count | Should -Be 1
+        @($twins | Where-Object { $_['Status'] -eq 'planned' }).Count | Should -Be 0
+    }
+    It 'refuses the run when a planned device action has no device ID' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SN-TWIN-B' = 'Retire' }
+        foreach ($a in $plan['Actions']) { if ($a['ResourceType'] -eq 'ManagedDevice' -and $a['Status'] -eq 'planned') { $a['Properties'] = $null } }
+        $w = script:New-Writer
+        { Invoke-DevResetPlan -Plan $plan -Config $script:Config -ConfirmPlanHash (Get-ApplyPlanHash -Plan $plan) -ConfirmTenant 'tenant-dev-0001' -GraphWriter $w -HistoryRoot $script:Root } | Should -Throw '*no device ID*'
+        $script:Writes.Count | Should -Be 0
+    }
+    It 'refuses the run when a protected device entry has no device ID' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SN-TWIN-B' = 'Retire' }
+        foreach ($p in $plan['Protected']) { if ($p['Kind'] -eq 'Device') { $p['Id'] = '' } }
+        $w = script:New-Writer
+        { Invoke-DevResetPlan -Plan $plan -Config $script:Config -ConfirmPlanHash (Get-ApplyPlanHash -Plan $plan) -ConfirmTenant 'tenant-dev-0001' -GraphWriter $w -HistoryRoot $script:Root } | Should -Throw '*protected device has no device ID*'
+        $script:Writes.Count | Should -Be 0
+    }
+}

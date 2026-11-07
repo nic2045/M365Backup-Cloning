@@ -42,7 +42,13 @@ function Invoke-DevResetPlan {
     foreach ($a in $planned) {
         if ($a['Operation'] -in 'Retire', 'Wipe' -and $a['ResourceType'] -ne 'ManagedDevice') { & $refuse "only devices are retired or wiped ($($a['ResourceType']) '$($a['Name'])')" }
         if ($a['ResourceType'] -eq 'ManagedDevice') {
-            if (@($protected | Where-Object { $_['Kind'] -eq 'Device' -and [string]$_['Name'] -ieq [string]$a['Name'] })) { & $refuse "a planned device action hits a protected device ('$($a['Name'])')" }
+            # Protection is checked by Intune device ID (#49): a device with the same name as a protected one may run.
+            # Fail-closed: a planned device without an ID, or a protected device entry without an ID, refuses the run.
+            $plannedId = if ($a['Properties']) { [string]$a['Properties']['Id'] } else { '' }
+            if (-not $plannedId) { & $refuse "a planned device action has no device ID ('$($a['Name'])')" }
+            $devProt = @($protected | Where-Object { $_['Kind'] -eq 'Device' })
+            if (@($devProt | Where-Object { -not [string]$_['Id'] }).Count) { & $refuse 'a protected device has no device ID, its protection cannot be checked' }
+            if (@($devProt | Where-Object { [string]$_['Id'] -ieq $plannedId }).Count) { & $refuse "a planned device action hits a protected device ('$($a['Name'])')" }
             if ($a['Operation'] -eq 'Wipe' -and $Config['Dev']['AllowDeviceWipe'] -ne $true) { & $refuse 'wipe needs Dev.AllowDeviceWipe = $true in the config' }
             continue
         }
