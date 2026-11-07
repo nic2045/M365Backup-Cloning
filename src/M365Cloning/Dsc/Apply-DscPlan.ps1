@@ -65,16 +65,20 @@ catch {
     exit 1
 }
 
-# The Microsoft365DSC resource names are inferred (see Get-DscResourceMap). Check each name against the installed
-# module once; an action whose resource is missing fails on its own instead of stopping the run.
+# The Microsoft365DSC resource names are inferred (see Get-DscResourceMap and, for all other types, the rule
+# '<prefix><resource name>' of Get-ResourceTypeCatalog, ADR 0006). Check each name against the installed module once
+# and use the exact name it reports (names match without regard to case); an action whose resource is missing fails on
+# its own instead of stopping the run.
 $available = @{}
 foreach ($name in @($actions | ForEach-Object { [string]$_.DscResource } | Sort-Object -Unique)) {
-    $available[$name] = [bool](Get-DscResource -Module Microsoft365DSC -Name $name -ErrorAction SilentlyContinue)
+    $found = @(Get-DscResource -Module Microsoft365DSC -Name $name -ErrorAction SilentlyContinue) | Select-Object -First 1
+    $available[$name] = if ($found) { [string]$found.Name } else { '' }
 }
 
 foreach ($action in $actions) {
     try {
-        if (-not $available[[string]$action.DscResource]) { throw "Microsoft365DSC has no resource '$($action.DscResource)' in this version; nothing was changed for it." }
+        $dscName = [string]$available[[string]$action.DscResource]
+        if (-not $dscName) { throw "Microsoft365DSC has no resource '$($action.DscResource)' in this version; nothing was changed for it." }
         $props = ConvertTo-PlainHash $action.Properties
         if ($props.ContainsKey('Ensure') -and $props['Ensure'] -ne 'Present') { throw 'Ensure must be Present; the toolkit never deletes.' }
         if ($props.ContainsKey('Assignments')) {
@@ -94,12 +98,12 @@ foreach ($action in $actions) {
         $props['TenantId'] = $TenantId
         $props['CertificateThumbprint'] = $CertThumbprint
 
-        $test = Invoke-DscResource -Name $action.DscResource -ModuleName Microsoft365DSC -Method Test -Property $props
+        $test = Invoke-DscResource -Name $dscName -ModuleName Microsoft365DSC -Method Test -Property $props
         if ($test.InDesiredState) {
             $results += [pscustomobject]@{ Name = $action.Name; ResourceType = $action.ResourceType; Status = 'unchanged'; Message = '' }
             continue
         }
-        $null = Invoke-DscResource -Name $action.DscResource -ModuleName Microsoft365DSC -Method Set -Property $props
+        $null = Invoke-DscResource -Name $dscName -ModuleName Microsoft365DSC -Method Set -Property $props
         $results += [pscustomobject]@{ Name = $action.Name; ResourceType = $action.ResourceType; Status = 'applied'; Message = '' }
     }
     catch {

@@ -54,6 +54,12 @@
     ProtectedAccounts = @('<upn-or-object-id>')
     # Service accounts in Dev that the reset never deletes (UPN or object ID).
     ServiceAccounts   = @()
+    # Copy all (ADR 0006): every TCM resource type of the workloads that are on is snapshotted and planned.
+    # Workloads: Entra and Intune by default; Exchange, Teams, SecurityAndCompliance are off.
+    # Workloads = @('Entra', 'Intune')
+    # More types that are never copied, in addition to src/M365Cloning/Data/ExcludedResourceTypes.psd1
+    # (a list of type names, or a table type = reason).
+    # ExcludeResourceTypes = @{ 'microsoft.intune.devicecategory' = 'not needed in Dev' }
     # Optional: override the resource types of the snapshot (see Get-M365CloningDefaultResources).
     # Resources = @('microsoft.entra.conditionalaccesspolicy')
 }

@@ -44,7 +44,7 @@ if ($offline -and -not ($SourceSnapshotPath -and $TargetSnapshotPath)) {
 }
 
 $config = Import-M365CloningConfig -Path $ConfigPath
-$resources = if ($config.ContainsKey('Resources') -and $config.Resources) { $config.Resources } else { Get-M365CloningDefaultResources }
+$resources = if ($config.ContainsKey('Resources') -and $config.Resources) { $config.Resources } else { Get-M365CloningDefaultResources -Config $config }
 
 if ($offline) {
     $prodFile = $SourceSnapshotPath; $devFile = $TargetSnapshotPath

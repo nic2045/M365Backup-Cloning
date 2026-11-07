@@ -16,6 +16,7 @@ function ConvertTo-ApplyPlanMarkdown {
     $null = $sb.AppendLine()
     $s = $Plan['Summary']
     $line = "Planned: $($s['Planned']) | Blocked: $($s['Blocked']) | Skipped: $($s['Skipped'])"
+    if ($s.Contains('Excluded')) { $line += " | Excluded: $($s['Excluded'])" }
     if ($s.Contains('Exists')) { $line += " | Exists: $($s['Exists'])" }
     if ($s.Contains('Protected')) { $line += " | Protected: $($s['Protected']) | Invite (info): $($s['Invite'])" }
     $null = $sb.AppendLine($line)
@@ -30,6 +31,22 @@ function ConvertTo-ApplyPlanMarkdown {
         $reason = ([string]$a['Reason']).Replace('|', '\|')
         $name = ([string]$a['Name']).Replace('|', '\|')
         $null = $sb.AppendLine("| $($a['Status']) | $($a['Operation']) | $($a['ResourceType']) | $name | $reason |")
+    }
+    if ($Plan.Contains('TypeSummary') -and @($Plan['TypeSummary']).Count -gt 0) {
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('## Per resource type')
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('| Resource type | Planned | Blocked | Skipped | Excluded |')
+        $null = $sb.AppendLine('|---|---|---|---|---|')
+        foreach ($t in $Plan['TypeSummary']) { $null = $sb.AppendLine("| $($t['ResourceType']) | $($t['Planned']) | $($t['Blocked']) | $($t['Skipped']) | $($t['Excluded']) |") }
+    }
+    if ($Plan.Contains('ExcludedTypes') -and @($Plan['ExcludedTypes']).Count -gt 0) {
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('## Excluded resource types (never copied, not in the default snapshot)')
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('| Resource type | Reason |')
+        $null = $sb.AppendLine('|---|---|')
+        foreach ($t in $Plan['ExcludedTypes']) { $null = $sb.AppendLine("| $($t['ResourceType']) | $(([string]$t['Reason']).Replace('|', '\|')) |") }
     }
     if ($Plan.Contains('Protected') -and @($Plan['Protected']).Count -gt 0) {
         $null = $sb.AppendLine()
