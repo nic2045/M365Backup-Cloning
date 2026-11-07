@@ -1,0 +1,34 @@
+{
+  "displayName": "fixture dev",
+  "resources": [
+    {
+      "displayName": "Windows baseline",
+      "resourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+      "properties": {
+        "DisplayName": "Windows baseline",
+        "Id": "id-dev-0001",
+        "PasswordRequired": true,
+        "PasswordMinimumLength": 12,
+        "Assignments": [
+          { "dataType": "#microsoft.graph.groupAssignmentTarget", "groupId": "id-dev-g2", "groupDisplayName": "SW-Ring2" },
+          { "dataType": "#microsoft.graph.groupAssignmentTarget", "groupId": "id-dev-g1", "groupDisplayName": "SW-Ring1" }
+        ]
+      }
+    },
+    {
+      "displayName": "Compliance win",
+      "resourceType": "microsoft.intune.devicecompliancepolicywindows10",
+      "properties": { "DisplayName": "Compliance win", "Id": "id-dev-0002", "BitLockerEnabled": true }
+    },
+    {
+      "displayName": "SW-Ring1",
+      "resourceType": "microsoft.entra.group",
+      "properties": { "DisplayName": "SW-Ring1", "Id": "id-dev-g1" }
+    },
+    {
+      "displayName": "Old dev only policy",
+      "resourceType": "microsoft.intune.devicecompliancepolicywindows10",
+      "properties": { "DisplayName": "Old dev only policy", "Id": "id-dev-0099", "BitLockerEnabled": false }
+    }
+  ]
+}
