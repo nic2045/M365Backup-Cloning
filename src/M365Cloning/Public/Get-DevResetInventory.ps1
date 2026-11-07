@@ -48,7 +48,7 @@ function Get-DevResetInventory {
         ConfigurationPolicies     = & $getAll "$beta/deviceManagement/configurationPolicies?`$select=id,name" $DevToken
         Intents                   = & $getAll "$beta/deviceManagement/intents?`$select=id,displayName" $DevToken
         AssignmentFilters         = & $getAll "$beta/deviceManagement/assignmentFilters?`$select=id,displayName" $DevToken
-        ManagedDevices            = & $getAll "$v1/deviceManagement/managedDevices?`$select=id,deviceName,operatingSystem,userPrincipalName,managementState" $DevToken
+        ManagedDevices            = & $getAll "$v1/deviceManagement/managedDevices?`$select=id,deviceName,serialNumber,operatingSystem,userPrincipalName,managementState" $DevToken
         CrossTenantPartners       = & $getAll "$v1/policies/crossTenantAccessPolicy/partners" $DevToken
         ToolkitServicePrincipals  = & $getAll "$v1/servicePrincipals?`$filter=$appFilter&`$select=id,appId,displayName" $DevToken
     }

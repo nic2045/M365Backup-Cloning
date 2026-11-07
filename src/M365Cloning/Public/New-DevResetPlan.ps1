@@ -14,8 +14,8 @@ function New-DevResetPlan {
         (deviceConfigurations), compliance policies, settings catalog / endpoint security (configurationPolicies,
         intents), assignment filters, custom named locations and custom authentication strengths (issue #33; deleted
         after the policies that use them), groups, and in Full mode the test users of the positive list (DevUsers,
-        Type TestUser). Devices (issue #46): kept by default; -DeviceAction (all devices) or -DeviceActions (per device
-        name) choose Keep, Remove (delete the Intune object), Retire (remove company data) or Wipe (only when
+        Type TestUser). Devices (issue #46): kept by default; -DeviceAction (all devices) or -DeviceActions (per device,
+        keyed by Intune device ID, serial number or name; a name shared by several devices blocks Remove, Retire and Wipe, #49) choose Keep, Remove (delete the Intune object), Retire (remove company data) or Wipe (only when
         Dev.AllowDeviceWipe = $true). Protected and never touched: devices whose name starts with one of
         Dev.ProtectedDevicePrefixes (for example the Intune VM test devices) and devices whose primary user is on the
         protection list. Device actions run last, after every other step succeeded. Never deleted: guests, synced users and groups, other member users,
@@ -256,35 +256,64 @@ function New-DevResetPlan {
 
     # Devices (issue #46): kept unless an action is chosen; protected devices are never touched.
     $prefixes = @(@(& $get $Config['Dev'] 'ProtectedDevicePrefixes') | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
-    $seenDevices = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $deviceOp = @{ Keep = 'Keep'; Remove = 'Delete'; Retire = 'Retire'; Wipe = 'Wipe' }
     $deviceWhy = @{
         Remove = 'chosen: remove the device object from Intune (the device itself is not changed)'
         Retire = 'chosen: retire, company apps, profiles and data are removed at the next check-in, personal data stays'
         Wipe   = 'chosen: wipe, the device is reset to factory settings at the next check-in (Dev.AllowDeviceWipe)'
     }
-    foreach ($d in (& $devList 'ManagedDevices')) {
+    # A key in -DeviceActions names a device by Intune device ID, serial number (managedDevice.serialNumber, Learn:
+    # graph/api/resources/intune-devices-manageddevice) or device name, matched in that order. A name that belongs to
+    # more than one device cannot pick one device: Remove, Retire and Wipe chosen by such a name are blocked (#49);
+    # Keep stays allowed. -DeviceAction for all devices still applies to every device; duplicate names are only noted.
+    $devices = @(& $devList 'ManagedDevices')
+    $nameCount = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $serialCount = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($d in $devices) {
+        $n = [string](& $get $d 'deviceName'); if (-not $n) { $n = [string](& $get $d 'id') }
+        $nameCount[$n] = 1 + $(if ($nameCount.ContainsKey($n)) { $nameCount[$n] } else { 0 })
+        $sn = [string](& $get $d 'serialNumber')
+        if ($sn) { $serialCount[$sn] = 1 + $(if ($serialCount.ContainsKey($sn)) { $serialCount[$sn] } else { 0 }) }
+    }
+    $usedKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($n in $nameCount.Keys) {
+        if ($nameCount[$n] -gt 1) { $notes.Add("Device name '$n' belongs to $($nameCount[$n]) devices. Name them by serial number or Intune device ID in -DeviceActionFile; a remove, retire or wipe chosen by this name is blocked.") }
+    }
+    foreach ($d in $devices) {
         $name = [string](& $get $d 'deviceName'); if (-not $name) { $name = [string](& $get $d 'id') }
-        $null = $seenDevices.Add($name)
+        $devId = [string](& $get $d 'id')
+        $serial = [string](& $get $d 'serialNumber')
         $owner = [string](& $get $d 'userPrincipalName')
         $prefix = $prefixes | Where-Object { $name.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
         $why = $null
         if ($prefix) { $why = "config: ProtectedDevicePrefixes ('$prefix')" }
         elseif ($owner -and $ids.Contains($owner)) { $why = "primary user on the protection list ($owner)" }
+        # Which key of the action file names this device (ID before serial before name).
+        $key = $null; $keyKind = $null
+        if ($devId -and $perDevice.ContainsKey($devId)) { $key = $devId; $keyKind = 'id' }
+        elseif ($serial -and $perDevice.ContainsKey($serial)) { $key = $serial; $keyKind = 'serial' }
+        elseif ($perDevice.ContainsKey($name)) { $key = $name; $keyKind = 'name' }
+        if ($key) { $null = $usedKeys.Add($key) }
         if ($why) {
             $protected.Add([ordered]@{ Kind = 'Device'; Name = $name; Source = $why })
             & $add 'ManagedDevice' $name 'Keep' 'protected' "protected device, never touched: $why" $null
             continue
         }
-        $choice = if ($perDevice.ContainsKey($name)) { $perDevice[$name] } else { $DeviceAction }
+        $choice = if ($key) { $perDevice[$key] } else { $DeviceAction }
         if ($choice -eq 'Keep') {
             & $add 'ManagedDevice' $name 'Keep' 'skipped' 'kept (default); choose -DeviceAction or -DeviceActionFile to remove, retire or wipe' $null
             continue
         }
-        & $add 'ManagedDevice' $name $deviceOp[$choice] 'planned' $deviceWhy[$choice] ([string](& $get $d 'id'))
+        $ambiguous = ($keyKind -eq 'name' -and $nameCount[$name] -gt 1) -or ($keyKind -eq 'serial' -and $serialCount[$serial] -gt 1)
+        if ($ambiguous) {
+            $what = if ($keyKind -eq 'name') { "name '$name'" } else { "serial number '$serial'" }
+            & $add 'ManagedDevice' $name $deviceOp[$choice] 'blocked' "ambiguous device name: the $what belongs to more than one device; name the device by serial number or Intune device ID in -DeviceActionFile" $null
+            continue
+        }
+        & $add 'ManagedDevice' $name $deviceOp[$choice] 'planned' $deviceWhy[$choice] $devId
     }
     foreach ($k in $perDevice.Keys) {
-        if (-not $seenDevices.Contains($k)) { $notes.Add("Device action for '$k' has no matching device in Dev; ignored.") }
+        if (-not $usedKeys.Contains($k)) { $notes.Add("Device action for '$k' matches no device in Dev (by device ID, serial number or name); ignored.") }
     }
     foreach ($name in $invites) {
         & $add 'Invite' $name 'Invite' 'info' 'Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)' $null

@@ -224,4 +224,6 @@ Claude never ran any of this against a tenant (mocks and invented fixtures only)
 | 4 | Remove | `-DeviceAction Remove` on a Dev with one unprotected test device | The device object is gone from Intune; the device itself is unchanged (re-enrol to bring it back) |
 | 5 | Wipe refused | `-DeviceAction Wipe` with `Dev.AllowDeviceWipe = $false` | The plan refuses: "Wipe refused" |
 | 6 | Wipe (only if you really want it) | `Dev.AllowDeviceWipe = $true`, one test device in the file | One `POST .../wipe`; the device resets at its next check-in. Cannot be undone |
+| 7 | Duplicate device name (#49) | Two test devices with the same name, `-DeviceActionFile` with `@{ '<shared name>' = 'Retire' }`, plan | Both entries `blocked: ambiguous device name`; a note names the shared name; nothing is written |
+| 8 | Serial number | Same file with `@{ '<serial number of one device>' = 'Retire' }`, plan | Exactly that device `Retire / planned`, the other one `Keep / skipped`; check the serial number in the Intune admin center matches |
 
