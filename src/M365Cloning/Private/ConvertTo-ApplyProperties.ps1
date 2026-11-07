@@ -14,6 +14,12 @@ function ConvertTo-ApplyProperties {
           users and groups from the config are always in ExcludeUsers / ExcludeGroups; without them the policy is
           blocked. Specific users in IncludeUsers / ExcludeUsers (other than All, None, GuestsOrExternalUsers and
           the configured break-glass accounts) block the policy because users are not mirrored.
+        - Conditional Access dependencies (issue #33): IncludeLocations / ExcludeLocations and AuthenticationStrength
+          name named locations and authentication strengths. Each name must exist in Dev or be created earlier in the
+          same plan (KnownLocations / KnownAuthStrengths; the built-in strengths exist in every tenant). Otherwise the
+          policy is blocked ('needs-location' / 'needs-auth-strength'), never applied without the condition. The
+          keywords 'All' and 'AllTrusted' are kept (Graph conditionalAccessLocations). A value that looks like an object
+          ID cannot be matched by name and blocks the policy.
         - Role resources: assignments to users block the resource, roles go to groups only.
         - Groups are copied as static, empty security groups (ADR 0003): no members, owners, group members, role or
           licence assignments, and a dynamic membership rule is not carried over.
@@ -26,7 +32,11 @@ function ConvertTo-ApplyProperties {
         [string[]]$BreakGlassUsers = @(),
         [string[]]$BreakGlassGroups = @(),
         # @{ ProdIdToName = <id -> name>; DevNameToId = <name -> id>; Planned = HashSet of filter names created by the plan }
-        $FilterMap
+        $FilterMap,
+        # Named locations / authentication strengths that exist in Dev or are created earlier in the plan (issue #33).
+        # Missing means none is known: a policy that names one is blocked (fail-closed).
+        [System.Collections.Generic.HashSet[string]]$KnownLocations,
+        [System.Collections.Generic.HashSet[string]]$KnownAuthStrengths
     )
 
     $reasons = [System.Collections.Generic.List[string]]::new()
@@ -135,6 +145,28 @@ function ConvertTo-ApplyProperties {
                     $reasons.Add("$listName names a specific user; users are not mirrored")
                     break
                 }
+            }
+        }
+
+        $looksLikeId = { param($v) [string]$v -match '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' }
+        foreach ($listName in 'IncludeLocations', 'ExcludeLocations') {
+            $k = & $findKey $props $listName
+            if (-not $k) { continue }
+            foreach ($loc in @($props[$k])) {
+                $text = [string]$loc
+                if ([string]::IsNullOrWhiteSpace($text) -or $text -in 'All', 'AllTrusted') { continue }
+                if (& $looksLikeId $text) { $reasons.Add("$listName names a location by ID ('$text'); locations are matched by name"); continue }
+                if (-not $KnownLocations -or -not $KnownLocations.Contains($text)) {
+                    $reasons.Add("needs-location: $listName '$text' does not exist in Dev and is not part of this plan (add microsoft.entra.namedlocationpolicy to the resources or create it in Dev)")
+                }
+            }
+        }
+        $asKey = & $findKey $props 'AuthenticationStrength'
+        if ($asKey -and -not [string]::IsNullOrWhiteSpace([string]$props[$asKey])) {
+            $strength = [string]$props[$asKey]
+            if (& $looksLikeId $strength) { $reasons.Add("AuthenticationStrength names a policy by ID ('$strength'); authentication strengths are matched by name") }
+            elseif (-not $KnownAuthStrengths -or -not $KnownAuthStrengths.Contains($strength)) {
+                $reasons.Add("needs-auth-strength: authentication strength '$strength' does not exist in Dev and is not part of this plan")
             }
         }
 

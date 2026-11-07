@@ -38,7 +38,8 @@ function Invoke-DevResetPlan {
     $planned = @($Plan['Actions'] | Where-Object { $_['Status'] -eq 'planned' -and $_['Operation'] -eq 'Delete' })
     foreach ($a in $planned) {
         $hit = @($protected | Where-Object { [string]$_['Name'] -and [string]$_['Name'] -ieq [string]$a['Name'] -and
-                ( ($_['Kind'] -eq 'Account' -and $a['ResourceType'] -eq 'User') -or ($_['Kind'] -eq 'Group' -and $a['ResourceType'] -eq 'Group') ) })
+                ( ($_['Kind'] -eq 'Account' -and $a['ResourceType'] -eq 'User') -or ($_['Kind'] -eq 'Group' -and $a['ResourceType'] -eq 'Group') -or
+                  ($_['Kind'] -eq 'NamedLocation' -and $a['ResourceType'] -eq 'NamedLocation') ) })
         if ($hit) { & $refuse "a planned delete hits the protection list ($($a['ResourceType']) '$($a['Name'])')" }
         if ($a['ResourceType'] -in 'ManagedDevice', 'Invite') { & $refuse 'devices and invitations are never written by the reset' }
     }
@@ -56,6 +57,7 @@ function Invoke-DevResetPlan {
 
     $steps = @(
         @{ Name = 'Conditional Access'; Kinds = @('ConditionalAccessPolicy') }
+        @{ Name = 'Conditional Access dependencies'; Kinds = @('NamedLocation', 'AuthenticationStrength') }
         @{ Name = 'Intune policies'; Kinds = @('DeviceConfiguration', 'DeviceCompliancePolicy', 'ConfigurationPolicy', 'Intent') }
         @{ Name = 'Assignment filters'; Kinds = @('AssignmentFilter') }
         @{ Name = 'Groups'; Kinds = @('Group') }

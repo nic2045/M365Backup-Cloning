@@ -12,14 +12,18 @@ function New-DevResetPlan {
                 be rebuilt in a controlled way (baseline -> apply -> users).
         Reset scope: Conditional Access policies, Intune configuration profiles and update rings
         (deviceConfigurations), compliance policies, settings catalog / endpoint security (configurationPolicies,
-        intents), assignment filters, groups, and in Full mode the test users of the positive list (DevUsers,
+        intents), assignment filters, custom named locations and custom authentication strengths (issue #33; deleted
+        after the policies that use them), groups, and in Full mode the test users of the positive list (DevUsers,
         Type TestUser). Never deleted: devices (listed only), guests, synced users and groups, other member users,
         Microsoft 365 groups and role-assignable groups (listed as skipped), licences, domains, role definitions,
         app registrations, the cross-tenant access settings and cross-tenant sync.
         Protection list (shown in the preview with its source): ProtectedAccounts, BreakGlass, ServiceAccounts and
         BreakGlassGroups of the config, the Global Administrators of Prod without the break-glass accounts (and their
         B2B guests in Dev), all guests in Dev, the toolkit's app in Dev, the cross-tenant partners, the groups of the
-        base state (Get-DevBaselineDefinition). The plan refuses (throws) when Prod could not be read, when Prod has
+        base state (Get-DevBaselineDefinition), the named locations that a break-glass Conditional Access policy uses
+        (a policy that includes a BreakGlass account or a BreakGlassGroups group). Trusted named locations are kept
+        (Learn: a trusted location cannot be deleted before its trusted mark is removed; the reset does not change it);
+        built-in authentication strengths are never touched. The plan refuses (throws) when Prod could not be read, when Prod has
         no Global Administrator, when the config protects no account, or when no protected account exists in Dev.
         A Prod Global Administrator without a guest in Dev is listed as 'Invite' (info): add it to DevUsers as
         AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites).
@@ -118,10 +122,42 @@ function New-DevResetPlan {
         if ($groupNames.Add([string]$g['Name'])) { $protected.Add([ordered]@{ Kind = 'Group'; Name = [string]$g['Name']; Source = "base state ($($g['Kind']))" }) }
     }
 
+    # Named locations of break-glass Conditional Access policies (issue #33): a policy that includes a break-glass
+    # account or group keeps the locations it names, so the emergency path still works after the reset.
+    $bgIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($b in $breakGlass) { $null = $bgIds.Add($b) }
+    foreach ($u in $users) {
+        foreach ($k in 'userPrincipalName', 'mail', 'id') {
+            $v = [string](& $get $u $k)
+            if ($v -and ($breakGlass | Where-Object { $_ -ieq $v })) { $null = $bgIds.Add([string](& $get $u 'id')); break }
+        }
+    }
+    $bgGroupNames = & $list 'BreakGlassGroups'
+    foreach ($g in (& $devList 'Groups')) {
+        if ($bgGroupNames | Where-Object { $_ -ieq [string](& $get $g 'displayName') }) { $null = $bgIds.Add([string](& $get $g 'id')) }
+    }
+    $protectedLocationIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($p in (& $devList 'ConditionalAccessPolicies')) {
+        $cond = & $get $p 'conditions'
+        $usersCond = & $get $cond 'users'
+        $targets = @(@(& $get $usersCond 'includeUsers') + @(& $get $usersCond 'includeGroups')) | Where-Object { $_ }
+        if (-not ($targets | Where-Object { $bgIds.Contains([string]$_) })) { continue }
+        $locCond = & $get $cond 'locations'
+        foreach ($l in @(@(& $get $locCond 'includeLocations') + @(& $get $locCond 'excludeLocations'))) {
+            if ($l -and [string]$l -notin 'All', 'AllTrusted') { $null = $protectedLocationIds.Add([string]$l) }
+        }
+    }
+    foreach ($loc in (& $devList 'NamedLocations')) {
+        if ($protectedLocationIds.Contains([string](& $get $loc 'id'))) {
+            $protected.Add([ordered]@{ Kind = 'NamedLocation'; Name = [string](& $get $loc 'displayName'); Source = 'Dev: named location of a break-glass Conditional Access policy' })
+        }
+    }
+
     # --- Dev-only names from the drift report (mode Align) ---
     $category = @{
         ConditionalAccessPolicy = 'ca'; Group = 'group'; AssignmentFilter = 'filter'; DeviceCompliancePolicy = 'compliance'
         DeviceConfiguration = 'intune'; ConfigurationPolicy = 'intune'; Intent = 'intune'
+        NamedLocation = 'location'; AuthenticationStrength = 'authstrength'
     }
     $devOnly = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     if ($Mode -eq 'Align') {
@@ -130,6 +166,8 @@ function New-DevResetPlan {
             $cat = switch -Wildcard ($type) {
                 'microsoft.entra.conditionalaccesspolicy' { 'ca'; break }
                 'microsoft.entra.group' { 'group'; break }
+                'microsoft.entra.namedlocationpolicy' { 'location'; break }
+                'microsoft.entra.authenticationstrengthpolicy' { 'authstrength'; break }
                 '*assignmentfilter' { 'filter'; break }
                 'microsoft.intune.devicecompliancepolicy*' { 'compliance'; break }
                 'microsoft.intune.roledefinition' { ''; break }
@@ -142,7 +180,7 @@ function New-DevResetPlan {
     }
 
     $actions = [System.Collections.Generic.List[object]]::new()
-    $rank = @{ ConditionalAccessPolicy = 0; DeviceConfiguration = 1; DeviceCompliancePolicy = 1; ConfigurationPolicy = 1; Intent = 1; AssignmentFilter = 2; Group = 3; User = 4 }
+    $rank = @{ ConditionalAccessPolicy = 0; NamedLocation = 1; AuthenticationStrength = 1; DeviceConfiguration = 1; DeviceCompliancePolicy = 1; ConfigurationPolicy = 1; Intent = 1; AssignmentFilter = 2; Group = 3; User = 4 }
     $add = {
         param([string]$Kind, [string]$Name, [string]$Operation, [string]$Status, [string]$Reason, [string]$Id)
         $actions.Add([ordered]@{
@@ -165,6 +203,16 @@ function New-DevResetPlan {
     foreach ($p in (& $devList 'DeviceCompliancePolicies')) { & $consider 'DeviceCompliancePolicy' ([string](& $get $p 'displayName')) ([string](& $get $p 'id')) $why }
     foreach ($p in (& $devList 'ConfigurationPolicies')) { & $consider 'ConfigurationPolicy' ([string](& $get $p 'name')) ([string](& $get $p 'id')) $why }
     foreach ($p in (& $devList 'Intents')) { & $consider 'Intent' ([string](& $get $p 'displayName')) ([string](& $get $p 'id')) $why }
+    foreach ($loc in (& $devList 'NamedLocations')) {
+        $name = [string](& $get $loc 'displayName')
+        if ($protectedLocationIds.Contains([string](& $get $loc 'id'))) { continue }   # protected: listed in Protected, never an action
+        if ((& $get $loc 'isTrusted') -eq $true) { & $add 'NamedLocation' $name 'Keep' 'skipped' 'trusted named location: kept (remove the trusted mark by hand first if it should go; the reset does not change it)' $null; continue }
+        & $consider 'NamedLocation' $name ([string](& $get $loc 'id')) "$why; after the Conditional Access policies that use it"
+    }
+    foreach ($st in (& $devList 'AuthenticationStrengths')) {
+        if ([string](& $get $st 'policyType') -ieq 'builtIn') { continue }   # built-in: exists in every tenant, never touched
+        & $consider 'AuthenticationStrength' ([string](& $get $st 'displayName')) ([string](& $get $st 'id')) "$why; after the Conditional Access policies that use it"
+    }
     foreach ($p in (& $devList 'AssignmentFilters')) { & $consider 'AssignmentFilter' ([string](& $get $p 'displayName')) ([string](& $get $p 'id')) "$why; after the policies that use it" }
 
     foreach ($g in (& $devList 'Groups')) {
@@ -207,7 +255,7 @@ function New-DevResetPlan {
     $prot.Sort([System.Comparison[object]] { param($x, $y) [string]::CompareOrdinal($x.Key, $y.Key) })
 
     $notes.Add('Deleted users, groups and Conditional Access policies stay in the deleted items for 30 days and can be restored; the reset never empties them.')
-    $notes.Add('Policies, filters, groups and users are deleted in this order; a failure stops the later steps.')
+    $notes.Add('Conditional Access policies, then named locations and authentication strengths, then Intune policies, filters, groups and users are deleted in this order; a failure stops the later steps.')
     if ($Mode -eq 'Align') { $notes.Add('Align: after the reset run scripts/Invoke-ApplyDev.ps1 to align what differs (or -RebuildAfter).') }
     else { $notes.Add('Full: rebuild with -RebuildAfter (baseline -> apply -> users, each with its own plan and confirmation).') }
     $count = { param($status) @($sorted | Where-Object { $_['Status'] -eq $status }).Count }
