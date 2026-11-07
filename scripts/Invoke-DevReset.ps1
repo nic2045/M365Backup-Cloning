@@ -17,7 +17,8 @@
     and the cross-tenant settings are never deleted. Users, groups and Conditional Access policies stay in the deleted
     items for 30 days.
     Devices (issue #46): kept by default. -DeviceAction Keep|Remove|Retire|Wipe sets the action for all devices;
-    -DeviceActionFile <.psd1 or .json> maps device names to an action and wins for those devices. Wipe needs
+    -DeviceActionFile <.psd1 or .json> maps devices (Intune device ID, serial number or name) to an action and wins for
+    those devices; a name shared by several devices blocks Remove, Retire and Wipe (issue #49), use the serial number. Wipe needs
     Dev.AllowDeviceWipe = $true. Devices with a name from Dev.ProtectedDevicePrefixes and devices of protected users
     are never touched. Pass the same device options with -Apply as with the preview, or the plan hash differs.
     -RebuildAfter: after a reset without failures, runs base state -> apply -> Dev users, each with its own plan and

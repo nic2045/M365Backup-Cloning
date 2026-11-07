@@ -185,3 +185,76 @@ Describe 'Device writes in the reset allow list' {
         }
     }
 }
+
+Describe 'Duplicate device names in the action file (issue #49)' {
+    BeforeEach {
+        $script:Config = script:New-Config
+        $script:Inv = script:New-Inventory
+        $script:Inv.Dev.ManagedDevices = @(
+            @{ id = 'md-0101'; deviceName = 'SHARED-PC'; serialNumber = 'SN-AAA-0001'; operatingSystem = 'Windows'; userPrincipalName = '' }
+            @{ id = 'md-0102'; deviceName = 'SHARED-PC'; serialNumber = 'SN-BBB-0002'; operatingSystem = 'Windows'; userPrincipalName = '' }
+            @{ id = 'md-0103'; deviceName = 'SINGLE-PC'; serialNumber = 'SN-CCC-0003'; operatingSystem = 'Windows'; userPrincipalName = '' }
+        )
+        function script:Devices($Plan, [string]$Name) { @($Plan['Actions'] | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Name'] -eq $Name }) }
+    }
+    It 'blocks Remove chosen by a name that belongs to two devices' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'shared-pc' = 'Remove' }
+        $both = script:Devices $plan 'SHARED-PC'
+        $both.Count | Should -Be 2
+        foreach ($a in $both) {
+            $a['Status'] | Should -Be 'blocked'
+            $a['Reason'] | Should -BeLike 'ambiguous device name*'
+            $a['Properties'] | Should -BeNullOrEmpty
+        }
+        @($plan['Notes'] | Where-Object { $_ -like "*'SHARED-PC' belongs to 2 devices*" }).Count | Should -Be 1
+        $plan['Summary']['Blocked'] | Should -BeGreaterThan 1
+    }
+    It 'blocks Retire and (with the switch) Wipe by a shared name, too' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SHARED-PC' = 'Retire' }
+        @(script:Devices $plan 'SHARED-PC' | Where-Object { $_['Status'] -ne 'blocked' }).Count | Should -Be 0
+        $c = script:New-Config ($script:Base -replace 'AllowReset=\$true', 'AllowReset=$true;AllowDeviceWipe=$true')
+        $plan = New-DevResetPlan -Config $c -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SHARED-PC' = 'Wipe' }
+        @(script:Devices $plan 'SHARED-PC' | Where-Object { $_['Status'] -ne 'blocked' }).Count | Should -Be 0
+    }
+    It 'allows Keep by a shared name' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SHARED-PC' = 'Keep' }
+        foreach ($a in (script:Devices $plan 'SHARED-PC')) {
+            $a['Status'] | Should -Be 'skipped'
+            $a['Operation'] | Should -Be 'Keep'
+        }
+    }
+    It 'picks exactly one device by serial number' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'sn-bbb-0002' = 'Retire' }
+        $planned = @(script:Devices $plan 'SHARED-PC' | Where-Object { $_['Status'] -eq 'planned' })
+        $planned.Count | Should -Be 1
+        $planned[0]['Operation'] | Should -Be 'Retire'
+        $planned[0]['Properties']['Id'] | Should -Be 'md-0102'
+        @(script:Devices $plan 'SHARED-PC' | Where-Object { $_['Status'] -eq 'skipped' }).Count | Should -Be 1
+    }
+    It 'picks exactly one device by Intune device ID, before serial number and name' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'md-0101' = 'Remove'; 'SHARED-PC' = 'Retire' }
+        $byId = @(script:Devices $plan 'SHARED-PC' | Where-Object { $_['Properties'] -and $_['Properties']['Id'] -eq 'md-0101' })
+        $byId.Count | Should -Be 1
+        $byId[0]['Operation'] | Should -Be 'Delete'
+        $byId[0]['Status'] | Should -Be 'planned'
+        # the other device is only named by the shared name -> blocked
+        @(script:Devices $plan 'SHARED-PC' | Where-Object { $_['Status'] -eq 'blocked' }).Count | Should -Be 1
+    }
+    It 'notes an unknown serial number and changes nothing' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SN-NOT-THERE' = 'Remove' }
+        @($plan['Notes'] | Where-Object { $_ -like "*'SN-NOT-THERE' matches no device*" }).Count | Should -Be 1
+        @($plan['Actions'] | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Status'] -eq 'planned' }).Count | Should -Be 0
+    }
+    It 'keeps -DeviceAction for all devices working with shared names (noted, not blocked)' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceAction Remove
+        @(script:Devices $plan 'SHARED-PC' | Where-Object { $_['Status'] -eq 'planned' -and $_['Operation'] -eq 'Delete' }).Count | Should -Be 2
+        @($plan['Notes'] | Where-Object { $_ -like "*'SHARED-PC' belongs to 2 devices*" }).Count | Should -Be 1
+    }
+    It 'never writes for a blocked device' {
+        $plan = New-DevResetPlan -Config $script:Config -Inventory $script:Inv -Mode Full -DeviceActions @{ 'SHARED-PC' = 'Remove' }
+        $w = script:New-Writer
+        $root = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        $null = Invoke-DevResetPlan -Plan $plan -Config $script:Config -ConfirmPlanHash (Get-ApplyPlanHash -Plan $plan) -ConfirmTenant 'tenant-dev-0001' -GraphWriter $w -HistoryRoot $root
+        @($script:Writes | Where-Object { $_.Uri -like '*managedDevices*' }).Count | Should -Be 0
+    }
+}
