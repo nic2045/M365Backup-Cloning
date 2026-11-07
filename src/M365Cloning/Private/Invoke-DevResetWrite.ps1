@@ -10,6 +10,9 @@ function Get-DevResetEndpoint {
           ConfigurationPolicy      beta DELETE /deviceManagement/configurationPolicies/{id} (settings catalog, endpoint security)
           Intent                   beta DELETE /deviceManagement/intents/{id}               (older endpoint security profiles)
           AssignmentFilter         beta DELETE /deviceManagement/assignmentFilters/{id}
+          NamedLocation            v1.0 DELETE /identity/conditionalAccess/namedLocations/{id} ("Delete namedLocation")
+          AuthenticationStrength   v1.0 DELETE /policies/authenticationStrengthPolicies/{id}   ("Delete authenticationStrengthPolicy",
+                                   custom policies only; built-in ones are never planned)
           Group                    v1.0 DELETE /groups/{id}  (deleted items, restorable for 30 days)
           User                     v1.0 DELETE /users/{id}   (deleted items, restorable for 30 days)
         The permanent delete (/directory/deletedItems) is not on the list.
@@ -23,6 +26,8 @@ function Get-DevResetEndpoint {
         ConfigurationPolicy     = 'beta/deviceManagement/configurationPolicies'
         Intent                  = 'beta/deviceManagement/intents'
         AssignmentFilter        = 'beta/deviceManagement/assignmentFilters'
+        NamedLocation           = 'v1.0/identity/conditionalAccess/namedLocations'
+        AuthenticationStrength  = 'v1.0/policies/authenticationStrengthPolicies'
         Group                   = 'v1.0/groups'
         User                    = 'v1.0/users'
     }
@@ -60,6 +65,8 @@ function Assert-DevResetWriteAllowed {
         "^/beta/deviceManagement/configurationPolicies/$id$"
         "^/beta/deviceManagement/intents/$id$"
         "^/beta/deviceManagement/assignmentFilters/$id$"
+        "^/v1\.0/identity/conditionalAccess/namedLocations/$id$"
+        "^/v1\.0/policies/authenticationStrengthPolicies/$id$"
         "^/v1\.0/groups/$id$"
         "^/v1\.0/users/$id$"
     )

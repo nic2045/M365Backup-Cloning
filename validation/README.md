@@ -155,3 +155,19 @@ Only with your explicit go, only in the Dev tenant, always the plan first. Endpo
 | 7 | Restore check | Entra admin center > Deleted users / groups, Conditional Access deleted items | The deleted users, groups and policies are listed and restorable |
 | 8 | Rebuild | `-RebuildAfter` on a test run | Base state, apply and users each ask for their plan hash; the drift report at the end is empty except for excluded points |
 | 9 | Unverified | Deleting a filter or group still used by an object outside the scope (e.g. an app assignment) | Graph refuses; the step is `failed`, later steps `not-run`. Tell me the message |
+
+# Part 8: Conditional Access dependencies (named locations, authentication strengths, methods)
+
+Issue #33. Only in the Dev tenant, plan first. Sources (Learn, checked 2026-11-07): `utcm-entra-resources` sections `namedLocationPolicy`, `authenticationStrengthPolicy`, `authenticationMethodPolicy*`, `conditionalAccessPolicy` (IncludeLocations / ExcludeLocations / AuthenticationStrength by name); Graph v1.0 `DELETE /identity/conditionalAccess/namedLocations/{id}` and `DELETE /policies/authenticationStrengthPolicies/{id}` (custom policies only).
+
+| # | Check | How | Expected |
+|---|---|---|---|
+| 1 | DSC resources | `powershell.exe -NoProfile -Command "Get-DscResource -Module Microsoft365DSC -Name AADNamedLocationPolicy,AADAuthenticationStrengthPolicy \| Select-Object Name"` | Both found. Another name: tell me (the names are inferred, Learn does not list them) |
+| 2 | Snapshot values | Prod snapshot with a CA policy that uses a named location and a custom authentication strength | `IncludeLocations` / `ExcludeLocations` and `AuthenticationStrength` hold **names**. If they hold object IDs, the plan blocks the policy ("by ID"): tell me |
+| 3 | Permissions | UTCM read: `Policy.Read.All`, `Policy.Read.AuthenticationMethod`. Dev registration write: `Policy.ReadWrite.ConditionalAccess`, `Policy.ReadWrite.AuthenticationMethod` | Snapshot and apply run without 403 |
+| 4 | Plan | `pwsh scripts/Invoke-ApplyDev.ps1` against a Dev tenant without the location | The location and the custom strength are `planned` before the CA policy; the policy is `planned` (Report-only) |
+| 5 | Apply | Same with `-Apply -ConfirmPlanHash <hash>` | Named location with the same ranges / countries and trusted mark; the strength with the same combinations; the CA policy names both |
+| 6 | Built-in strengths | A CA policy with "Phishing-resistant MFA" | The policy is `planned`; the built-in strength is never created or changed. If the display name in your tenant differs, the policy is blocked: tell me the name |
+| 7 | Methods report-only | Prod and Dev differ in an authentication method (e.g. FIDO2 on/off) | Drift report shows it; the plan says `skipped: report-only`; nothing changes |
+| 8 | Reset | `scripts/Invoke-DevReset.ps1 -Mode Full` plan | Locations of break-glass policies are on the protection list; trusted locations `skipped`; custom locations and strengths deleted after the CA policies; built-in strengths not listed |
+| 9 | Unverified | Reset deletes a named location still used by a policy outside the plan | Graph refuses; the step is `failed`, later steps `not-run`. Tell me the message |

@@ -25,7 +25,7 @@ Describe 'Resource map: every type has a source or is never copied' {
             $e = $map[$type]
             $type | Should -Match '^microsoft\.(intune|entra)\.[a-z0-9]+$'
             [string]$e.Source | Should -Not -BeNullOrEmpty
-            if (-not $e.Secret) {
+            if (-not $e.Secret -and -not $e.ReportOnly) {
                 [string]$e.Dsc | Should -Match '^(Intune|AAD)[A-Za-z0-9]+$'
                 [string]$e.AssignmentClass | Should -Match '^MSFT_[A-Za-z0-9]+Assignments$'
             }

@@ -20,21 +20,45 @@ function Get-DscResourceMap {
         Entries with Secret = $true are never copied (they hold keys, certificates or pre-shared keys): the plan
         marks them 'skipped: secret'. Scope tags (role scope tags) are not a TCM resource and do not appear in the
         policy schemas: they are not handled (see README).
-        Order: groups first, then filters (assignments refer to both), policies, roles, Conditional Access last.
+        Order: groups first, then filters, named locations and authentication strengths (assignments and Conditional
+        Access refer to them), policies, roles, Conditional Access last.
+        Conditional Access dependencies (issue #33, checked 2026-11-07 on Learn 'Supported Microsoft Entra resources for
+        Tenant Configuration Management', https://learn.microsoft.com/graph/utcm-entra-resources, and in the schema):
+        namedLocationPolicy (key DisplayName; OdataType, IpRanges, IsTrusted, CountriesAndRegions, ...) and
+        authenticationStrengthPolicy (key DisplayName; AllowedCombinations). conditionalAccessPolicy refers to them by
+        name: IncludeLocations / ExcludeLocations ('named locations') and AuthenticationStrength ('the name of the
+        associated authentication strength policy').
+        Entries with ReportOnly = $true are read for the drift report but never applied: the tenant-wide authentication
+        method policies (authenticationMethodPolicy and its per-method types). Changing them in an automatic run could
+        lock users out (the methods decide who can sign in at all); the plan marks them 'skipped: report-only'.
     #>
     [CmdletBinding()]
     param()
 
     $schema = 'utcm-monitor.json (linked from Learn utcm-intune-resources / utcm-entra-resources)'
     $default = 'MSFT_DeviceManagementConfigurationPolicyAssignments'
-    $e = { param($Dsc, $Order, $Source = $schema, $Class = $default) @{ Dsc = $Dsc; Order = $Order; AssignmentClass = $Class; Source = $Source; Secret = $false } }
-    $secret = { param($Why) @{ Dsc = ''; Order = 9; AssignmentClass = ''; Source = $schema; Secret = $true; SecretReason = $Why } }
+    $e = { param($Dsc, $Order, $Source = $schema, $Class = $default) @{ Dsc = $Dsc; Order = $Order; AssignmentClass = $Class; Source = $Source; Secret = $false; ReportOnly = $false } }
+    $secret = { param($Why) @{ Dsc = ''; Order = 9; AssignmentClass = ''; Source = $schema; Secret = $true; SecretReason = $Why; ReportOnly = $false } }
+    $reportOnly = { @{ Dsc = ''; Order = 9; AssignmentClass = ''; Source = $schema; Secret = $false; ReportOnly = $true; ReportReason = 'tenant-wide authentication method policy' } }
 
     @{
         # Entra
         'microsoft.entra.group'                                                     = & $e 'AADGroup' 1
         'microsoft.entra.roledefinition'                                            = & $e 'AADRoleDefinition' 7
         'microsoft.entra.conditionalaccesspolicy'                                   = & $e 'AADConditionalAccessPolicy' 8
+        # Conditional Access dependencies: before the policies that name them (issue #33)
+        'microsoft.entra.namedlocationpolicy'                                       = & $e 'AADNamedLocationPolicy' 2
+        'microsoft.entra.authenticationstrengthpolicy'                              = & $e 'AADAuthenticationStrengthPolicy' 2
+        # Authentication methods: report only, never applied (lockout risk)
+        'microsoft.entra.authenticationmethodpolicy'                                = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicyauthenticator'                   = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicyemail'                           = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicyfido2'                           = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicysms'                             = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicysoftware'                        = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicytemporary'                       = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicyvoice'                           = & $reportOnly
+        'microsoft.entra.authenticationmethodpolicyx509'                            = & $reportOnly
 
         # Intune: filters before everything that is assigned
         'microsoft.intune.deviceandappmanagementassignmentfilter'                   = & $e 'IntuneDeviceAndAppManagementAssignmentFilter' 2

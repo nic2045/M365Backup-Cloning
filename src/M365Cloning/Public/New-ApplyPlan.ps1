@@ -19,6 +19,10 @@ function New-ApplyPlan {
         matched by name through both snapshots; a filter that Dev lacks is created first and the policy is blocked
         until the next run ('needs-filter'). Secret-bearing types (Get-DscResourceMap, Secret) and profiles with an
         encrypted OMA-URI value (Test-ResourceHasSecret) are 'skipped' with a reason starting with 'secret:'.
+        Conditional Access dependencies (issue #33): named locations and authentication strengths are applied before the
+        policies (apply order 2); a policy that names one that Dev lacks and the plan does not create is blocked
+        ('needs-location' / 'needs-auth-strength'). The built-in authentication strengths exist in every tenant and are
+        never changed ('skipped: built-in'). The authentication method policies are 'skipped: report-only' (lockout risk).
         The plan holds the properties to apply (from Prod, ids removed). The plan file is local and git-ignored.
     #>
     [CmdletBinding()]
@@ -52,6 +56,24 @@ function New-ApplyPlan {
     foreach ($entry in $tgtIndex.Values) { if ($entry.Type -eq 'microsoft.entra.group') { $null = $known.Add($entry.Name) } }
     foreach ($t in $comparison.Types) {
         if ($t.ResourceType -eq 'microsoft.entra.group') { foreach ($n in $t.Added) { $null = $known.Add($n) } }
+    }
+
+    # Conditional Access dependencies (issue #33): names that exist in Dev or that this plan creates first (order 2).
+    # The three built-in authentication strengths exist in every tenant (Learn: 'Conditional Access authentication
+    # strengths'; display names as listed by Graph, with and without the word 'strength' as the portal shows them).
+    $locationType = 'microsoft.entra.namedlocationpolicy'
+    $strengthType = 'microsoft.entra.authenticationstrengthpolicy'
+    $builtInStrengths = @('Multifactor authentication', 'Passwordless MFA', 'Phishing-resistant MFA',
+        'Multifactor authentication strength', 'Passwordless MFA strength', 'Phishing-resistant MFA strength')
+    $knownLocations = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $knownStrengths = [System.Collections.Generic.HashSet[string]]::new([string[]]$builtInStrengths, [System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $tgtIndex.Values) {
+        if ($entry.Type -eq $locationType) { $null = $knownLocations.Add($entry.Name) }
+        elseif ($entry.Type -eq $strengthType) { $null = $knownStrengths.Add($entry.Name) }
+    }
+    foreach ($t in $comparison.Types) {
+        if ($t.ResourceType -eq $locationType) { foreach ($n in $t.Added) { $null = $knownLocations.Add($n) } }
+        elseif ($t.ResourceType -eq $strengthType) { foreach ($n in $t.Added) { if ($n -notin $builtInStrengths) { $null = $knownStrengths.Add($n) } } }
     }
 
     # Conditional Access groups (ADR 0003): empty static copies for persona groups that Dev lacks.
@@ -145,6 +167,14 @@ function New-ApplyPlan {
             $action.Status = 'skipped'
             $action.Reason = 'exists only in Dev; an apply never deletes'
         }
+        elseif ($entry -and $entry.ReportOnly) {
+            $action.Status = 'skipped'
+            $action.Reason = "report-only: $($entry.ReportReason); never applied automatically (it decides who can sign in), review and change it in Dev by hand"
+        }
+        elseif ($Type -eq $strengthType -and $builtInStrengths -contains $Name) {
+            $action.Status = 'skipped'
+            $action.Reason = 'built-in authentication strength: exists in every tenant and cannot be changed'
+        }
         elseif ($entry -and $entry.Secret) {
             $action.Status = 'skipped'
             $action.Reason = "secret: $($entry.SecretReason) is never copied; create it in Dev by hand"
@@ -163,7 +193,7 @@ function New-ApplyPlan {
         }
         else {
             $resource = $srcIndex["$Type|$Name"].Resource
-            $converted = ConvertTo-ApplyProperties -Type $Type -Resource $resource -KnownGroups $known -BreakGlassUsers $breakUsers -BreakGlassGroups $breakGroups -FilterMap $filterMap
+            $converted = ConvertTo-ApplyProperties -Type $Type -Resource $resource -KnownGroups $known -BreakGlassUsers $breakUsers -BreakGlassGroups $breakGroups -FilterMap $filterMap -KnownLocations $knownLocations -KnownAuthStrengths $knownStrengths
             if ($converted.Reasons.Count -gt 0) {
                 $action.Status = 'blocked'
                 $action.Reason = ($converted.Reasons -join '; ')

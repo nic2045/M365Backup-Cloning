@@ -9,6 +9,10 @@ function Get-DevResetInventory {
           deviceManagement/deviceCompliancePolicies, deviceManagement/managedDevices (listed, never deleted),
           policies/crossTenantAccessPolicy/partners (protected), servicePrincipals?$filter=appId eq Dev.ClientId (protected);
           beta deviceManagement/configurationPolicies, deviceManagement/intents, deviceManagement/assignmentFilters.
+          Conditional Access dependencies (issue #33): v1.0 identity/conditionalAccess/namedLocations ("List
+          namedLocations"), v1.0 policies/authenticationStrengthPolicies ("List authenticationStrengthPolicies";
+          policyType tells built-in from custom). The Conditional Access policies are read with their conditions, so
+          that the plan can protect the named locations of break-glass policies.
         Prod (read only): v1.0 directoryRoles(roleTemplateId='62e90394-69f5-4237-9190-012177145e10')/members
           ("List members of a directory role": the template ID of Global Administrator can be used).
         A failed Prod read is not swallowed into an empty list: ProdGlobalAdmins is $null and ProdReadError says
@@ -36,7 +40,9 @@ function Get-DevResetInventory {
     $dev = [ordered]@{
         Users                     = & $getAll "$v1/users?`$select=id,displayName,userPrincipalName,mail,userType,onPremisesSyncEnabled" $DevToken
         Groups                    = & $getAll "$v1/groups?`$select=id,displayName,groupTypes,membershipRule,isAssignableToRole,onPremisesSyncEnabled" $DevToken
-        ConditionalAccessPolicies = & $getAll "$v1/identity/conditionalAccess/policies?`$select=id,displayName,state" $DevToken
+        ConditionalAccessPolicies = & $getAll "$v1/identity/conditionalAccess/policies?`$select=id,displayName,state,conditions" $DevToken
+        NamedLocations            = & $getAll "$v1/identity/conditionalAccess/namedLocations" $DevToken
+        AuthenticationStrengths   = & $getAll "$v1/policies/authenticationStrengthPolicies?`$select=id,displayName,policyType" $DevToken
         DeviceConfigurations      = & $getAll "$v1/deviceManagement/deviceConfigurations?`$select=id,displayName" $DevToken
         DeviceCompliancePolicies  = & $getAll "$v1/deviceManagement/deviceCompliancePolicies?`$select=id,displayName" $DevToken
         ConfigurationPolicies     = & $getAll "$beta/deviceManagement/configurationPolicies?`$select=id,name" $DevToken
