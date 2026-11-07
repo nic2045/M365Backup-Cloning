@@ -11,6 +11,9 @@ Dev tenant toolkit (origin: nic2045/SW-Depoyment#1585). Read and report differen
 - Conditional Access policies are created Report-only or disabled. Never use `Ensure = Absent` in an automatic run. Role assignments go through groups.
 - Groups are matched by name, not by ID.
 
+## Generic tool set
+- This repository is a generic tool set that customers clone and run for their own environment (one instance per customer, one Prod/Dev pair). No customer information, customer structure, tenant data or customer-specific paths in code, docs, tests or issues. Wording is neutral ("your tenants").
+
 ## Branches and pull requests
 - One PR per task, always from fresh `origin/main` (`git fetch origin main && git checkout -B <branch> origin/main`). No stacked PRs. Never push to `main`, never merge.
 - Squash merge is the default. Before each push fetch `origin/main` and merge it in when behind (no rebase on shared branches).
