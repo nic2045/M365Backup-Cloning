@@ -9,7 +9,9 @@ function ConvertTo-TenantLicences {
         'Enabled' or 'Warning' (Warning = grace period, still usable). PendingActivation is not counted: Learn says the
         service needs an explicit activation first.
         Usable for any tenant (Dev for the plan check, Prod and Dev for the suitability check, issue #39).
-        Returns [ordered]@{ Readable; Error; Available = sorted service plan names; Skus = sorted list }.
+        Returns [ordered]@{ Readable; Error; Available = sorted service plan names; Skus = sorted list }. Each SKU has
+        SkuPartNumber, CapabilityStatus, AppliesTo, ConsumedUnits, PrepaidEnabled/Warning/Suspended/LockedOut,
+        ServicePlans (all) and ProvidedPlans (the ones counted as available). No IDs.
     #>
     [CmdletBinding()]
     param([AllowNull()][object]$SubscribedSkus)
@@ -29,13 +31,28 @@ function ConvertTo-TenantLicences {
         $status = [string](& $get $sku 'capabilityStatus')
         $usable = $status -in @('Enabled', 'Warning')
         $plans = [System.Collections.Generic.List[string]]::new()
+        $provided = [System.Collections.Generic.List[string]]::new()
         foreach ($sp in @(& $get $sku 'servicePlans' | Where-Object { $null -ne $_ })) {
             $name = [string](& $get $sp 'servicePlanName')
             if (-not $name) { continue }
             $plans.Add($name)
-            if ($usable -and [string](& $get $sp 'provisioningStatus') -eq 'Success') { $null = $available.Add($name) }
+            if ($usable -and [string](& $get $sp 'provisioningStatus') -eq 'Success') { $null = $available.Add($name); $provided.Add($name) }
         }
-        $skus.Add([ordered]@{ SkuPartNumber = [string](& $get $sku 'skuPartNumber'); CapabilityStatus = $status; ServicePlans = [string[]]@($plans | Sort-Object) })
+        # Units (Learn: subscribedSku consumedUnits, prepaidUnits = licenseUnitsDetail enabled/warning/suspended/lockedOut).
+        $units = & $get $sku 'prepaidUnits'
+        $num = { param($o, [string]$k) $v = & $get $o $k; if ($null -eq $v) { 0 } else { [int]$v } }
+        $skus.Add([ordered]@{
+                SkuPartNumber    = [string](& $get $sku 'skuPartNumber')
+                CapabilityStatus = $status
+                AppliesTo        = [string](& $get $sku 'appliesTo')
+                ConsumedUnits    = (& $num $sku 'consumedUnits')
+                PrepaidEnabled   = (& $num $units 'enabled')
+                PrepaidWarning   = (& $num $units 'warning')
+                PrepaidSuspended = (& $num $units 'suspended')
+                PrepaidLockedOut = (& $num $units 'lockedOut')
+                ServicePlans     = [string[]]@($plans | Sort-Object)
+                ProvidedPlans    = [string[]]@($provided | Sort-Object)
+            })
     }
     [ordered]@{
         Readable  = $true

@@ -36,6 +36,9 @@
         'Get-TenantLicences'
         'Add-PlanLicenceCheck'
         'Get-DevPlanLicences'
+        'Get-TenantFitAssessment'
+        'ConvertTo-TenantFitMarkdown'
+        'Export-TenantFitReport'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

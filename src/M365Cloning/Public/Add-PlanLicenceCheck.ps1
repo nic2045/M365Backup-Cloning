@@ -29,15 +29,6 @@ function Add-PlanLicenceCheck {
     $missing = [ordered]@{}
     $warnings = [System.Collections.Generic.SortedSet[string]]::new([System.StringComparer]::Ordinal)
 
-    $hasValue = {
-        param($props, [string]$name)
-        if ($props -isnot [System.Collections.IDictionary] -or -not $props.Contains($name)) { return $false }
-        $v = $props[$name]
-        if ($null -eq $v) { return $false }
-        if ($v -is [string]) { return -not [string]::IsNullOrWhiteSpace($v) }
-        return (@($v | Where-Object { $null -ne $_ -and [string]$_ -ne '' }).Count -gt 0)
-    }
-
     foreach ($a in @($Plan['Actions'])) {
         if ([string]$a['Status'] -ne 'planned') { continue }
         $op = [string]$a['Operation']
@@ -45,12 +36,7 @@ function Add-PlanLicenceCheck {
         $type = ([string]$a['ResourceType']).ToLowerInvariant()
         $reasons = [System.Collections.Generic.List[string]]::new()
         foreach ($r in $rules) {
-            if ($type -notlike $r.Match) { continue }
-            if ($r.WhenAnyProperty.Count -gt 0) {
-                $hit = $false
-                foreach ($p in $r.WhenAnyProperty) { if (& $hasValue $a['Properties'] $p) { $hit = $true; break } }
-                if (-not $hit) { continue }
-            }
+            if (-not (Test-LicenceRuleApplies -Rule $r -ResourceType $type -Properties $a['Properties'])) { continue }
             if (-not $r.Known) { $null = $warnings.Add("$($r.Feature): no confirmed licence rule; '$($a['Name'])' ($type) is applied without a licence check"); continue }
             $ok = $readable -and @($r.ServicePlans | Where-Object { $available.Contains($_) }).Count -gt 0
             if ($ok) { continue }
