@@ -13,7 +13,8 @@ function ConvertTo-ApplyProperties {
           blocked. Specific users in IncludeUsers / ExcludeUsers (other than All, None, GuestsOrExternalUsers and
           the configured break-glass accounts) block the policy because users are not mirrored.
         - Role resources: assignments to users block the resource, roles go to groups only.
-        - Groups: Members and Owners are not carried over (users are not mirrored).
+        - Groups are copied as static, empty security groups (ADR 0003): no members, owners, group members, role or
+          licence assignments, and a dynamic membership rule is not carried over.
     #>
     [CmdletBinding()]
     param(
@@ -61,11 +62,22 @@ function ConvertTo-ApplyProperties {
         $props[$assignmentsKey] = [object[]]@($kept.ToArray())
     }
 
-    # Groups: no users
+    # Groups: static and empty (ADR 0003). No users, no group-in-group, no role or licence assignment, no dynamic rule.
     if ($Type -eq 'microsoft.entra.group') {
-        foreach ($name in 'Members', 'Owners') {
+        foreach ($name in 'Members', 'Owners', 'GroupAsMembers', 'MemberOf', 'AssignedLicenses', 'AssignedToRole', 'MembershipRule', 'MembershipRuleProcessingState') {
             $k = & $findKey $props $name
             if ($k) { $props.Remove($k) }
+        }
+        $gtKey = & $findKey $props 'GroupTypes'
+        if ($gtKey) {
+            $types = @($props[$gtKey] | Where-Object { [string]$_ -ine 'DynamicMembership' })
+            if ($types.Count -gt 0) { $props[$gtKey] = [object[]]$types } else { $props.Remove($gtKey) }
+        }
+        $nickKey = & $findKey $props 'MailNickname'
+        $dnKey = & $findKey $props 'DisplayName'
+        if (-not $nickKey -and $dnKey) {
+            $nick = ([string]$props[$dnKey] -replace '[^A-Za-z0-9_-]', '')
+            if ($nick) { $props['MailNickname'] = $nick }
         }
     }
 
@@ -92,7 +104,7 @@ function ConvertTo-ApplyProperties {
             if ($k) {
                 foreach ($g in @($props[$k])) {
                     if ([string]::IsNullOrWhiteSpace([string]$g)) { continue }
-                    if (-not $KnownGroups.Contains([string]$g)) { $reasons.Add("$listName '$g' does not exist in Dev and is not part of this plan") }
+                    if (-not $KnownGroups.Contains([string]$g)) { $reasons.Add("needs-group: $listName '$g' does not exist in Dev, is not part of this plan and has no recognisable persona (add it to PersonaMap or create it in Dev)") }
                 }
             }
         }

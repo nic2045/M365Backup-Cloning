@@ -74,3 +74,20 @@ Claude never ran any of this against a tenant. The unit tests use mocks; the DSC
 | Blocked entries | Policies with an unknown group, assignment filter or specific users are listed as blocked and are not in Dev |
 | Prod untouched | Entra audit log of the Prod tenant shows no change from the toolkit |
 | Audit log | `History\audit.jsonl` has one line per plan, refusal and apply, no IDs of the app registration, no thumbprint |
+
+# Part 3: Conditional Access copy with persona groups (writes to the Dev tenant)
+
+Claude never ran any of this against a tenant (mocks and invented fixtures only). Same rules as Part 2; start with one policy.
+
+| # | Check | How | Expected |
+|---|---|---|---|
+| 1 | Persona groups are recognised | Plan (Part 2, step 1) with a Prod snapshot that contains your Conditional Access policies. Look at the group rows `empty static copy (persona ...)` and at `Notes` | Your persona groups show the right persona. For a group with another Prod name: add it to `PersonaMap` in `config.psd1` and plan again |
+| 2 | Empty copies in Dev | Apply, then look at the groups in the Dev tenant | Same names as in Prod, **static**, **no members**, no owners, no membership rule, no licences, no role assignment |
+| 3 | Dynamic Prod groups | A dynamic Prod group in the plan | Created in Dev as a static empty group (the rule is not carried over) |
+| 4 | Policy assignment | Open the copied policy in Dev | Include/Exclude point to the Dev groups with the same name; state **Report-only**; the break-glass accounts/groups are in the exclusions |
+| 5 | Unknown group | A Prod policy that refers to a group without a persona that does not exist in Dev | The policy is **blocked** with `needs-group` and is not in Dev; no group was created for it |
+| 6 | Break-glass group | `BreakGlassGroups` names a group that does not exist in Dev | The plan creates it empty. Put the Dev break-glass accounts into it yourself before you leave Report-only |
+| 7 | Unverified: AADGroup creates a group from `DisplayName`, `MailNickname`, `SecurityEnabled`, `MailEnabled`, `Description`, `Ensure` | One test group | Created; if `Invoke-DscResource` rejects a property, tell me the message |
+| 8 | Unverified: the group names in `IncludeGroups` / `ExcludeGroups` of `AADConditionalAccessPolicy` are display names | One test policy | The policy resolves the groups by name in Dev |
+| 9 | Not done here: placing synchronised test users and admins into the persona groups (cross-tenant sync, nic2045/M365Backup-Cloning#7) | - | Follows with the reset/base configuration |
+
