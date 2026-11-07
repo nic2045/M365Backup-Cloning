@@ -33,7 +33,7 @@ if ($offline -and -not ($SourceSnapshotPath -and $TargetSnapshotPath)) {
 
 $config = Import-M365CloningConfig -Path $ConfigPath
 $entry = $config
-$resources = if ($entry.ContainsKey('Resources') -and $entry.Resources) { $entry.Resources } else { Get-M365CloningDefaultResources }
+$resources = if ($entry.ContainsKey('Resources') -and $entry.Resources) { $entry.Resources } else { Get-M365CloningDefaultResources -Config $entry }
 
 if ($DryRun) {
     Write-Host 'Dry run: no request is sent.'

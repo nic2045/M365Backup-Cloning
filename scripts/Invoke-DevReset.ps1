@@ -67,7 +67,7 @@ if ($Mode -eq 'Align') {
     }
     else {
         if (-not $ProdToken -or -not $DevToken) { throw 'Mode Align needs the drift report: pass -ProdToken and -DevToken, or the two snapshot files.' }
-        $resources = if ($config.ContainsKey('Resources') -and $config.Resources) { $config.Resources } else { Get-M365CloningDefaultResources }
+        $resources = if ($config.ContainsKey('Resources') -and $config.Resources) { $config.Resources } else { Get-M365CloningDefaultResources -Config $config }
         $prodFile = Get-UtcmTenantSnapshot -Token $ProdToken -Side Prod -TenantId $config.Prod.TenantId -Resources $resources -HistoryRoot $HistoryRoot
         $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $config.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
     }

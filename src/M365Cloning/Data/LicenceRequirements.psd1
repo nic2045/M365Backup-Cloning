@@ -44,6 +44,12 @@
             Source       = 'https://learn.microsoft.com/entra/fundamentals/licensing#microsoft-entra-conditional-access (authentication strength is a Conditional Access grant control)'
         }
         @{
+            Feature      = 'Authentication contexts (part of Conditional Access, Microsoft Entra ID P1)'
+            Match        = 'microsoft.entra.authenticationcontextclassreference'
+            ServicePlans = @('AAD_PREMIUM')
+            Source       = 'https://learn.microsoft.com/entra/identity-platform/developer-guide-conditional-access-authentication-context (prerequisites: Conditional Access requires Microsoft Entra ID P1; issue #38)'
+        }
+        @{
             Feature      = 'Custom Microsoft Entra roles (Microsoft Entra ID P1)'
             Match        = 'microsoft.entra.roledefinition'
             ServicePlans = @('AAD_PREMIUM')

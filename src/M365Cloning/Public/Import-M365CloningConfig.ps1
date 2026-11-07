@@ -120,5 +120,18 @@ function Import-M365CloningConfig {
             }
         }
     }
+    # Copy all (ADR 0006, issue #40): workloads that are on, and types the operator excludes in addition.
+    $workloads = @('Entra', 'Intune', 'Exchange', 'Teams', 'SecurityAndCompliance')
+    if ($config.ContainsKey('Workloads') -and $null -ne $config.Workloads) {
+        foreach ($w in @($config.Workloads)) {
+            if ($w -isnot [string] -or $workloads -notcontains $w) { throw "Workloads: unknown workload '$w' ($($workloads -join ', '))." }
+        }
+    }
+    if ($config.ContainsKey('ExcludeResourceTypes') -and $null -ne $config.ExcludeResourceTypes) {
+        $names = if ($config.ExcludeResourceTypes -is [hashtable]) { @($config.ExcludeResourceTypes.Keys) } else { @($config.ExcludeResourceTypes) }
+        foreach ($t in $names) {
+            if ($t -isnot [string] -or $t -notmatch '^microsoft\.[a-z0-9]+\.[a-z0-9]+$') { throw "ExcludeResourceTypes: '$t' is not a resource type name like 'microsoft.intune.devicecategory'." }
+        }
+    }
     $config
 }

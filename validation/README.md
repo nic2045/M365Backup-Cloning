@@ -185,3 +185,16 @@ Issue #32. Read only: the plan reads the Dev licences and blocks entries whose l
 | 5 | Not readable | Remove the permission for one run | Entries that need a licence are `blocked` with `license: not verified`; groups, users and invitations stay `planned` |
 | 6 | PendingActivation | A SKU whose service plan shows `PendingActivation` | It counts as missing until it is activated (Learn: it needs an explicit activation) |
 | 7 | Unverified | Entra ID Governance instead of P2 for PIM; terms of use | PIM accepts only `AAD_PREMIUM_P2` (the Governance plan name is not checked); terms of use only give a warning. Tell me if your tenant uses Governance |
+
+# Part 10: copy all unless excluded (ADR 0006)
+
+Claude never ran any of this against a tenant (mocks and invented fixtures only). Same gate as Part 2; look at the plan before any apply.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Snapshot of all default types | Drift report (Part 1) without `Resources` in `config.psd1` | The snapshot job accepts the type list of `Get-M365CloningDefaultResources` (Entra and Intune, without the excluded types). A type the service rejects: tell me its name, it goes on the exclusion list. |
+| 2 | Plan per type | Plan (Part 2, step 1) and open the Markdown | The table "Per resource type" shows planned, blocked, skipped and excluded entries. Blocked generic entries name the property with a Prod object ID; decide per type: exclude it, or clear the field in Prod. |
+| 3 | DSC names of generic types | The runner resolves each name with `Get-DscResource` (case does not matter) | A generic type without a Microsoft365DSC resource fails only its own action ("has no resource"); tell me the type. |
+| 4 | Authentication contexts (#38) | A Conditional Access policy that uses an authentication context | The context (`c1` ... `c25`) is created first with the same key, the policy is planned; without the context in Prod or Dev the policy is `needs-auth-context`. |
+| 5 | Enrollment (#35) | Prod with an enrollment status page, enrollment restrictions, an Autopilot profile | The defaults (priority 0) are `skipped: tenant default`. A platform restriction whose key `Identity` is a Prod object ID is blocked; an ESP with selected apps is blocked (apps are matched by ID). Tell me which ones Dev needs. |
+| 6 | Exclusion list | `ExcludeResourceTypes` in `config.psd1` | The type is no longer in the snapshot; in a snapshot that still has it, its objects show `excluded: <reason>`. |

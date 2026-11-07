@@ -23,6 +23,16 @@ function New-ApplyPlan {
         policies (apply order 2); a policy that names one that Dev lacks and the plan does not create is blocked
         ('needs-location' / 'needs-auth-strength'). The built-in authentication strengths exist in every tenant and are
         never changed ('skipped: built-in'). The authentication method policies are 'skipped: report-only' (lockout risk).
+        Copy all (ADR 0006, issue #40): every type of the catalog (Get-ResourceTypeCatalog) is planned through the
+        same generic path. A type on the exclusion list (Data/ExcludedResourceTypes.psd1, ExcludeResourceTypes in the
+        configuration, or a workload that is off) is 'skipped' with a reason starting with 'excluded:'. A type whose
+        object every tenant has and that cannot be created (Data/ResourceRules.psd1, TenantDefaults) is
+        'skipped: tenant default'. A property listed as secret (SecretProperties) skips the resource ('secret:').
+        Generic reference fields (References, Handler 'generic', for example AuthenticationContexts) are resolved by
+        their key against Dev and the creates of this plan. Only a type that the catalog does not know at all is
+        blocked ('no Microsoft365DSC resource is mapped').
+        Plan.TypeSummary counts per resource type: planned, blocked, skipped and excluded; Plan.ExcludedTypes lists
+        the excluded types of the workloads that are on (they are not in the snapshot by default).
         The plan holds the properties to apply (from Prod, ids removed). The plan file is local and git-ignored.
     #>
     [CmdletBinding()]
@@ -46,7 +56,8 @@ function New-ApplyPlan {
     $breakUsers = [string[]]@(& $list 'BreakGlass')
     $breakGroups = [string[]]@(& $list 'BreakGlassGroups')
 
-    $map = Get-DscResourceMap
+    $map = Get-ResourceTypeCatalog -Config $Config
+    $rules = Import-PowerShellDataFile -Path (Join-Path $script:ModuleRoot 'Data' 'ResourceRules.psd1')
     $comparison = Compare-TenantSnapshot -Source $Source -Target $Target
     $srcIndex = Get-SnapshotResourceIndex -Snapshot $Source
     $tgtIndex = Get-SnapshotResourceIndex -Snapshot $Target
@@ -117,7 +128,7 @@ function New-ApplyPlan {
     foreach ($t in $comparison.Types) {
         if ($t.ResourceType -notlike 'microsoft.intune.*') { continue }
         $entryMap = $map[$t.ResourceType]
-        if (-not $entryMap -or $entryMap.Secret) { continue }
+        if (-not $entryMap -or $entryMap.Secret -or $entryMap.Excluded -or $entryMap.ReportOnly) { continue }
         foreach ($polName in (@($t.Added) + @($t.Changed | ForEach-Object { $_.Name }))) {
             $entry = $srcIndex["$($t.ResourceType)|$polName"]
             if (-not $entry -or $entry.Resource['properties'] -isnot [System.Collections.IDictionary]) { continue }
@@ -145,6 +156,29 @@ function New-ApplyPlan {
     foreach ($entry in $tgtIndex.Values) { if ($entry.Type -eq $filterType) { $fid = & $idOf $entry.Resource; if ($fid) { $filterMap.DevNameToId[$entry.Name] = $fid } } }
     foreach ($t in $comparison.Types) { if ($t.ResourceType -eq $filterType) { foreach ($n in $t.Added) { $null = $filterMap.Planned.Add($n) } } }
 
+    # Generic reference fields (ADR 0006): field -> values that exist in Dev or that this plan creates first.
+    $references = @{}
+    $valueOf = { param($res, $key) $pp = $res['properties']; if ($pp -is [System.Collections.IDictionary]) { $hit = @($pp.Keys | Where-Object { $_ -ieq $key }) | Select-Object -First 1; if ($hit) { return [string]$pp[$hit] } }; '' }
+    foreach ($r in @($rules.References | Where-Object { $_.Handler -eq 'generic' })) {
+        $knownValues = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($entry in $tgtIndex.Values) { if ($entry.Type -eq $r.TargetType) { $v = & $valueOf $entry.Resource $r.MatchBy; if ($v) { $null = $knownValues.Add($v) } } }
+        $targetEntry = $map[$r.TargetType]
+        $targetCopied = $targetEntry -and -not $targetEntry.Excluded -and -not $targetEntry.Secret -and -not $targetEntry.ReportOnly
+        foreach ($t in $comparison.Types) {
+            if ($t.ResourceType -ne $r.TargetType -or -not $targetCopied) { continue }
+            foreach ($n in $t.Added) { $src = $srcIndex["$($t.ResourceType)|$n"]; if ($src) { $v = & $valueOf $src.Resource $r.MatchBy; if ($v) { $null = $knownValues.Add($v) } } }
+        }
+        $references[[string]$r.Field] = @{ Known = $knownValues; Reason = [string]$r.Reason; TargetType = [string]$r.TargetType }
+    }
+    $isTenantDefault = {
+        param($Entry, $Resource)
+        $rule = $Entry.TenantDefault
+        if (-not $rule -or -not $Resource -or $Resource['properties'] -isnot [System.Collections.IDictionary]) { return $false }
+        $pp = $Resource['properties']
+        $hit = @($pp.Keys | Where-Object { $_ -ieq [string]$rule.Property }) | Select-Object -First 1
+        $hit -and "$($pp[$hit])" -eq "$($rule.Value)"
+    }
+
     $built = [System.Collections.Generic.List[object]]::new()
     $add = {
         param($Type, $Name, $Operation, $Differences)
@@ -167,6 +201,10 @@ function New-ApplyPlan {
             $action.Status = 'skipped'
             $action.Reason = 'exists only in Dev; an apply never deletes'
         }
+        elseif ($entry -and $entry.Excluded) {
+            $action.Status = 'skipped'
+            $action.Reason = "excluded: $($entry.ExcludeReason)"
+        }
         elseif ($entry -and $entry.ReportOnly) {
             $action.Status = 'skipped'
             $action.Reason = "report-only: $($entry.ReportReason); never applied automatically (it decides who can sign in), review and change it in Dev by hand"
@@ -183,6 +221,14 @@ function New-ApplyPlan {
             $action.Status = 'skipped'
             $action.Reason = 'secret: the profile holds an encrypted value (OMA-URI); it is never copied, create it in Dev by hand'
         }
+        elseif ($srcResource -and ($secretProp = Get-ResourceSecretProperty -Resource $srcResource)) {
+            $action.Status = 'skipped'
+            $action.Reason = "secret: the property '$secretProp' holds a secret; the resource is never copied, create it in Dev by hand"
+        }
+        elseif ($entry -and (& $isTenantDefault $entry $srcResource)) {
+            $action.Status = 'skipped'
+            $action.Reason = "tenant default: every tenant has this object ($($entry.TenantDefault.Property) = $($entry.TenantDefault.Value)); it cannot be created, change it in Dev by hand if needed"
+        }
         elseif (-not $entry) {
             $action.Status = 'blocked'
             $action.Reason = "no Microsoft365DSC resource is mapped for '$Type'"
@@ -193,7 +239,7 @@ function New-ApplyPlan {
         }
         else {
             $resource = $srcIndex["$Type|$Name"].Resource
-            $converted = ConvertTo-ApplyProperties -Type $Type -Resource $resource -KnownGroups $known -BreakGlassUsers $breakUsers -BreakGlassGroups $breakGroups -FilterMap $filterMap -KnownLocations $knownLocations -KnownAuthStrengths $knownStrengths
+            $converted = ConvertTo-ApplyProperties -Type $Type -Resource $resource -KnownGroups $known -BreakGlassUsers $breakUsers -BreakGlassGroups $breakGroups -FilterMap $filterMap -KnownLocations $knownLocations -KnownAuthStrengths $knownStrengths -Entry $entry -References $references
             if ($converted.Reasons.Count -gt 0) {
                 $action.Status = 'blocked'
                 $action.Reason = ($converted.Reasons -join '; ')
@@ -251,16 +297,36 @@ function New-ApplyPlan {
     $built.Sort([System.Comparison[object]] { param($a, $b) [string]::CompareOrdinal($a.Key, $b.Key) })
     $actions = [object[]]@($built | ForEach-Object { $_.Action })
 
-    $count = { param($status) @($actions | Where-Object { $_.Status -eq $status }).Count }
+    $isExcluded = { param($a) $a.Status -eq 'skipped' -and ([string]$a.Reason).StartsWith('excluded:') }
+    $count = { param($status) @($actions | Where-Object { $_.Status -eq $status -and -not (& $isExcluded $_) }).Count }
+
+    # Per type: planned / blocked / skipped / excluded (ADR 0006: the report shows what makes no sense to copy).
+    $typeSummary = foreach ($g in @($actions | Group-Object { $_.ResourceType } | Sort-Object Name)) {
+        $items = @($g.Group)
+        [ordered]@{
+            ResourceType = [string]$g.Name
+            Planned      = @($items | Where-Object { $_.Status -eq 'planned' }).Count
+            Blocked      = @($items | Where-Object { $_.Status -eq 'blocked' }).Count
+            Skipped      = @($items | Where-Object { $_.Status -eq 'skipped' -and -not (& $isExcluded $_) }).Count
+            Excluded     = @($items | Where-Object { & $isExcluded $_ }).Count
+        }
+    }
+    $excludedTypes = foreach ($e in @($map.Values | Where-Object { $_.Excluded -and $_.ExcludeReason -notlike 'workload * is off*' } | Sort-Object { $_.Type })) {
+        [ordered]@{ ResourceType = [string]$e.Type; Reason = [string]$e.ExcludeReason }
+    }
+
     [ordered]@{
         Direction      = 'Prod -> Dev'
         TargetTenantId = [string]$Config['Dev']['TenantId']
         Actions        = $actions
         Notes          = [string[]]@($notes | Select-Object -Unique)
+        TypeSummary    = [object[]]@($typeSummary)
+        ExcludedTypes  = [object[]]@($excludedTypes)
         Summary        = [ordered]@{
-            Planned = [int](& $count 'planned')
-            Blocked = [int](& $count 'blocked')
-            Skipped = [int](& $count 'skipped')
+            Planned  = [int](& $count 'planned')
+            Blocked  = [int](& $count 'blocked')
+            Skipped  = [int](& $count 'skipped')
+            Excluded = [int]@($actions | Where-Object { & $isExcluded $_ }).Count
         }
     }
 }

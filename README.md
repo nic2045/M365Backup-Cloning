@@ -75,6 +75,19 @@ pwsh scripts/Invoke-DevUsers.ps1 -DevToken $d -Apply -ConfirmPlanHash <hash> [-S
 - Initial passwords: random, must be changed at first sign-in, never stored or logged. `-ShowInitialPasswords` prints them once to the console; without it an admin resets the password before the first sign-in.
 - Cross-tenant sync as the automatic way is a later step (#21).
 
+## Copy all unless excluded (ADR 0006, issue #40)
+
+The snapshot and the apply plan cover every resource type of the Tenant Configuration Management schema in the
+workloads that are on (Entra and Intune by default, `Workloads` in `config.psd1`). The type list is data
+(`src/M365Cloning/Data/ResourceTypes.psd1`, from the schema that Microsoft Learn links, with its date); the toolkit
+never fetches it at run time. A type without a rule of its own goes through one generic path: IDs are removed, known
+reference fields are matched by name or key (`Data/ResourceRules.psd1`, `References`), secret properties skip the
+resource, and a remaining Prod object ID in a `...Id` / `...Ids` property blocks it. Types that make no sense in Dev are
+on the exclusion list (`Data/ExcludedResourceTypes.psd1`, with a reason each; add more with `ExcludeResourceTypes` in
+`config.psd1`). The plan shows per resource type how many entries are planned, blocked, skipped and excluded, and lists
+the excluded types, so that the next type to exclude is easy to find. Conditional Access, groups, assignments, users,
+the reset and the licence check keep their own rules.
+
 ## Licence check (read only, issue #32)
 
 Every plan that writes to Dev (`Invoke-ApplyDev.ps1`, `Invoke-DevBaseline.ps1`, `Invoke-DevUsers.ps1`, and so the rebuild

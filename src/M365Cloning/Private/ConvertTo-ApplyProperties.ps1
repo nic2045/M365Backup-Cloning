@@ -23,6 +23,16 @@ function ConvertTo-ApplyProperties {
         - Role resources: assignments to users block the resource, roles go to groups only.
         - Groups are copied as static, empty security groups (ADR 0003): no members, owners, group members, role or
           licence assignments, and a dynamic membership rule is not carried over.
+        - Generic handling (ADR 0006, issue #40), from the catalog entry (Get-ResourceTypeCatalog) and the reference
+          table (Data/ResourceRules.psd1, References with Handler 'generic'):
+          * Id / Identity are dropped unless they are the key of the type (for example the authentication context
+            'c1'); a key that looks like an object ID cannot be matched in Dev and blocks the resource.
+          * Every value of a generic reference field (for example AuthenticationContexts) must exist in Dev or be
+            created earlier in the same plan; otherwise the resource is blocked with the reason of the table
+            ('needs-auth-context').
+          * Types without a rule of their own (Handling 'generic'): any other property ending in 'Id' or 'Ids' whose
+            value looks like an object ID blocks the resource, because objects are matched by name and a Prod object
+            ID means nothing in Dev. Assignments are handled above and are not searched.
     #>
     [CmdletBinding()]
     param(
@@ -36,14 +46,27 @@ function ConvertTo-ApplyProperties {
         # Named locations / authentication strengths that exist in Dev or are created earlier in the plan (issue #33).
         # Missing means none is known: a policy that names one is blocked (fail-closed).
         [System.Collections.Generic.HashSet[string]]$KnownLocations,
-        [System.Collections.Generic.HashSet[string]]$KnownAuthStrengths
+        [System.Collections.Generic.HashSet[string]]$KnownAuthStrengths,
+        # Catalog entry of the type (Get-ResourceTypeCatalog); missing means the rules before ADR 0006 only.
+        $Entry,
+        # Generic reference fields: field -> @{ Known = HashSet; Reason; TargetType } (New-ApplyPlan builds it).
+        [hashtable]$References = @{}
     )
 
     $reasons = [System.Collections.Generic.List[string]]::new()
     $source = if ($Resource['properties'] -is [System.Collections.IDictionary]) { $Resource['properties'] } else { @{} }
     $props = ConvertTo-CanonicalObject -Value $source
 
-    foreach ($key in @($props.Keys)) { if ($key -match '^(id|identity)$') { $props.Remove($key) } }
+    $typeKey = if ($Entry -and $Entry['Key']) { [string]$Entry['Key'] } else { '' }
+    $looksLikeObjectId = { param($v) [string]$v -match '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' }
+    foreach ($key in @($props.Keys)) {
+        if ($key -notmatch '^(id|identity)$') { continue }
+        if ($typeKey -and $key -ieq $typeKey) {
+            if (& $looksLikeObjectId $props[$key]) { $reasons.Add("the key '$key' is an object ID of Prod; it cannot be matched to an object in Dev") }
+            continue
+        }
+        $props.Remove($key)
+    }
     $props['Ensure'] = 'Present'
 
     $findKey = { param($dict, $name) @($dict.Keys | Where-Object { $_ -ieq $name }) | Select-Object -First 1 }
@@ -175,6 +198,35 @@ function ConvertTo-ApplyProperties {
         $egKey = & $findKey $props 'ExcludeGroups'; if (-not $egKey) { $egKey = 'ExcludeGroups' }
         $props[$euKey] = [object[]]@((@(if ($props.Contains($euKey)) { $props[$euKey] }) + $breakUsers) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique)
         $props[$egKey] = [object[]]@((@(if ($props.Contains($egKey)) { $props[$egKey] }) + $breakGroups) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique)
+    }
+
+    # Generic reference fields (ADR 0006): values must exist in Dev or be created earlier in the same plan.
+    foreach ($field in @($References.Keys)) {
+        $k = & $findKey $props $field
+        if (-not $k) { continue }
+        $ref = $References[$field]
+        foreach ($v in @($props[$k])) {
+            $text = [string]$v
+            if ([string]::IsNullOrWhiteSpace($text)) { continue }
+            if (-not $ref.Known -or -not $ref.Known.Contains($text)) {
+                $reasons.Add("$($ref.Reason): $field '$text' does not exist in Dev and is not part of this plan (add $($ref.TargetType) to the resources or create it in Dev)")
+            }
+        }
+    }
+
+    # Types without a rule of their own (ADR 0006): a Prod object ID in any other '...Id' / '...Ids' property blocks.
+    if ($Entry -and [string]$Entry['Handling'] -eq 'generic') {
+        $stack = [System.Collections.Generic.Stack[object]]::new()
+        foreach ($k in @($props.Keys)) { if ($k -ine $assignmentsKey -and -not ($typeKey -and $k -ieq $typeKey)) { $stack.Push(@($k, $props[$k])) } }
+        while ($stack.Count -gt 0) {
+            $pair = $stack.Pop(); $name = [string]$pair[0]; $value = $pair[1]
+            if ($value -is [System.Collections.IDictionary]) { foreach ($k in @($value.Keys)) { $stack.Push(@("$name.$k", $value[$k])) }; continue }
+            if ($value -is [System.Collections.IEnumerable] -and $value -isnot [string]) { foreach ($item in $value) { $stack.Push(@($name, $item)) }; continue }
+            $leaf = ($name -split '\.')[-1]
+            if ($leaf -match '(?i)ids?$' -and (& $looksLikeObjectId $value)) {
+                $reasons.Add("'$name' refers to an object by its Prod ID; objects are matched by name, so the resource cannot be copied as it is")
+            }
+        }
     }
 
     [pscustomobject]@{ Properties = $props; Reasons = @($reasons | Select-Object -Unique) }
