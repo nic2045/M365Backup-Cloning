@@ -17,6 +17,7 @@ function ConvertTo-ApplyPlanMarkdown {
     $s = $Plan['Summary']
     $line = "Planned: $($s['Planned']) | Blocked: $($s['Blocked']) | Skipped: $($s['Skipped'])"
     if ($s.Contains('Exists')) { $line += " | Exists: $($s['Exists'])" }
+    if ($s.Contains('Protected')) { $line += " | Protected: $($s['Protected']) | Invite (info): $($s['Invite'])" }
     $null = $sb.AppendLine($line)
     if ($s.Contains('InBaseline')) {
         $null = $sb.AppendLine()
@@ -29,6 +30,14 @@ function ConvertTo-ApplyPlanMarkdown {
         $reason = ([string]$a['Reason']).Replace('|', '\|')
         $name = ([string]$a['Name']).Replace('|', '\|')
         $null = $sb.AppendLine("| $($a['Status']) | $($a['Operation']) | $($a['ResourceType']) | $name | $reason |")
+    }
+    if ($Plan.Contains('Protected') -and @($Plan['Protected']).Count -gt 0) {
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('Protected (never deleted or changed):')
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('| Kind | Name | Source |')
+        $null = $sb.AppendLine('|---|---|---|')
+        foreach ($p in $Plan['Protected']) { $null = $sb.AppendLine("| $($p['Kind']) | $(([string]$p['Name']).Replace('|', '\|')) | $($p['Source']) |") }
     }
     if ($Plan.Contains('Notes') -and @($Plan['Notes']).Count -gt 0) {
         $null = $sb.AppendLine()

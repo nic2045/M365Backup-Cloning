@@ -48,8 +48,12 @@
         # inbound invitations redeemed automatically (invited Prod admins get no consent prompt). No cross-tenant sync.
         CrossTenantPartner = $true
     }
-    # Accounts that are never touched (admins, service accounts, break-glass).
+    # Accounts that are never touched (admins, service accounts, break-glass). The factory reset
+    # (scripts/Invoke-DevReset.ps1, ADR 0005) also keeps the Global Administrators of Prod (their guests in Dev),
+    # all guests and the base state; it refuses to run when this list and BreakGlass are both empty.
     ProtectedAccounts = @('<upn-or-object-id>')
+    # Service accounts in Dev that the reset never deletes (UPN or object ID).
+    ServiceAccounts   = @()
     # Optional: override the resource types of the snapshot (see Get-M365CloningDefaultResources).
     # Resources = @('microsoft.entra.conditionalaccesspolicy')
 }
