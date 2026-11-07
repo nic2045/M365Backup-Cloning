@@ -253,7 +253,7 @@ Claude never ran this against a tenant (job runner with fake tokens and the fixt
 
 | Step | What | How | Expected |
 |---|---|---|---|
-| 1 | Host | Windows with PowerShell 7 and Microsoft365DSC; the certificates of both app registrations in the personal store of the account that runs the API (`certlm.msc`/`certmgr.msc`); `M365CLONING_PWSH` if `pwsh` is not on the path | `pwsh -c "Import-Module ./src/M365Cloning; Get-AppOnlyGraphToken -TenantId <dev> -ClientId <id> -CertThumbprint <thumb>"` returns `System.Security.SecureString` |
+| 1 | Host | Windows with PowerShell 7, Microsoft365DSC and Az.Accounts (`Install-Module Az.Accounts -Scope CurrentUser`); the certificates of both app registrations in the personal store of the account that runs the API (`certlm.msc`/`certmgr.msc`); `M365CLONING_PWSH` if `pwsh` is not on the path | `Connect-AzAccount -ServicePrincipal -Tenant <dev> -ApplicationId <id> -CertificateThumbprint <thumb> -Scope Process` succeeds, `Get-AzAccessToken -ResourceUrl https://graph.microsoft.com` returns a token; `Disconnect-AzAccount -Scope Process`. No Az context file is written (`~/.Azure/AzureRmContext.json` unchanged) |
 | 2 | Drift report | Sign in with the role `Applier`, *Bring Dev in line* > "Run the drift report" | Job page shows four steps, progress moves, then "Succeeded" with "Open the report"; the audit line `report` carries your name as `Actor` |
 | 3 | Reader | Sign in with `Reader` only | No start buttons, "Starting this needs the role Applier"; `POST /api/jobs` by hand answers 403 |
 | 4 | Intune plan | *Areas* > *Intune* > "Create an Intune plan" | A plan with the tag "Intune"; entries outside Intune are `skipped` with `area: outside Intune`; empty group copies for Intune assignments stay planned |

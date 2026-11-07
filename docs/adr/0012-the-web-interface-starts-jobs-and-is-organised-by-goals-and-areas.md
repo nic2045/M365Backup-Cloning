@@ -2,6 +2,7 @@
 
 Status: Accepted (2026-11-07, issues #14, #66). Supersedes point 4 (workflow navigation) of ADR 0011 and, in point 7,
 "the interface stays read only, commands are shown, not run". The rest of ADR 0011 stays.
+The sign-in part of point 7 is superseded by ADR 0013 (Az.Accounts instead of own token code).
 
 ## Context
 

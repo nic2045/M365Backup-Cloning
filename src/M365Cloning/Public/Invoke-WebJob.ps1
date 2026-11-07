@@ -19,8 +19,8 @@ function Invoke-WebJob {
           config (second confirmation). The script then builds the plan again and applies it only if the hash is still
           the same (as on the console). Area, reset mode and device action come from the plan itself. A refused
           request writes an audit line 'refused'.
-        - Tokens: app-only Graph tokens from the certificate of each app registration (Get-AppOnlyGraphToken), only for
-          the tenants the action reads; they stay in memory.
+        - Tokens: Graph tokens from the certificate of each app registration through Az.Accounts (Get-WebJobGraphToken,
+          ADR 0013), only for the tenants the action reads; they stay in memory.
         - Actor: the person who started the job is written into every audit line of the run (M365CLONING_ACTOR).
         - Cancel: the API creates History\jobs\<id>.cancel; the runner checks it before each step. A running script
           is not interrupted (an apply half done is worse than one done).
@@ -145,7 +145,7 @@ function Invoke-WebJob {
         if (& $cancelled) { return }
         & $setStep 'signin' 'running'; & $save
         $provider = if ($TokenProvider) { $TokenProvider } else {
-            { param($Config, [string]$Side) $t = $Config[$Side]; Get-AppOnlyGraphToken -TenantId ([string]$t.TenantId) -ClientId ([string]$t.ClientId) -CertThumbprint ([string]$t.CertThumbprint) }
+            { param($Config, [string]$Side) $t = $Config[$Side]; Get-WebJobGraphToken -TenantId ([string]$t.TenantId) -ClientId ([string]$t.ClientId) -CertThumbprint ([string]$t.CertThumbprint) }
         }
         try {
             foreach ($side in @($kindDef['tenants'])) { $params["${side}Token"] = & $provider $config $side; & $log "signed in to $side" }

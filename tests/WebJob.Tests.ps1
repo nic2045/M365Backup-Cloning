@@ -262,42 +262,64 @@ Describe 'Invoke-WebJob: apply needs the confirmation' {
     }
 }
 
-Describe 'Get-AppOnlyGraphToken' {
+Describe 'Get-WebJobGraphToken (Az.Accounts, ADR 0013)' {
     BeforeAll {
-        $rsa = [System.Security.Cryptography.RSA]::Create(2048)
-        $req = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new('CN=m365cloning-test', $rsa, 'SHA256', [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
-        $script:Cert = $req.CreateSelfSigned([DateTimeOffset]::UtcNow.AddDays(-1), [DateTimeOffset]::UtcNow.AddDays(1))
-        $script:FromB64Url = { param([string]$s) $p = $s.Replace('-', '+').Replace('_', '/'); switch ($p.Length % 4) { 2 { $p += '==' } 3 { $p += '=' } }; [Convert]::FromBase64String($p) }
+        # Stand-ins so the Az cmdlets can be mocked where Az.Accounts is not installed (CI, Linux). Nothing signs in.
+        $stubs = @{
+            'Connect-AzAccount'    = { param([switch]$ServicePrincipal, $Tenant, $ApplicationId, $CertificateThumbprint, $Scope, [switch]$SkipContextPopulation) }
+            'Get-AzAccessToken'    = { param($ResourceUrl, $TenantId) }
+            'Disconnect-AzAccount' = { param($Scope) }
+        }
+        foreach ($name in $stubs.Keys) {
+            if (-not (Get-Command $name -ErrorAction SilentlyContinue)) { New-Item -Path "Function:\global:$name" -Value $stubs[$name] -Force | Out-Null }
+        }
     }
-    It 'posts a signed certificate assertion for the Graph scope and returns a SecureString' {
-        $script:Sent = $null
-        $token = Get-AppOnlyGraphToken -TenantId 'tenant-dev-0001' -ClientId 'client-dev-0001' -Certificate $script:Cert -Post { param($Uri, $Body) $script:Sent = @{ Uri = $Uri; Body = $Body }; @{ access_token = 'fake-access-token' } }
+    BeforeEach {
+        Mock -ModuleName M365Cloning Connect-AzAccount { }
+        Mock -ModuleName M365Cloning Disconnect-AzAccount { }
+    }
+    It 'signs in with the certificate (process scope), asks for a Graph token and signs out' {
+        Mock -ModuleName M365Cloning Get-AzAccessToken { [pscustomobject]@{ Token = (ConvertTo-SecureString 'fake-token' -AsPlainText -Force) } }
+        $token = InModuleScope M365Cloning { Get-WebJobGraphToken -TenantId 'tenant-dev-0001' -ClientId 'client-dev-0001' -CertThumbprint 'thumb-dev-0001' }
         $token | Should -BeOfType [securestring]
-        [System.Net.NetworkCredential]::new('', $token).Password | Should -Be 'fake-access-token'
-        $script:Sent.Uri | Should -Be 'https://login.microsoftonline.com/tenant-dev-0001/oauth2/v2.0/token'
-        $script:Sent.Body['scope'] | Should -Be 'https://graph.microsoft.com/.default'
-        $script:Sent.Body['grant_type'] | Should -Be 'client_credentials'
-        $parts = $script:Sent.Body['client_assertion'].Split('.')
-        $parts.Count | Should -Be 3
-        $claims = [System.Text.Encoding]::UTF8.GetString((& $script:FromB64Url $parts[1])) | ConvertFrom-Json
-        $claims.iss | Should -Be 'client-dev-0001'
-        $claims.sub | Should -Be 'client-dev-0001'
-        $claims.aud | Should -Be $script:Sent.Uri
-        ($claims.exp - $claims.nbf) | Should -BeLessOrEqual 600
-        $header = [System.Text.Encoding]::UTF8.GetString((& $script:FromB64Url $parts[0])) | ConvertFrom-Json
-        $header.alg | Should -Be 'RS256'
-        $ok = $script:Cert.PublicKey.GetRSAPublicKey().VerifyData([System.Text.Encoding]::UTF8.GetBytes("$($parts[0]).$($parts[1])"), (& $script:FromB64Url $parts[2]), 'SHA256', [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
-        $ok | Should -BeTrue
+        [System.Net.NetworkCredential]::new('', $token).Password | Should -Be 'fake-token'
+        Should -Invoke -ModuleName M365Cloning Connect-AzAccount -Times 1 -Exactly -ParameterFilter {
+            $ServicePrincipal -and $Tenant -eq 'tenant-dev-0001' -and $ApplicationId -eq 'client-dev-0001' -and $CertificateThumbprint -eq 'thumb-dev-0001' -and $Scope -eq 'Process'
+        }
+        Should -Invoke -ModuleName M365Cloning Get-AzAccessToken -Times 1 -Exactly -ParameterFilter { $ResourceUrl -eq 'https://graph.microsoft.com' }
+        Should -Invoke -ModuleName M365Cloning Disconnect-AzAccount -Times 1 -Exactly
     }
-    It 'names the cause of a refused sign-in without the assertion' {
-        { Get-AppOnlyGraphToken -TenantId 't' -ClientId 'c' -Certificate $script:Cert -Post { throw 'AADSTS700027: Client assertion contains an invalid signature.' } } |
-            Should -Throw 'Sign-in of the app registration failed: AADSTS700027*'
+    It 'accepts the plain string token of older Az.Accounts versions' {
+        Mock -ModuleName M365Cloning Get-AzAccessToken { [pscustomobject]@{ Token = 'plain-token' } }
+        $token = InModuleScope M365Cloning { Get-WebJobGraphToken -TenantId 't' -ClientId 'c' -CertThumbprint 'x' }
+        [System.Net.NetworkCredential]::new('', $token).Password | Should -Be 'plain-token'
     }
-    It 'refuses placeholders of the example config' {
-        { Get-AppOnlyGraphToken -TenantId '<dev-tenant-guid>' -ClientId 'c' -Certificate $script:Cert -Post { @{} } } | Should -Throw '*no TenantId*'
-        { Get-AppOnlyGraphToken -TenantId 't' -ClientId 'c' -CertThumbprint '<certificate-thumbprint>' -Post { @{} } } | Should -Throw '*no CertThumbprint*'
+    It 'names the cause of a refused sign-in and still signs out' {
+        Mock -ModuleName M365Cloning Connect-AzAccount { throw 'AADSTS700027: Client assertion contains an invalid signature.' }
+        { InModuleScope M365Cloning { Get-WebJobGraphToken -TenantId 't' -ClientId 'c' -CertThumbprint 'x' } } | Should -Throw 'Sign-in of the app registration failed: AADSTS700027*'
+        Should -Invoke -ModuleName M365Cloning Disconnect-AzAccount -Times 1 -Exactly
+    }
+    It 'refuses placeholders of the example config without signing in' {
+        { InModuleScope M365Cloning { Get-WebJobGraphToken -TenantId '<dev-tenant-guid>' -ClientId 'c' -CertThumbprint 'x' } } | Should -Throw '*no TenantId*'
+        { InModuleScope M365Cloning { Get-WebJobGraphToken -TenantId 't' -ClientId 'c' -CertThumbprint '<certificate-thumbprint>' } } | Should -Throw '*no CertThumbprint*'
+        Should -Invoke -ModuleName M365Cloning Connect-AzAccount -Times 0 -Exactly
     }
     It 'fails when the answer has no token' {
-        { Get-AppOnlyGraphToken -TenantId 't' -ClientId 'c' -Certificate $script:Cert -Post { @{ token_type = 'Bearer' } } } | Should -Throw '*no access token*'
+        Mock -ModuleName M365Cloning Get-AzAccessToken { [pscustomobject]@{ Token = '' } }
+        { InModuleScope M365Cloning { Get-WebJobGraphToken -TenantId 't' -ClientId 'c' -CertThumbprint 'x' } } | Should -Throw '*no access token*'
+    }
+    It 'is what the job runner uses without a TokenProvider, once per tenant the action reads' {
+        Mock -ModuleName M365Cloning Get-WebJobGraphToken { ConvertTo-SecureString "fake-$TenantId" -AsPlainText -Force }
+        $script:Calls = [System.Collections.Generic.List[object]]::new()
+        $root = Join-Path $TestDrive 'azsignin'
+        $path = script:New-JobFile -Root $root -Action 'plan-users'
+        Invoke-WebJob -JobPath $path -HistoryRoot $root -ConfigPath $script:Valid -ScriptRoot $script:Scripts -ScriptRunner { param($Path, $Parameters, $Log) $script:Calls.Add($Parameters); 0 }
+        Should -Invoke -ModuleName M365Cloning Get-WebJobGraphToken -Times 1 -Exactly -ParameterFilter { $TenantId -eq 'tenant-dev-0001' -and $ClientId -eq 'client-dev-0001' -and $CertThumbprint -eq 'thumb-dev-0001' }
+        [System.Net.NetworkCredential]::new('', $script:Calls[0]['DevToken']).Password | Should -Be 'fake-tenant-dev-0001'
+        $script:Calls[0].Contains('ProdToken') | Should -BeFalse
+    }
+    It 'no own token code is left in the module (issue #70)' {
+        $src = Join-Path $PSScriptRoot '..' 'src'
+        Get-ChildItem $src -Recurse -Filter '*.ps1' | Select-String -Pattern 'client_assertion|oauth2/v2.0/token|SignData' | Should -BeNullOrEmpty
     }
 }
