@@ -68,4 +68,12 @@
     # ExcludeResourceTypes = @{ 'microsoft.intune.devicecategory' = 'not needed in Dev' }
     # Optional: override the resource types of the snapshot (see Get-M365CloningDefaultResources).
     # Resources = @('microsoft.entra.conditionalaccesspolicy')
+    # Intune backup with IntuneCD (scripts/Invoke-IntuneBackup.ps1, issue #68, ADR 0014): read only, both tenants,
+    # one Git commit per run in YOUR private configuration repository (ADR 0004; never this toolkit). Not pushed.
+    # ConfigRepository = '<path-to-your-private-configuration-repository>'
+    # IntuneBackup = @{
+    #     Python  = 'python'              # default: python (Windows) / python3; needs tools/intunecd/requirements.txt
+    #     # More IntuneCD types to leave out, e.g. scripts if they may carry secrets:
+    #     Exclude = @('PowershellScripts', 'ProactiveRemediation', 'ShellScripts', 'ComplianceScripts')
+    # }
 }

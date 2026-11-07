@@ -1,0 +1,3 @@
+# Tests of the wrapper. Lock: pip-compile --generate-hashes requirements-dev.in (Python 3.12)
+-r requirements.txt
+pytest

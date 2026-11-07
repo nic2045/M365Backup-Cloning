@@ -32,6 +32,8 @@ def write_history(root: Path) -> Path:
             continue
         if url.startswith("/api/reports/"):
             (reports / f"{body['id']}.json").write_text(json.dumps(body["report"]), encoding="utf-8")
+        elif url.startswith("/api/intune-backups/"):
+            (reports / f"{body['id']}.json").write_text(json.dumps(body["backup"]), encoding="utf-8")
         elif url.startswith("/api/plans/"):
             plan_file = {"SchemaVersion": body["schemaVersion"], "Kind": body["kind"], "CreatedUtc": body["createdUtc"],
                          "PlanHash": body["planHash"], "Plan": body["plan"]}
@@ -62,7 +64,8 @@ def plan_and_report_ids():
 
 
 REPORTS, PLANS = plan_and_report_ids()
-PAGES = ["/", "/reports", "/reports?kind=tenantfit", "/plans", "/plans?kind=apply", "/audit", "/audit?mode=fitcheck"] \
+PAGES = ["/", "/reports", "/reports?kind=tenantfit", "/plans", "/plans?kind=apply", "/audit", "/audit?mode=fitcheck",
+         "/audit?mode=backup", "/history/intune", "/history/intune?id=intune-backup-20261106-120000", "/areas/intune"] \
     + [f"/reports/{r}" for r in REPORTS] + [f"/plans/{p}" for p in PLANS]
 
 

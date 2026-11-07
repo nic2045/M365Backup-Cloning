@@ -9,6 +9,8 @@
         'Import-M365CloningConfig'
         'Get-WebJobDefinition'
         'Invoke-WebJob'
+        'Invoke-IntuneBackup'
+        'Get-IntuneBackupSettings'
         'Get-TenantIdHash'
         'Read-ApplyPlanFile'
         'Get-M365CloningDefaultResources'

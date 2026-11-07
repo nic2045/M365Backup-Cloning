@@ -82,6 +82,9 @@ def test_applier_starts_a_drift_report(app, idle, launcher):
     (["Applier"], "plan-baseline", 202),
     (["Applier"], "plan-users", 202),
     (["Applier"], "fitcheck", 202),
+    (["Reader"], "intune-backup", 403),
+    (["Resetter"], "intune-backup", 403),
+    (["Applier"], "intune-backup", 202),
 ])
 def test_roles_by_action(app, idle, roles, action, status):
     response = as_role(app, *roles).post("/api/jobs", json={"action": action})

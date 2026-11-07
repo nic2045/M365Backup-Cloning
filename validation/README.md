@@ -263,3 +263,19 @@ Claude never ran this against a tenant (job runner with fake tokens and the fixt
 | 8 | Reset | `Resetter`: *Start Dev fresh*, mode Align, devices Keep, "Create the reset plan"; open it, tick the box, type the Dev tenant ID, "Reset Dev" | With a wrong tenant ID: refused (`tenant-mismatch`), nothing deleted. With the right one: the reset job runs as `scripts/Invoke-DevReset.ps1 -Apply` |
 | 9 | Cancel | Start a drift report and cancel it at once | Status "Cancelled", the remaining steps "Skipped"; a script that already runs finishes first |
 | 10 | Runner missing | Set `M365CLONING_PWSH` to a wrong path, start a job | Error page "The job runner could not be started" (`job-start-failed`); the next start is not blocked |
+
+# Part 15: Intune backup and change history (issue #68, ADR 0014)
+
+Claude never ran this against a tenant (IntuneCD replaced by a stand-in, invented files, a test repository only). Nothing is written to a tenant; the steps write to your configuration repository.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Permissions | Both app registrations, application permissions with admin consent: `DeviceManagementConfiguration.Read.All`, `DeviceManagementApps.Read.All`, `DeviceManagementServiceConfig.Read.All`, `DeviceManagementRBAC.Read.All`, `DeviceManagementManagedDevices.Read.All`, `DeviceManagementScripts.Read.All`, `Group.Read.All`, `Policy.Read.All` | Listed and granted; no ReadWrite permission is needed for the backup |
+| 2 | Host | Python 3.12 and `pip install --require-hashes -r tools/intunecd/requirements.txt` (account of the job runner), Git on the path; `ConfigRepository` in `config.psd1` = a private Git repository with at least one commit | `scripts/Invoke-IntuneBackup.ps1 -DryRun` names the repository, Python and the left-out types |
+| 3 | First run | Web: *History* > *Intune changes* > "Back up Intune" (role Applier); or the script with `-ProdToken` / `-DevToken` | Job succeeds; the repository has `intune/prod` and `intune/dev` with one JSON per configuration (folder per type, display names) and one new commit "Intune backup <time>" by `M365Cloning backup` with "Started by: <you>"; nothing was pushed |
+| 4 | No secrets | Search the new files for `secretReferenceValueId`, OMA values of custom profiles with encryption, VPP or APNs tokens, activation lock codes | None (encrypted OMA values are not read). Script contents of PowerShell/shell/remediation scripts are there unless you left the types out (`IntuneBackup.Exclude`) |
+| 5 | Run again | Start the backup again without a change in Intune | "Nothing changed since the run before; no commit" |
+| 6 | Change | Change one setting of a test profile in Dev, add one filter, delete one test profile; back up | The page shows for Dev one changed, one added, one removed file; `git show` in the repository shows the setting; Prod unchanged |
+| 7 | Failure | Remove a permission from the Dev registration (or use a wrong thumbprint for Dev) and back up | The job fails with the cause in the log; the repository is unchanged (`git status` clean, no commit); `History/tmp` has no folder left |
+| 8 | Audit | *History* > *Audit log*, filter "Intune backup" | One line per run with counts only and your name as Actor |
+| 9 | Tenants untouched | Intune audit logs of both tenants for the time of the runs | Only reads by the app registrations; no create, update or delete |

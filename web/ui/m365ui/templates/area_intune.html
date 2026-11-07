@@ -33,4 +33,14 @@
   {% else %}{{ empty(_("No Intune plan yet"), _("Create one; it changes nothing until you confirm it."), "plans") }}{% endif %}
   {{ start_form("plan-apply", _("Create an Intune plan"), "plans", "Applier", fields={"area": "Intune"}, running=running, secondary=plan is not none) }}
 </section>
+
+<h2>{{ _("Intune backup") }}</h2>
+<section class="card">
+  {% if backup %}
+  <p>{{ _("Last backup") }}: <a href="/history/intune?id={{ backup.id }}">{{ backup.createdUtc|when }}</a>
+    {% if backup.unchanged %}{{ badge("unchanged") }}{% else %}<span class="meta">· {{ backup.added }} {{ _("added") }} · {{ backup.changed }} {{ _("changed") }} · {{ backup.removed }} {{ _("removed") }}</span>{% endif %}</p>
+  <p class="button-row"><a class="button button-secondary" href="/history/intune">{{ icon("changes") }} {{ _("Show the Intune changes") }}</a></p>
+  {% elif backups_ok %}{{ empty(_("No backup yet"), _("The backup saves the Intune configuration of both tenants in your configuration repository and shows what changed."), "backup") }}{% endif %}
+  {{ start_form("intune-backup", _("Back up Intune"), "backup", "Applier", running=running, secondary=True) }}
+</section>
 {% endblock %}

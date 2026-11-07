@@ -834,8 +834,10 @@
             "apply",
             "refused",
             "reset",
-            "fitcheck"
-          ]
+            "fitcheck",
+            "backup"
+          ],
+          "description": "backup: Intune backup with IntuneCD (issue #68); the counts are in Reason, no names."
         },
         "PlanHash": {
           "type": "string",
@@ -1373,13 +1375,14 @@
       "enum": [
         "drift",
         "fitcheck",
+        "intune-backup",
         "plan-apply",
         "plan-baseline",
         "plan-users",
         "plan-reset",
         "apply"
       ],
-      "description": "What a job does (issue #14). drift: drift report; fitcheck: suitability check; plan-*: a preview plan of that kind (changes nothing); apply: applies one plan after the confirmation (reset plans need the role Resetter and a second confirmation)."
+      "description": "What a job does (issue #14). drift: drift report; fitcheck: suitability check; intune-backup: read-only backup of the Intune configuration of both tenants into the configuration repository (issue #68); plan-*: a preview plan of that kind (changes nothing); apply: applies one plan after the confirmation (reset plans need the role Resetter and a second confirmation)."
     },
     "JobStatus": {
       "enum": [
@@ -1799,6 +1802,211 @@
       },
       "additionalProperties": false,
       "description": "Body of POST /api/jobs (issue #14)."
+    },
+    "IntuneBackupChange": {
+      "type": "object",
+      "required": [
+        "Path",
+        "Change"
+      ],
+      "properties": {
+        "Path": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "File below the folder of the tenant, as IntuneCD names it (type folder / display name)."
+        },
+        "Change": {
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "One file of the Intune backup that differs from the last run (issue #68)."
+    },
+    "IntuneBackupTenant": {
+      "type": "object",
+      "required": [
+        "Side",
+        "Folder",
+        "Files",
+        "Added",
+        "Changed",
+        "Removed",
+        "Changes",
+        "Truncated"
+      ],
+      "properties": {
+        "Side": {
+          "enum": [
+            "Prod",
+            "Dev"
+          ]
+        },
+        "Folder": {
+          "type": "string",
+          "pattern": "^intune/(prod|dev)$",
+          "description": "Folder in the configuration repository."
+        },
+        "Files": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Files of the backup of this tenant."
+        },
+        "Added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Changes": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/IntuneBackupChange"
+          }
+        },
+        "Truncated": {
+          "type": "boolean",
+          "description": "More than 1000 changes: the list holds the first 1000 by path."
+        }
+      },
+      "additionalProperties": false
+    },
+    "IntuneBackup": {
+      "type": "object",
+      "required": [
+        "SchemaVersion",
+        "Kind",
+        "CreatedUtc",
+        "Commit",
+        "Unchanged",
+        "Tenants"
+      ],
+      "properties": {
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "const": "intunebackup"
+        },
+        "CreatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Commit": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})?$",
+          "description": "The commit in the configuration repository; empty when nothing changed."
+        },
+        "Unchanged": {
+          "type": "boolean"
+        },
+        "Tenants": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/IntuneBackupTenant"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "File History/reports/intune-backup-<yyyyMMdd-HHmmss>.json (issue #68, ADR 0014): what changed in the Intune backup of each tenant since the last run. Only paths and counts; the content stays in the configuration repository."
+    },
+    "IntuneBackupListItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "createdUtc"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^intune-backup-[0-9]{8}-[0-9]{6}$"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "unchanged": {
+          "type": "boolean"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})?$"
+        },
+        "added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "$ref": "#/$defs/ListItemState"
+        }
+      },
+      "additionalProperties": false,
+      "description": "One run of the Intune backup in the list (counts of both tenants together)."
+    },
+    "IntuneBackupList": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "items"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IntuneBackupListItem"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "IntuneBackupResponse": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "createdUtc",
+        "backup"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^intune-backup-[0-9]{8}-[0-9]{6}$"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "backup": {
+          "$ref": "#/$defs/IntuneBackup"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

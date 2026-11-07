@@ -2889,6 +2889,131 @@
           "total": 4
         }
       }
+    },
+    "GET /api/intune-backups": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "items": [
+          {
+            "id": "intune-backup-20261107-120000",
+            "createdUtc": "2026-11-07T12:00:00Z",
+            "unchanged": false,
+            "commit": "3f1c2a9e8b7d6c5b4a39281706f5e4d3c2b1a090",
+            "added": 1,
+            "changed": 2,
+            "removed": 1
+          },
+          {
+            "id": "intune-backup-20261106-120000",
+            "createdUtc": "2026-11-06T12:00:00Z",
+            "unchanged": true,
+            "commit": "",
+            "added": 0,
+            "changed": 0,
+            "removed": 0
+          }
+        ]
+      }
+    },
+    "GET /api/intune-backups/intune-backup-20261107-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "intune-backup-20261107-120000",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "backup": {
+          "SchemaVersion": "2",
+          "Kind": "intunebackup",
+          "CreatedUtc": "2026-11-07T12:00:00Z",
+          "Commit": "3f1c2a9e8b7d6c5b4a39281706f5e4d3c2b1a090",
+          "Unchanged": false,
+          "Tenants": [
+            {
+              "Side": "Prod",
+              "Folder": "intune/prod",
+              "Files": 128,
+              "Added": 1,
+              "Changed": 1,
+              "Removed": 1,
+              "Changes": [
+                {
+                  "Path": "Compliance Policies/Policies/Windows - Compliance baseline.json",
+                  "Change": "changed"
+                },
+                {
+                  "Path": "Settings Catalog/Windows - Example security baseline.json",
+                  "Change": "added"
+                },
+                {
+                  "Path": "Device Configurations/Windows - Example Wi-Fi.json",
+                  "Change": "removed"
+                }
+              ],
+              "Truncated": false
+            },
+            {
+              "Side": "Dev",
+              "Folder": "intune/dev",
+              "Files": 117,
+              "Added": 0,
+              "Changed": 1,
+              "Removed": 0,
+              "Changes": [
+                {
+                  "Path": "Settings Catalog/Windows - Example security baseline.json",
+                  "Change": "changed"
+                }
+              ],
+              "Truncated": false
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/intune-backups/intune-backup-20261106-120000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "intune-backup-20261106-120000",
+        "createdUtc": "2026-11-06T12:00:00Z",
+        "backup": {
+          "SchemaVersion": "2",
+          "Kind": "intunebackup",
+          "CreatedUtc": "2026-11-06T12:00:00Z",
+          "Commit": "",
+          "Unchanged": true,
+          "Tenants": [
+            {
+              "Side": "Prod",
+              "Folder": "intune/prod",
+              "Files": 128,
+              "Added": 0,
+              "Changed": 0,
+              "Removed": 0,
+              "Changes": [],
+              "Truncated": false
+            },
+            {
+              "Side": "Dev",
+              "Folder": "intune/dev",
+              "Files": 117,
+              "Added": 0,
+              "Changed": 0,
+              "Removed": 0,
+              "Changes": [],
+              "Truncated": false
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/intune-backups/intune-backup-19990101-000000": {
+      "status": 404,
+      "body": {
+        "code": "not-found",
+        "message": "No Intune backup with this id."
+      }
     }
   }
 }
