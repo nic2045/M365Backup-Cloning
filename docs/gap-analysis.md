@@ -1,0 +1,27 @@
+# Gap analysis: Dev tenant compared with Prod (issue #6)
+
+Status: 2026-11-07. Scope: what a Dev tenant still needs, beyond what the toolkit already copies (baseline #8, apply #19/#23/#25, users #22, reset #7), to behave like Prod for QA. Every row is either a backlog issue, a check in `validation/README.md`, or a **proposed: not needed** that the owner confirms.
+
+"Learn" says whether Microsoft Learn confirms the stated fact (searched with the Microsoft Learn tools on the date above). Learn links: TCM Entra resources <https://learn.microsoft.com/graph/utcm-entra-resources>, TCM Intune resources <https://learn.microsoft.com/graph/utcm-intune-resources>.
+
+| Gap | Why it is needed | Proposal | Effort | Source / Learn |
+|---|---|---|---|---|
+| Licences in Dev | Conditional Access needs Entra ID P1; risk-based CA (sign-in/user risk) needs P2; PIM needs P2; terms of use need P1; automatic redemption of invitations needs at least one P1 licence in the target; Intune resources need an Intune licence. Cross-tenant sync of users needs P1 in the source tenant only. | Issue #32: read-only licence check in the plan, `blocked: license` | small | Confirmed: <https://learn.microsoft.com/entra/identity/conditional-access/overview#license-requirements>, <https://learn.microsoft.com/entra/fundamentals/licensing>, <https://learn.microsoft.com/entra/identity/multi-tenant-organizations/cross-tenant-synchronization-overview#license-requirements> |
+| Named locations | CA policies refer to them (service accounts only from trusted locations, break-glass from controlled networks, ADR 0003). Not in the default resources yet. | Issue #33 (copy before CA, block if missing) | medium | Confirmed: TCM `namedLocationPolicy` exists |
+| Authentication strengths and method policies | CA grant can name an authentication strength; method policies decide which methods exist. Not in the default resources yet. | Issue #33 | medium | Confirmed: TCM `authenticationStrengthPolicy`, `authenticationMethodPolicy*` exist |
+| Terms of use | CA policies of the Internals and Externals personas require terms of use (ADR 0003). They need a PDF and P1. | Issue #34 (detect by name, block if missing, manual creation described in validation) | small | Confirmed: P1 and PDF <https://learn.microsoft.com/entra/identity/conditional-access/terms-of-use>. Not found as a TCM resource type (no confirmation either way) |
+| Scope tags | Not a TCM resource (#25), so not copied. Dev is administered by a small team; Prod-like delegation is not tested in QA. | **proposed: not needed** | – | Learn confirms scope tags are an Intune RBAC feature; absence from TCM is based on the TCM resource list, not an explicit statement |
+| Enrollment restrictions, Enrollment Status Page, Autopilot profiles | Test devices (also the Intune VM test of SW-Depoyment) should enroll in Dev as in Prod. | Issue #35 | medium | Confirmed: TCM `deviceEnrollmentLimitRestriction`, `deviceEnrollmentPlatformRestriction`, `deviceEnrollmentStatusPageWindows10`, `windowsAutopilotDeploymentProfileAzureADJoined` / `...HybridJoined` |
+| Update rings | Copied since #25 (`windowsupdateforbusinessringupdateprofilewindows10`, feature updates). | covered | – | Toolkit default resources |
+| Device platform restrictions (CA "block unknown platforms") | Part of the copied CA policies; no separate object. Enrollment platform restrictions are in #35. | covered by #23 and #35 | – | Confirmed: CA `IncludePlatforms` / `ExcludePlatforms` in TCM `conditionalAccessPolicy` |
+| Roles (Intune, Entra, PIM) | Admins in Dev need the same rights as in Prod. PIM eligibility needs P2. | existing issue #4 | medium | Confirmed: TCM `roleEligibilityScheduleRequest`; PIM is P2 (licensing page) |
+| App registrations and permissions | Prod registration read-only, Dev registration with write rights, UTCM service principal with read rights. Created once by the operator. | covered: setup wizard #18 and checks in `validation/README.md` | – | Confirmed: TCM permissions per resource on the TCM pages |
+| Devices after reset | The reset lists devices but never deletes them (ADR 0005). Re-enrolling test devices is a manual or VM-snapshot step. | **proposed: not needed** (stays manual) | – | Toolkit rule (ADR 0005) |
+| Test devices for the Intune VM test | SW-Depoyment keeps an enrolled VM snapshot (ADR 0080/0082). Enrollment into Dev depends on #35 and on a licensed test user (#22). | check in `validation/README.md` (owner) | – | SW-Depoyment `docs/test-vm-intune.md` |
+| Defender for Endpoint dependencies | Endpoint detection and response policies need the Defender onboarding connection and licence; the onboarding blob is tenant-specific and must not be copied. | check in `validation/README.md` (owner: Defender connection and licence in Dev) | – | Not confirmed on Learn in this pass |
+| Proxy and network | The toolkit uses Microsoft Graph only; nothing tenant-specific. | **proposed: not needed** | – | – |
+
+## Open for the owner
+
+- Confirm or reject the three **proposed: not needed** rows (scope tags, devices after reset, proxy and network).
+- Decide the order of #32–#35 against the rest of milestone 1 (#26).
