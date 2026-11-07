@@ -246,3 +246,20 @@ Claude never ran this against a tenant (own test keys and a fake Entra ID only).
 | 10 | Browser storage | Developer tools > Application: cookies, local and session storage; page source | Only `m365ui_session` (HttpOnly, SameSite=Lax; Secure on https); no token anywhere in storage or HTML |
 | 11 | Local account (optional) | `python -m m365ui.passwords`, set `M365_UI_LOCAL_LOGIN=1`, user, hash, role and `M365CLONING_LOCAL_TOKEN_SECRET` (same value for API and interface); open the interface on the same machine | The local form appears only on `127.0.0.1`; a wrong password is refused; after five wrong attempts the form is locked for five minutes |
 | 12 | Local account from elsewhere | Open the interface from another machine (bind with `--host 0.0.0.0` for this test only) or through a reverse proxy | No local form; a posted form is refused |
+
+# Part 14: actions in the web interface (issue #14, #66, ADR 0012)
+
+Claude never ran this against a tenant (job runner with fake tokens and the fixture files only). Use your own tenants; steps 5 to 8 write to Dev.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Host | Windows with PowerShell 7 and Microsoft365DSC; the certificates of both app registrations in the personal store of the account that runs the API (`certlm.msc`/`certmgr.msc`); `M365CLONING_PWSH` if `pwsh` is not on the path | `pwsh -c "Import-Module ./src/M365Cloning; Get-AppOnlyGraphToken -TenantId <dev> -ClientId <id> -CertThumbprint <thumb>"` returns `System.Security.SecureString` |
+| 2 | Drift report | Sign in with the role `Applier`, *Bring Dev in line* > "Run the drift report" | Job page shows four steps, progress moves, then "Succeeded" with "Open the report"; the audit line `report` carries your name as `Actor` |
+| 3 | Reader | Sign in with `Reader` only | No start buttons, "Starting this needs the role Applier"; `POST /api/jobs` by hand answers 403 |
+| 4 | Intune plan | *Areas* > *Intune* > "Create an Intune plan" | A plan with the tag "Intune"; entries outside Intune are `skipped` with `area: outside Intune`; empty group copies for Intune assignments stay planned |
+| 5 | Apply | Open the Intune plan, tick the box, "Apply to Dev" | Job "Apply a plan" succeeds; audit lines `apply` per object with `Actor`; Dev has the Intune entries of the plan |
+| 6 | Changed tenant | Make a plan, change one Intune policy in Prod, then apply the old plan | The job fails in the run step: the script refuses because the hash differs ("make a new plan") |
+| 7 | One at a time | Start a drift report and, while it runs, a plan | The second start answers "Another job is still running" with a link to the running job |
+| 8 | Reset | `Resetter`: *Start Dev fresh*, mode Align, devices Keep, "Create the reset plan"; open it, tick the box, type the Dev tenant ID, "Reset Dev" | With a wrong tenant ID: refused (`tenant-mismatch`), nothing deleted. With the right one: the reset job runs as `scripts/Invoke-DevReset.ps1 -Apply` |
+| 9 | Cancel | Start a drift report and cancel it at once | Status "Cancelled", the remaining steps "Skipped"; a script that already runs finishes first |
+| 10 | Runner missing | Set `M365CLONING_PWSH` to a wrong path, start a job | Error page "The job runner could not be started" (`job-start-failed`); the next start is not blocked |

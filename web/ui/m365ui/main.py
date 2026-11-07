@@ -1,10 +1,14 @@
-"""Read-only pages: overview, reports, plans, audit (issue #12).
+"""Pages: overview, goals, areas, jobs, reports, plans, audit (issues #12, #14, #66).
 
 Run: ``uvicorn m365ui.main:app`` from web/ui. Without ``M365_UI_API_BASE`` the
 pages show the mock answers of web/mock/responses.json and say so.
 
 Filters on report and plan details work on the data the API returned (the API
 has no filter for these); list filters are passed to the API as its parameters.
+
+Actions (issue #14, ADR 0012): a form posts to this interface (CSRF token of the
+session), which sends it to POST /api/jobs and opens the job page. The API checks
+the role and the confirmation and queues a job; nothing runs in this process.
 
 Sign-in (issue #60, ADR 0010): every page needs a session, see auth.py. Without a
 session the browser goes to /login. Only in mock mode with no sign-in configured
@@ -62,7 +66,8 @@ def _pick(value: str | None, allowed: tuple[str, ...]) -> str:
     return value if value in allowed else ""
 
 
-NAV_PAGES = frozenset({"overview", "reports", "plans", "audit"})
+NAV_PAGES = frozenset({"overview", "reports", "plans", "audit", "jobs", "align", "fresh", "fill", "intune"})
+JOB_POLL_SECONDS = 3
 RECENT_PLANS = 3
 RECENT_AUDIT = 5
 PUBLIC_PATHS = frozenset({"/login", "/login/local", "/auth/start", "/auth/callback"})
@@ -91,7 +96,9 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
     now = clock or (lambda: datetime.now(timezone.utc))
     icons = view.load_icons()
     templates.env.globals.update(_=_, mock=api.mock, icon_svg=lambda name, label="": view.icon_markup(icons, name, label),
-                                 type_family=view.type_family)
+                                 type_family=view.type_family, nav_goals=view.GOALS, nav_areas=view.AREAS,
+                                 nav_history=view.HISTORY, job_actions=view.JOB_ACTIONS, job_progress=view.job_progress,
+                                 apply_role=view.APPLY_ROLE, short_hash=view.short_hash)
     templates.env.filters["when"] = lambda value: view.time_markup(value, now())
 
     def secure(request: Request) -> bool:
@@ -139,6 +146,11 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
             res = call(request, path)
             if res.ok and isinstance(res.body, dict):
                 counts[key] = len(res.body.get("items", []))
+        jobs_res = call(request, "/api/jobs")
+        if jobs_res.ok and isinstance(jobs_res.body, dict):
+            active = sum(1 for j in jobs_res.body.get("items", []) if j.get("status") in view.ACTIVE_JOB)
+            if active:
+                counts["jobs"] = active  # only active jobs are counted: something is running
         return counts
 
     def failed(request: Request, res: ApiResponse) -> Response:
@@ -251,6 +263,8 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
         reports_res = call(request, "/api/reports")
         if reports_res.ok:
             counts["reports"] = len(reports_res.body.get("items", []))
+        if active_job(request) is not None:
+            counts["jobs"] = 1  # one job at a time (ADR 0012)
         steps = view.next_steps(view.facts(status.body, fit_body, plans, now()))
         return render(request, "overview.html", nav="overview", status=status.body, fit=fit_body, steps=steps,
                       counts=counts, recent_plans=plans[:RECENT_PLANS], recent_audit=audit,
@@ -310,6 +324,126 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
         return render(request, "plan.html", nav="plans", env=body, plan=data, rows=rows,
                       type_names=sorted({a.get("ResourceType", "") for a in actions}),
                       type=type or "", state=state, states=states)
+
+    # --- goals, areas and jobs (issues #14, #66) ----------------------------------------------------------------
+
+    def items(request: Request, path: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]] | None:
+        res = call(request, path, params)
+        return res.body.get("items", []) if res.ok and isinstance(res.body, dict) else None
+
+    def active_job(request: Request) -> dict[str, Any] | None:
+        for j in items(request, "/api/jobs") or []:
+            if j.get("status") in view.ACTIVE_JOB:
+                return j
+        return None
+
+    @app.get("/goals/align", response_class=HTMLResponse)
+    def goal_align(request: Request):
+        status = call(request, "/api/status")
+        if not status.ok:
+            return failed(request, status)
+        fit = call(request, "/api/fitcheck/latest")
+        plans = items(request, "/api/plans", {"kind": "apply"})
+        steps = view.next_steps(view.facts(status.body, fit.body if fit.ok else None, plans or [], now()))
+        return render(request, "goal_align.html", nav="align", status=status.body, fit=fit.body if fit.ok else None,
+                      plan=view.latest_plan(plans or [], "apply"), plans_ok=plans is not None,
+                      running=active_job(request), first=steps[0])
+
+    @app.get("/goals/fresh", response_class=HTMLResponse)
+    def goal_fresh(request: Request):
+        plans = items(request, "/api/plans", {"kind": "reset"})
+        if plans is None:
+            return failed(request, call(request, "/api/plans", {"kind": "reset"}))
+        # Only reset plans, even if a server or the mock answers with more than the filter asked for.
+        plans = [p for p in plans if p.get("kind") == "reset"]
+        return render(request, "goal_fresh.html", nav="fresh", plans=view.newest_first(plans, "createdUtc")[:3],
+                      running=active_job(request), modes=view.CHOICES["mode"], device_actions=view.CHOICES["deviceAction"])
+
+    @app.get("/goals/fill", response_class=HTMLResponse)
+    def goal_fill(request: Request):
+        plans = items(request, "/api/plans")
+        if plans is None:
+            return failed(request, call(request, "/api/plans"))
+        return render(request, "goal_fill.html", nav="fill", baseline=view.latest_plan(plans, "baseline"),
+                      users=view.latest_plan(plans, "users"), running=active_job(request))
+
+    @app.get("/areas/intune", response_class=HTMLResponse)
+    def area_intune(request: Request):
+        status = call(request, "/api/status")
+        if not status.ok:
+            return failed(request, status)
+        report = None
+        report_id = status.body.get("reportId")
+        if report_id and ID_RE.match(str(report_id)):
+            res = call(request, f"/api/reports/{report_id}")
+            report = res.body if res.ok else None
+        rows = view.area_types((report or {}).get("report"), "intune")
+        plans = items(request, "/api/plans", {"kind": "apply"}) or []
+        return render(request, "area_intune.html", nav="intune", status=status.body, report=report, rows=rows,
+                      plan=view.latest_plan(plans, "apply", area="Intune"), running=active_job(request))
+
+    @app.get("/jobs", response_class=HTMLResponse)
+    def jobs(request: Request):
+        res = call(request, "/api/jobs")
+        if not res.ok:
+            return failed(request, res)
+        return render(request, "jobs.html", nav="jobs", items=res.body.get("items", []))
+
+    @app.get("/jobs/{job_id}", response_class=HTMLResponse)
+    def job(request: Request, job_id: str):
+        if not view.JOB_ID_RE.fullmatch(job_id):
+            return bad_id(request)
+        res = call(request, f"/api/jobs/{job_id}")
+        if not res.ok:
+            return failed(request, res)
+        body = res.body
+        return render(request, "job.html", nav="jobs", job=body, active=body.get("status") in view.ACTIVE_JOB,
+                      poll=JOB_POLL_SECONDS)
+
+    async def read_form(request: Request) -> dict[str, str] | None:
+        body = await request.body()
+        if len(body) > MAX_FORM_BYTES:
+            return None
+        return {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace"), keep_blank_values=True).items()}
+
+    def action_error(request: Request, status: int, code: str, message: str, job_id: str = "") -> HTMLResponse:
+        return render(request, "error.html", http_status=status, code=code, message=message, job_id=job_id)
+
+    @app.post("/jobs")
+    async def start_job(request: Request):
+        form = await read_form(request)
+        s = current(request)
+        if form is None:
+            return action_error(request, 400, "too-large", _("The form is too large."))
+        if not signin.check_csrf(s, form.get("csrf")):
+            return action_error(request, 403, "csrf", _("The form has expired. Reload the page and try again."))
+        try:
+            payload = view.job_request(form)
+        except view.FormError as exc:
+            return action_error(request, 400, "invalid-form", str(exc))
+        res = api.post("/api/jobs", payload, token=signin.api_token(s))
+        if res.status == 401:
+            return failed(request, res)
+        if not res.ok or not isinstance(res.body, dict) or not view.JOB_ID_RE.fullmatch(str(res.body.get("id", ""))):
+            body = res.body if isinstance(res.body, dict) else {}
+            running = active_job(request) if body.get("code") == "job-running" else None
+            status = res.status if res.status in (400, 403, 404, 409) else 502
+            return action_error(request, status, body.get("code", "error"), body.get("message", _("The server answered with an error.")),
+                                job_id=(running or {}).get("id", ""))
+        return RedirectResponse(f"/jobs/{res.body['id']}", status_code=303)
+
+    @app.post("/jobs/{job_id}/cancel")
+    async def cancel_job(request: Request, job_id: str):
+        if not view.JOB_ID_RE.fullmatch(job_id):
+            return bad_id(request)
+        form = await read_form(request)
+        s = current(request)
+        if form is None or not signin.check_csrf(s, form.get("csrf")):
+            return action_error(request, 403, "csrf", _("The form has expired. Reload the page and try again."))
+        res = api.post(f"/api/jobs/{job_id}/cancel", token=signin.api_token(s))
+        if not res.ok:
+            return failed(request, res)
+        return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
     @app.get("/audit", response_class=HTMLResponse)
     def audit(request: Request, mode: str | None = None, period: str | None = None, plan: str | None = None,

@@ -1,0 +1,62 @@
+{
+  "description": "Jobs of the web interface (issue #14, ADR 0012). Read by the job runner (Invoke-WebJob) and by the web API (role and steps). One entry per action; 'apply' depends on the kind of the plan.",
+  "actions": {
+    "drift": {
+      "role": "Applier",
+      "tenants": ["Prod", "Dev"],
+      "script": "Get-DriftReport.ps1",
+      "resultPrefix": "drift-",
+      "run": "Read both tenants and compare"
+    },
+    "fitcheck": {
+      "role": "Applier",
+      "tenants": ["Prod", "Dev"],
+      "script": "Invoke-TenantFitCheck.ps1",
+      "resultPrefix": "tenantfit-",
+      "run": "Read the licences and check the suitability"
+    },
+    "plan-apply": {
+      "role": "Applier",
+      "tenants": ["Prod", "Dev"],
+      "script": "Invoke-ApplyDev.ps1",
+      "resultPrefix": "apply-plan-",
+      "run": "Read both tenants and build the plan"
+    },
+    "plan-baseline": {
+      "role": "Applier",
+      "tenants": ["Dev"],
+      "script": "Invoke-DevBaseline.ps1",
+      "resultPrefix": "dev-baseline-plan-",
+      "run": "Read Dev and build the base state plan"
+    },
+    "plan-users": {
+      "role": "Applier",
+      "tenants": ["Dev"],
+      "script": "Invoke-DevUsers.ps1",
+      "resultPrefix": "dev-users-plan-",
+      "run": "Read Dev and build the users plan"
+    },
+    "plan-reset": {
+      "role": "Resetter",
+      "tenants": ["Prod", "Dev"],
+      "script": "Invoke-DevReset.ps1",
+      "resultPrefix": "dev-reset-plan-",
+      "run": "Read Dev and build the reset plan"
+    },
+    "apply": {
+      "role": "Applier",
+      "byPlanKind": {
+        "apply": { "role": "Applier", "tenants": ["Prod", "Dev"], "script": "Invoke-ApplyDev.ps1", "run": "Apply the plan to Dev" },
+        "baseline": { "role": "Applier", "tenants": ["Dev"], "script": "Invoke-DevBaseline.ps1", "run": "Apply the base state to Dev" },
+        "users": { "role": "Applier", "tenants": ["Dev"], "script": "Invoke-DevUsers.ps1", "run": "Create and invite the Dev users" },
+        "reset": { "role": "Resetter", "tenants": ["Prod", "Dev"], "script": "Invoke-DevReset.ps1", "run": "Reset Dev (delete)" }
+      }
+    }
+  },
+  "steps": [
+    { "key": "check", "title": "Check the request" },
+    { "key": "signin", "title": "Sign in to the tenants" },
+    { "key": "run", "title": "" },
+    { "key": "result", "title": "Record the result" }
+  ]
+}

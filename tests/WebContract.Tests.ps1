@@ -80,10 +80,14 @@ Describe 'web/openapi.json' {
             $script:OpenApi['paths'].ContainsKey($p) | Should -BeTrue -Because $p
         }
     }
-    It 'reports a write route as a problem' {
+    It 'reports a write route other than the job routes as a problem' {
         $copy = $script:OpenApi | ConvertTo-Json -Depth 50 | ConvertFrom-Json -AsHashtable
         $copy['paths']['/api/plans']['post'] = $copy['paths']['/api/plans']['get']
         (Get-OpenApiProblem -OpenApi $copy -Schema $script:Schema) -join ';' | Should -Match 'not a read route'
+    }
+    It 'has the job routes of issue #14 as the only write routes' {
+        $writes = foreach ($p in $script:OpenApi['paths'].Keys) { foreach ($m in $script:OpenApi['paths'][$p].Keys) { if ($m -ne 'get') { "$m $p" } } }
+        @($writes | Sort-Object) | Should -Be @('post /api/jobs', 'post /api/jobs/{id}/cancel')
     }
     It 'reports a missing Error schema as a problem' {
         $copy = $script:OpenApi | ConvertTo-Json -Depth 50 | ConvertFrom-Json -AsHashtable
@@ -106,8 +110,10 @@ Describe 'web/mock/responses.json' {
     It 'has an example for every route' {
         $keys = @($script:Mock['responses'].Keys)
         foreach ($p in $script:OpenApi['paths'].Keys) {
-            $rx = '^GET ' + ([regex]::Replace([regex]::Escape($p), '\\\{[^}]+\}', '[^/?]+')) + '(\?.*)?$'
-            @($keys | Where-Object { $_ -match $rx }).Count | Should -BeGreaterThan 0 -Because $p
+            foreach ($m in $script:OpenApi['paths'][$p].Keys) {
+                $rx = '^' + $m.ToUpperInvariant() + ' ' + ([regex]::Replace([regex]::Escape($p), '\\\{[^}]+\}', '[^/?]+')) + '(\?.*)?$'
+                @($keys | Where-Object { $_ -match $rx }).Count | Should -BeGreaterThan 0 -Because "$m $p"
+            }
         }
     }
     It 'every example follows the schema of its route and status' {

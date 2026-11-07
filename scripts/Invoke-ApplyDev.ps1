@@ -14,6 +14,8 @@
     Licences (issue #32): the plan reads the Dev licences (GET /subscribedSkus, read only; online with -DevToken,
     offline from -LicencePath) and blocks entries whose licence is missing. An offline preview without -LicencePath
     blocks every entry that needs a licence ('license: not verified').
+    -Area Intune (issue #66): the plan covers only the Intune entries and the empty group copies their assignments need;
+    the rest is skipped. Pass the same -Area with -Apply as with the preview, or the plan hash differs.
 #>
 [CmdletBinding()]
 param(
@@ -26,7 +28,8 @@ param(
     [string]$HistoryRoot = (Join-Path $PSScriptRoot '..\History'),
     [switch]$Plan,
     [switch]$Apply,
-    [string]$ConfirmPlanHash
+    [string]$ConfirmPlanHash,
+    [ValidateSet('All', 'Intune')][string]$Area = 'All'
 )
 
 Set-StrictMode -Version Latest
@@ -55,7 +58,7 @@ else {
     $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $config.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
 }
 
-$applyPlan = New-ApplyPlan -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile) -Config $config
+$applyPlan = New-ApplyPlan -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile) -Config $config -Area $Area
 # Licence check (issue #32): entries whose licence Dev lacks are blocked before anything is applied.
 $applyPlan = Add-PlanLicenceCheck -Plan $applyPlan -Licences (Get-DevPlanLicences -DevToken $DevToken -LicencePath $LicencePath)
 $hash = Get-ApplyPlanHash -Plan $applyPlan
@@ -66,7 +69,7 @@ if (-not $Apply) {
     $applyPlan.Summary | Format-Table | Out-String | Write-Host
     Write-Host "Plan:      $($files.Markdown)"
     Write-Host "Plan hash: $hash"
-    Write-Host 'Nothing was changed. To apply exactly this plan: scripts/Invoke-ApplyDev.ps1 -Apply -ConfirmPlanHash <hash>'
+    Write-Host "Nothing was changed. To apply exactly this plan: scripts/Invoke-ApplyDev.ps1 -Apply -ConfirmPlanHash <hash>$(if ($Area -ne 'All') { " -Area $Area" })"
     return
 }
 

@@ -12,8 +12,10 @@
     <p class="eyebrow">{{ _("Next step") }}</p>
     <h2 id="next-title">{{ first.title }}</h2>
     <p>{{ first.detail }}</p>
-    {% if first.command %}<p class="meta">{{ _("Run on the admin machine") }}:</p><p><code class="cmd">{{ first.command }}</code></p>{% endif %}
-    {% if first.link %}<p class="button-row"><a class="button" href="{{ first.link }}">{{ icon("next") }} {{ first.link_text }}</a></p>{% endif %}
+    {% if first.goal or first.link %}<p class="button-row">
+      {%- if first.goal %}<a class="button" href="{{ first.goal }}">{{ icon("next") }} {{ first.goal_text }}</a>{% endif %}
+      {%- if first.link %} <a class="button{% if first.goal %} button-secondary{% endif %}" href="{{ first.link }}">{{ icon("reports") }} {{ first.link_text }}</a>{% endif %}</p>{% endif %}
+    {% if first.command %}<details class="later"><summary>{{ _("Or run it on the admin machine") }}</summary><p><code class="cmd">{{ first.command }}</code></p></details>{% endif %}
     {% if steps|length > 1 %}
     <details class="later"><summary>{{ _("After that") }} ({{ steps|length - 1 }})</summary>
       <ol class="later-list">{% for s in steps[1:] %}<li><strong>{{ s.title }}</strong> <span class="meta">{{ s.detail }}</span>{% if s.command %} <code class="cmd">{{ s.command }}</code>{% endif %}</li>{% endfor %}</ol>

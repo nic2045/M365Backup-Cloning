@@ -3,7 +3,7 @@
   "info": {
     "title": "M365Backup-Cloning API",
     "version": "2",
-    "description": "Read-only API of one toolkit instance (ADR 0002, ADR 0008). Write actions (apply, reset) follow with issue #14. Every route has a schema for 200 and the Error schema for 400, 401, 403 and 500. Every route needs a bearer token of a signed-in person with the app role Reader; Applier and Resetter include Reader (ADR 0010)."
+    "description": "API of one toolkit instance (ADR 0002, ADR 0008, ADR 0012). Read routes, and job routes that queue a job and start the job runner in its own process (issue #14). Every route has a schema for its success status and the Error schema for 400, 401, 403 and 500. Every route needs a bearer token of a signed-in person with the app role Reader; Applier and Resetter include Reader (ADR 0010). Starting and cancelling a job also needs the role of its action (x-required-role)."
   },
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "servers": [
@@ -370,6 +370,194 @@
         },
         "x-required-role": "Reader"
       }
+    },
+    "/api/jobs": {
+      "get": {
+        "operationId": "listJobs",
+        "summary": "List the jobs, newest first (at most 50)",
+        "tags": [
+          "jobs"
+        ],
+        "responses": {
+          "200": {
+            "description": "The jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-required-role": "Reader"
+      },
+      "post": {
+        "operationId": "startJob",
+        "summary": "Queue a job and start the job runner (preview, report or apply after confirmation)",
+        "description": "One job at a time (409 job-running). apply: confirmPlanHash must be the hash of the plan (409 plan-changed); a reset plan also needs confirmTenant, the Dev tenant ID typed by the person (409 tenant-mismatch). Role by action: see src/M365Cloning/Data/WebJobs.json (reset preview and reset apply: Resetter; all others: Applier).",
+        "tags": [
+          "jobs"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "The queued job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "x-required-role": "Applier|Resetter"
+      }
+    },
+    "/api/jobs/{id}": {
+      "get": {
+        "operationId": "getJob",
+        "summary": "Read one job: steps, progress, result and the last log lines",
+        "tags": [
+          "jobs"
+        ],
+        "responses": {
+          "200": {
+            "description": "The job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Job id, e.g. job-20261107-120000-a1b2c3.",
+            "schema": {
+              "type": "string",
+              "pattern": "^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$"
+            }
+          }
+        ],
+        "x-required-role": "Reader"
+      }
+    },
+    "/api/jobs/{id}/cancel": {
+      "post": {
+        "operationId": "cancelJob",
+        "summary": "Ask the job to stop before its next step",
+        "description": "A running script is not interrupted. Needs the role of the job (409 job-finished when it has ended).",
+        "tags": [
+          "jobs"
+        ],
+        "responses": {
+          "202": {
+            "description": "The job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Job id, e.g. job-20261107-120000-a1b2c3.",
+            "schema": {
+              "type": "string",
+              "pattern": "^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$"
+            }
+          }
+        ],
+        "x-required-role": "Applier|Resetter"
+      }
     }
   },
   "components": {
@@ -415,6 +603,15 @@
       },
       "FitCheck": {
         "$ref": "../schema/m365cloning.schema.json#/$defs/FitCheck"
+      },
+      "Job": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/Job"
+      },
+      "JobList": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/JobList"
+      },
+      "JobRequest": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/JobRequest"
       }
     },
     "responses": {
@@ -449,7 +646,7 @@
         }
       },
       "Conflict": {
-        "description": "The stored file has an older or unknown format; regenerate it with the scripts (code 'unsupported-format', issue #59).",
+        "description": "Conflict with the stored data: a file in an older or unknown format ('unsupported-format', issue #59), or for jobs another job still running ('job-running'), a changed plan ('plan-changed'), a typed tenant that is not Dev ('tenant-mismatch'), or a job that has ended ('job-finished').",
         "content": {
           "application/json": {
             "schema": {

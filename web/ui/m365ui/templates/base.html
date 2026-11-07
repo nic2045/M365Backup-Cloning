@@ -5,6 +5,11 @@
   {%- if counts is defined and counts.get(key) is not none %}<span class="count" aria-label="{{ counts[key] }} {{ _('entries') }}">{{ counts[key] }}</span>{% endif %}
 </a></li>
 {%- endmacro -%}
+{%- macro navlater(label, icon_name) -%}
+<li><span class="nav-link nav-later" role="link" aria-disabled="true">
+  {{ icon(icon_name) }}<span class="nav-text">{{ label }}</span><span class="later-tag">{{ _("later") }}</span>
+</span></li>
+{%- endmacro -%}
 <!doctype html>
 <html lang="en">
 <head>
@@ -23,7 +28,7 @@
     <div class="side-head">
       <a class="brand" href="/">
         <svg class="logo" aria-hidden="true" focusable="false" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" class="logo-bg"/><rect x="6" y="7" width="12" height="12" rx="2.5" class="logo-a"/><rect x="14" y="13" width="12" height="12" rx="2.5" class="logo-b"/><path d="M10 22.5h3.5M12 20.5l2 2-2 2" class="logo-arrow"/></svg>
-        <span class="brand-text">{{ _("Dev tenant toolkit") }}<span class="brand-sub">{{ _("Prod → Dev, read only") }}</span></span>
+        <span class="brand-text">{{ _("Dev tenant toolkit") }}<span class="brand-sub">{{ _("Prod → Dev") }}</span></span>
       </a>
       {% if user %}
       <button type="button" class="button button-subtle menu-toggle" aria-expanded="false" aria-controls="side-menu" hidden>
@@ -37,14 +42,23 @@
         <ul class="nav-list">
           {{ navlink("overview", "/", _("Overview"), "overview") }}
         </ul>
-        <p class="nav-group" id="nav-work">{{ _("Workflow") }}</p>
-        <ul class="nav-list" aria-labelledby="nav-work">
-          {{ navlink("reports", "/reports", _("Compare and check"), "reports", "1") }}
-          {{ navlink("plans", "/plans", _("Plans"), "plans", "2") }}
+        <p class="nav-group" id="nav-goals">{{ _("Goals") }}</p>
+        <ul class="nav-list" aria-labelledby="nav-goals">
+          {%- for key, href, label, pic in nav_goals %}
+          {{ navlink(key, href, _(label), pic) }}
+          {%- endfor %}
         </ul>
-        <p class="nav-group" id="nav-trace">{{ _("Trace") }}</p>
-        <ul class="nav-list" aria-labelledby="nav-trace">
-          {{ navlink("audit", "/audit", _("Audit log"), "audit") }}
+        <p class="nav-group" id="nav-areas">{{ _("Areas") }}</p>
+        <ul class="nav-list" aria-labelledby="nav-areas">
+          {%- for key, href, label, pic, ready in nav_areas %}
+          {% if ready %}{{ navlink(key, href, _(label), pic) }}{% else %}{{ navlater(_(label), pic) }}{% endif %}
+          {%- endfor %}
+        </ul>
+        <p class="nav-group" id="nav-history">{{ _("History") }}</p>
+        <ul class="nav-list" aria-labelledby="nav-history">
+          {%- for key, href, label, pic in nav_history %}
+          {{ navlink(key, href, _(label), pic) }}
+          {%- endfor %}
         </ul>
       </nav>
       <div class="account">
@@ -69,7 +83,7 @@
       {% block crumbs %}{% endblock %}
       {% block content %}{% endblock %}
     </main>
-    <footer class="foot">{{ _("Read only. Applying and resetting are done with the scripts.") }}</footer>
+    <footer class="foot">{{ _("Nothing changes in Dev without a preview plan and your confirmation. Prod is only read.") }}</footer>
   </div>
   </div>
 </body>

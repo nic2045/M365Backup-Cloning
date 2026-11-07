@@ -76,7 +76,7 @@ function Complete-PlanShape {
         }
     }
 
-    [ordered]@{
+    $shaped = [ordered]@{
         SchemaVersion    = $script:M365CloningSchemaVersion
         Kind             = $Kind
         Direction        = [string](& $get 'Direction' '')
@@ -93,4 +93,8 @@ function Complete-PlanShape {
         ExcludedTypes    = [object[]]@(& $get 'ExcludedTypes' @())
         Licences         = $licences
     }
+    # Area (issue #66): only when the plan covers one area; a plan of all areas keeps its shape and its hash.
+    $area = [string](& $get 'Area' '')
+    if ($area) { $shaped['Area'] = $area }
+    $shaped
 }

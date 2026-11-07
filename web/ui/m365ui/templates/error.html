@@ -9,6 +9,7 @@
 {% else %}
 <h1>{{ _("This page could not be shown") }}</h1>
 <p class="error" role="alert">{{ message }} <span class="meta">({{ code }})</span></p>
+{% if job_id %}<p><a class="button" href="/jobs/{{ job_id }}">{{ icon("running") }} {{ _("Show the running job") }}</a></p>{% endif %}
 {% endif %}
 <p><a class="button button-secondary" href="/">{{ icon("back") }} {{ _("Back to the overview") }}</a></p>
 {% endblock %}

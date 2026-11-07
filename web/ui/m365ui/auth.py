@@ -210,6 +210,7 @@ class UiAuth:
         self.secure_cookies = secure_cookies
         self.clock = clock
         self._sessions: dict[str, Session] = {}
+        self._example: Session | None = None
         self._pending: dict[str, _Pending] = {}
         self._failures: list[float] = []
         self._lock = threading.Lock()
@@ -342,8 +343,13 @@ class UiAuth:
         return self._new_session(self.local.user, effective_roles([self.local.role]), "local", self.clock() + SESSION_MAX_AGE)
 
     def example_session(self) -> Session:
-        """Mock mode without any sign-in configured: an example person, so the pages can be tried."""
-        return Session("", "Example user", frozenset({"Reader"}), "example", "", float("inf"))
+        """Mock mode without any sign-in configured: an example person, so the pages can be tried. The person has
+        every role, so the buttons can be tried too: in mock mode a button only shows the example answer and
+        nothing is started (issue #14). The CSRF token is made once per process."""
+        if self._example is None:
+            self._example = Session("", "Example user", frozenset({"Reader", "Applier", "Resetter"}), "example",
+                                    secrets.token_urlsafe(32), float("inf"))
+        return self._example
 
     def new_login_csrf(self) -> str:
         return secrets.token_urlsafe(32)

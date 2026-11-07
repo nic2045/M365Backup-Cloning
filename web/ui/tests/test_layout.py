@@ -14,8 +14,10 @@ from m365ui.main import create_app
 from test_pages import MOCK_FILE, PAGES, signed_in
 
 NOW = datetime(2026, 11, 7, 14, 30, tzinfo=timezone.utc)
-NAV = {"/": "overview", "/reports": "reports", "/plans": "plans", "/audit": "audit"}
-NAV_HREF = {"overview": "/", "reports": "/reports", "plans": "/plans", "audit": "/audit"}
+NAV = {"/": "overview", "/reports": "reports", "/plans": "plans", "/audit": "audit", "/jobs": "jobs",
+       "/goals/align": "align", "/goals/fresh": "fresh", "/goals/fill": "fill", "/areas/intune": "intune"}
+NAV_HREF = {"overview": "/", "reports": "/reports", "plans": "/plans", "audit": "/audit", "jobs": "/jobs",
+            "align": "/goals/align", "fresh": "/goals/fresh", "fill": "/goals/fill", "intune": "/areas/intune"}
 
 
 @pytest.fixture()
@@ -27,6 +29,8 @@ def nav_page(path):
     first = path.split("?")[0]
     if first == "/":
         return "overview"
+    if first in NAV:
+        return NAV[first]
     return NAV[f"/{first.strip('/').split('/')[0]}"]
 
 
@@ -45,7 +49,7 @@ def test_layout_has_skip_link_menu_button_and_account(web, page):
     assert '<a class="skip" href="#main">' in html and '<main id="main"' in html
     assert 'aria-expanded="false" aria-controls="side-menu"' in html and 'id="side-menu"' in html
     assert "Menu" in html  # the menu button has text, not only an icon
-    assert "Example user" in html and "Roles: Reader" in html
+    assert "Example user" in html and "Roles: Applier, Reader, Resetter" in html
 
 
 @pytest.mark.parametrize("page", [p for p in PAGES if p.count("/") > 1])
@@ -58,7 +62,9 @@ def test_detail_pages_have_breadcrumbs(web, page):
 def test_counter_badges_from_the_list_routes(web):
     html = web.get("/audit").text
     assert re.search(r'href="/reports"[^>]*>.*?<span class="count"[^>]*>2</span>', html, re.S)
-    assert re.search(r'href="/plans"[^>]*>.*?<span class="count"[^>]*>5</span>', html, re.S)
+    assert re.search(r'href="/plans"[^>]*>.*?<span class="count"[^>]*>6</span>', html, re.S)
+    # Jobs: only the active ones are counted (one running job in the examples).
+    assert re.search(r'href="/jobs"[^>]*>.*?<span class="count"[^>]*>1</span>', html, re.S)
 
 
 def test_login_page_has_no_menu():
@@ -92,11 +98,14 @@ def test_badge_states_are_known():
     env = Environment(loader=FileSystemLoader(str(Path(view.__file__).parent / "templates")))
     icons = view.load_icons()
     env.globals.update(_=lambda s: s, icon_svg=lambda n, label="": view.icon_markup(icons, n, label),
-                       type_family=view.type_family)
+                       type_family=view.type_family, job_actions=view.JOB_ACTIONS)
+    env.filters["when"] = lambda v: v
     macros = env.get_template("_macros.html").module
     for state, text in (("green", "Green"), ("yellow", "Yellow"), ("red", "Red"), ("grey", "Grey: not verified"),
                         ("identical", "Identical"), ("different", "Different"), ("blocked", "Blocked"),
-                        ("outdated", "Outdated"), ("notverified", "Not verified"), ("ok", "OK")):
+                        ("outdated", "Outdated"), ("notverified", "Not verified"), ("ok", "OK"),
+                        ("queued", "Queued"), ("running", "Running"), ("succeeded", "Succeeded"), ("cancelled", "Cancelled"),
+                        ("failed", "Failed"), ("pending", "Waiting"), ("done", "Done")):
         out = str(macros.badge(state))
         assert text in out and "<svg" in out
     assert "Conditional Access" in str(macros.type_badge("microsoft.entra.conditionalaccesspolicy"))
@@ -230,7 +239,7 @@ def test_tiles_use_only_existing_routes(web):
 
     rec = Recorder()
     TestClient(create_app(rec, clock=lambda: NOW)).get("/")
-    assert {p for p, _ in rec.calls} == {"/api/status", "/api/fitcheck/latest", "/api/plans", "/api/audit", "/api/reports"}
+    assert {p for p, _ in rec.calls} == {"/api/status", "/api/fitcheck/latest", "/api/plans", "/api/audit", "/api/reports", "/api/jobs"}
     assert ("/api/audit", {"pageSize": "5"}) in rec.calls
 
 

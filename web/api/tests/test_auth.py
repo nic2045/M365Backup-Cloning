@@ -16,7 +16,8 @@ from m365api.contract import OPENAPI_PATH, errors
 from . import authkit
 from .test_contract import openapi_routes
 
-READ_URLS = sorted({p.replace("{id}", "drift-20261107-120000") for _, p in openapi_routes()})
+READ_URLS = sorted({p.replace("{id}", "drift-20261107-120000") for m, p in openapi_routes() if m == "get"})
+WRITE_URLS = sorted({p.replace("{id}", "job-20261107-121500-k3m9qa") for m, p in openapi_routes() if m == "post"})
 
 
 def assert_error(response, status: int, code: str | None = None):
@@ -29,6 +30,12 @@ def assert_error(response, status: int, code: str | None = None):
 @pytest.mark.parametrize("url", READ_URLS)
 def test_every_route_needs_a_token(anonymous, url):
     response = anonymous.get(url)
+    assert_error(response, 401, "unauthorized")
+
+
+@pytest.mark.parametrize("url", WRITE_URLS)
+def test_every_write_route_needs_a_token(anonymous, url):
+    response = anonymous.post(url, json={"action": "drift"})
     assert_error(response, 401, "unauthorized")
     assert response.headers["www-authenticate"].startswith("Bearer")
 
@@ -153,4 +160,4 @@ def test_tokens_never_reach_the_log(anonymous, caplog):
 
 def test_openapi_lists_401_and_403_for_every_route():
     text = OPENAPI_PATH.read_text(encoding="utf-8")
-    assert text.count('"401"') == text.count('"403"') == len(READ_URLS)
+    assert text.count('"401"') == text.count('"403"') == len(READ_URLS) + len(WRITE_URLS)

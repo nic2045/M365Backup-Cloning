@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, empty, crumbs %}
+{% block title %}{{ _("Jobs") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Jobs"), "/jobs")]) }}{% endblock %}
+{% block content %}
+<h1>{{ _("Jobs") }}</h1>
+<p class="lead">{{ _("Every report, plan and apply started here runs as a job in its own process. The newest 50 are listed.") }}</p>
+{% if items %}
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Jobs") }}</caption>
+  <thead><tr><th scope="col">{{ _("Job") }}</th><th scope="col">{{ _("Status") }}</th><th scope="col">{{ _("Progress") }}</th><th scope="col">{{ _("Started") }}</th></tr></thead>
+  <tbody>
+  {% for j in items %}
+  <tr>
+    <td data-label="{{ _('Job') }}"><a href="/jobs/{{ j.id }}">{{ _(job_actions.get(j.action, j.action)) }}</a>{% if j.options.area == "Intune" %} <span class="tag">{{ icon("intune") }}<span>Intune</span></span>{% endif %}
+      <br><span class="meta">{{ j.actor or _("unknown") }}</span></td>
+    <td data-label="{{ _('Status') }}">{{ badge(j.status) }}</td>
+    <td data-label="{{ _('Progress') }}"><progress max="100" value="{{ job_progress(j) }}" aria-label="{{ _('Progress') }}">{{ job_progress(j) }} %</progress> <span class="meta">{{ j.progress.done }}/{{ j.progress.total }}</span></td>
+    <td data-label="{{ _('Started') }}">{{ (j.startedUtc or j.createdUtc)|when }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+{{ empty(_("No jobs yet"), _("Start a report or a plan under Goals; it shows up here."), "jobs") }}
+{% endif %}
+{% endblock %}

@@ -1,5 +1,5 @@
 {
-  "description": "Example responses for the read-only API (web/openapi.json), made offline from the test fixtures with invented values. Key: '<METHOD> <path>'. Validated by tests/WebContract.Tests.ps1.",
+  "description": "Example responses of the API (web/openapi.json), made offline from the test fixtures with invented values. Key: '<METHOD> <path>'. Validated by tests/WebContract.Tests.ps1; the job examples (issue #14) are invented and follow schema Job.",
   "responses": {
     "GET /api/audit": {
       "status": 200,
@@ -238,7 +238,8 @@
               "Yellow": 0,
               "Info": 0
             },
-            "Reason": "dev users"
+            "Reason": "dev users",
+            "Actor": "Example Admin"
           },
           {
             "Timestamp": "2026-11-07T12:00:00Z",
@@ -547,6 +548,30 @@
       "body": {
         "schemaVersion": "2",
         "items": [
+          {
+            "id": "apply-plan-20261107-121000",
+            "kind": "apply",
+            "createdUtc": "2026-11-07T12:10:00Z",
+            "planHash": "317807241c91625ce8b12991401bdcf3be0ce671a3bad22dde559666f67d5318",
+            "area": "Intune",
+            "summary": {
+              "Planned": 2,
+              "Blocked": 0,
+              "Skipped": 3,
+              "Excluded": 0,
+              "Exists": 0,
+              "Invite": 0,
+              "Protected": 0,
+              "InBaseline": false,
+              "Devices": {
+                "Keep": 0,
+                "Protected": 0,
+                "Remove": 0,
+                "Retire": 0,
+                "Wipe": 0
+              }
+            }
+          },
           {
             "id": "apply-plan-20261107-120000",
             "kind": "apply",
@@ -2287,6 +2312,582 @@
         "differences": 3,
         "fitStatus": "yellow",
         "reportId": "drift-20261107-120000"
+      }
+    },
+    "GET /api/plans/apply-plan-20261107-121000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "apply-plan-20261107-121000",
+        "kind": "apply",
+        "createdUtc": "2026-11-07T12:10:00Z",
+        "planHash": "317807241c91625ce8b12991401bdcf3be0ce671a3bad22dde559666f67d5318",
+        "plan": {
+          "SchemaVersion": "2",
+          "Kind": "apply",
+          "Direction": "Prod -> Dev",
+          "Title": "",
+          "ApplyHint": "",
+          "Mode": "",
+          "TargetTenant": "tenant-d...",
+          "TargetTenantHash": "641baef280a21e293f01fe1da71c7cead58554e56ff3a2024c67657f5842ce68",
+          "Actions": [
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "BG-Group",
+              "Operation": "Create",
+              "Status": "skipped",
+              "Reason": "area: outside Intune; make a plan of all areas to apply it",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "BG-Group",
+                "MailNickname": "BG-Group",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Empty copy for Conditional Access (persona BreakGlass); no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Name": "SW-Ring2",
+              "Operation": "Create",
+              "Status": "planned",
+              "Reason": "empty static copy: Intune policy 'Windows baseline' assigns to it; no members",
+              "DscResource": "AADGroup",
+              "AssignmentClass": "",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "SW-Ring2",
+                "MailNickname": "SW-Ring2",
+                "SecurityEnabled": true,
+                "MailEnabled": false,
+                "Ensure": "Present",
+                "Description": "Empty copy for an Intune assignment; no members."
+              }
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecompliancepolicywindows10",
+              "Name": "Old dev only policy",
+              "Operation": "SkipDelete",
+              "Status": "skipped",
+              "Reason": "exists only in Dev; an apply never deletes",
+              "DscResource": "IntuneDeviceCompliancePolicyWindows10",
+              "AssignmentClass": "MSFT_DeviceManagementConfigurationPolicyAssignments",
+              "Differences": [],
+              "Properties": {}
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+              "Name": "Windows baseline",
+              "Operation": "Update",
+              "Status": "planned",
+              "Reason": "",
+              "DscResource": "IntuneDeviceConfigurationPolicyWindows10",
+              "AssignmentClass": "MSFT_DeviceManagementConfigurationPolicyAssignments",
+              "Differences": [
+                {
+                  "Property": "PasswordMinimumLength",
+                  "Source": "8",
+                  "Target": "12"
+                }
+              ],
+              "Properties": {
+                "Assignments": [
+                  {
+                    "dataType": "#microsoft.graph.groupAssignmentTarget",
+                    "groupDisplayName": "SW-Ring1"
+                  },
+                  {
+                    "dataType": "#microsoft.graph.groupAssignmentTarget",
+                    "groupDisplayName": "SW-Ring2"
+                  }
+                ],
+                "DisplayName": "Windows baseline",
+                "PasswordMinimumLength": 8,
+                "PasswordRequired": true,
+                "Ensure": "Present"
+              }
+            },
+            {
+              "ResourceType": "microsoft.entra.conditionalaccesspolicy",
+              "Name": "CA require MFA",
+              "Operation": "Create",
+              "Status": "skipped",
+              "Reason": "area: outside Intune; make a plan of all areas to apply it",
+              "DscResource": "AADConditionalAccessPolicy",
+              "AssignmentClass": "MSFT_DeviceManagementConfigurationPolicyAssignments",
+              "Differences": [],
+              "Properties": {
+                "DisplayName": "CA require MFA",
+                "State": "enabledForReportingButNotEnforced",
+                "Ensure": "Present",
+                "ExcludeUsers": [
+                  "bg-user-0001"
+                ],
+                "ExcludeGroups": [
+                  "BG-Group"
+                ]
+              }
+            }
+          ],
+          "Protected": [],
+          "Notes": [
+            "Area Intune: only Intune entries and the empty group copies their assignments need; the rest is skipped."
+          ],
+          "Summary": {
+            "Planned": 2,
+            "Blocked": 0,
+            "Skipped": 3,
+            "Excluded": 0,
+            "Exists": 0,
+            "Invite": 0,
+            "Protected": 0,
+            "InBaseline": false,
+            "Devices": {
+              "Keep": 0,
+              "Protected": 0,
+              "Remove": 0,
+              "Retire": 0,
+              "Wipe": 0
+            }
+          },
+          "TypeSummary": [
+            {
+              "ResourceType": "microsoft.entra.conditionalaccesspolicy",
+              "Planned": 0,
+              "Blocked": 0,
+              "Skipped": 1,
+              "Excluded": 0
+            },
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Planned": 1,
+              "Blocked": 0,
+              "Skipped": 1,
+              "Excluded": 0
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecompliancepolicywindows10",
+              "Planned": 0,
+              "Blocked": 0,
+              "Skipped": 1,
+              "Excluded": 0
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+              "Planned": 1,
+              "Blocked": 0,
+              "Skipped": 0,
+              "Excluded": 0
+            }
+          ],
+          "ExcludedTypes": [
+            {
+              "ResourceType": "microsoft.entra.administrativeunit",
+              "Reason": "administrative units hold members and scoped role members (identities)"
+            },
+            {
+              "ResourceType": "microsoft.entra.application",
+              "Reason": "app registrations carry credentials and tenant-specific redirect and owner data"
+            },
+            {
+              "ResourceType": "microsoft.entra.authorizationpolicy",
+              "Reason": "tenant-wide authorization policy (default user permissions, consent); one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.crosstenantaccesspolicy",
+              "Reason": "cross-tenant access is set by the base configuration (Invoke-DevBaseline), not copied"
+            },
+            {
+              "ResourceType": "microsoft.entra.crosstenantaccesspolicyconfigurationdefault",
+              "Reason": "cross-tenant access is set by the base configuration (Invoke-DevBaseline), not copied"
+            },
+            {
+              "ResourceType": "microsoft.entra.crosstenantaccesspolicyconfigurationpartner",
+              "Reason": "cross-tenant access is set by the base configuration (Invoke-DevBaseline), not copied"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackage",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackageassignmentpolicy",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackagecatalog",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementaccesspackagecatalogresource",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.entitlementmanagementconnectedorganization",
+              "Reason": "entitlement management refers to identities and resources of the tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.externalidentitypolicy",
+              "Reason": "tenant-wide external identity policy; one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.grouplifecyclepolicy",
+              "Reason": "tenant-wide group expiry: it can delete groups in Dev"
+            },
+            {
+              "ResourceType": "microsoft.entra.groupsnamingpolicy",
+              "Reason": "tenant-wide group naming policy; one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.groupssettings",
+              "Reason": "tenant-wide group settings; one per tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.roleeligibilityschedulerequest",
+              "Reason": "PIM eligibility names principals; roles and PIM wait for issue #4"
+            },
+            {
+              "ResourceType": "microsoft.entra.rolesetting",
+              "Reason": "PIM role settings; roles and PIM wait for issue #4"
+            },
+            {
+              "ResourceType": "microsoft.entra.securitydefaults",
+              "Reason": "tenant-wide security defaults; switching them can lock users out or turn off Conditional Access"
+            },
+            {
+              "ResourceType": "microsoft.entra.serviceprincipal",
+              "Reason": "service principals belong to the app registrations and consents of each tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.socialidentityprovider",
+              "Reason": "identity providers carry client secrets"
+            },
+            {
+              "ResourceType": "microsoft.entra.tenantdetails",
+              "Reason": "tenant details (name, contacts, notification addresses) belong to each tenant"
+            },
+            {
+              "ResourceType": "microsoft.entra.tokenlifetimepolicy",
+              "Reason": "token lifetime policies can apply tenant-wide to every sign-in"
+            },
+            {
+              "ResourceType": "microsoft.entra.user",
+              "Reason": "users are not mirrored; test users and admin guests come from the positive list (Invoke-DevUsers)"
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecleanuprule",
+              "Reason": "tenant-wide device clean-up rule: it removes devices in Dev"
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationdefenderforendpointonboardingpolicywindows10",
+              "Reason": "the Defender for Endpoint onboarding package belongs to the tenant of the Defender instance"
+            },
+            {
+              "ResourceType": "microsoft.intune.roleassignment",
+              "Reason": "Intune role assignments name members and scopes; roles wait for issue #4"
+            }
+          ],
+          "Licences": {
+            "Checked": true,
+            "Readable": true,
+            "Error": "",
+            "Available": [
+              "AAD_PREMIUM",
+              "EXCHANGE_S_FOUNDATION",
+              "INTUNE_A"
+            ],
+            "Missing": [],
+            "Warnings": []
+          },
+          "Area": "Intune"
+        }
+      }
+    },
+    "GET /api/jobs": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "items": [
+          {
+            "schemaVersion": "2",
+            "id": "job-20261107-121500-k3m9qa",
+            "action": "drift",
+            "status": "running",
+            "role": "Applier",
+            "actor": "Example Admin",
+            "createdUtc": "2026-11-07T12:15:00Z",
+            "updatedUtc": "2026-11-07T12:16:10Z",
+            "startedUtc": "2026-11-07T12:15:02Z",
+            "finishedUtc": null,
+            "options": {},
+            "steps": [
+              {
+                "key": "check",
+                "title": "Check the request",
+                "status": "done"
+              },
+              {
+                "key": "signin",
+                "title": "Sign in to the tenants",
+                "status": "done"
+              },
+              {
+                "key": "run",
+                "title": "Read both tenants and compare",
+                "status": "running"
+              },
+              {
+                "key": "result",
+                "title": "Record the result",
+                "status": "pending"
+              }
+            ],
+            "message": "",
+            "result": {},
+            "cancelRequested": false,
+            "progress": {
+              "done": 2,
+              "total": 4
+            }
+          },
+          {
+            "schemaVersion": "2",
+            "id": "job-20261107-120900-p7x2zd",
+            "action": "plan-apply",
+            "status": "succeeded",
+            "role": "Applier",
+            "actor": "Example Admin",
+            "createdUtc": "2026-11-07T12:09:00Z",
+            "updatedUtc": "2026-11-07T12:10:05Z",
+            "startedUtc": "2026-11-07T12:09:02Z",
+            "finishedUtc": "2026-11-07T12:10:05Z",
+            "options": {
+              "area": "Intune"
+            },
+            "steps": [
+              {
+                "key": "check",
+                "title": "Check the request",
+                "status": "done"
+              },
+              {
+                "key": "signin",
+                "title": "Sign in to the tenants",
+                "status": "done"
+              },
+              {
+                "key": "run",
+                "title": "Read both tenants and build the plan",
+                "status": "done"
+              },
+              {
+                "key": "result",
+                "title": "Record the result",
+                "status": "done"
+              }
+            ],
+            "message": "The plan is ready. Nothing was changed; open the plan to check and apply it.",
+            "result": {
+              "planId": "apply-plan-20261107-121000",
+              "planHash": "317807241c91625ce8b12991401bdcf3be0ce671a3bad22dde559666f67d5318",
+              "exitCode": 0
+            },
+            "cancelRequested": false,
+            "progress": {
+              "done": 4,
+              "total": 4
+            }
+          }
+        ]
+      }
+    },
+    "GET /api/jobs/job-20261107-121500-k3m9qa": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "job-20261107-121500-k3m9qa",
+        "action": "drift",
+        "status": "running",
+        "role": "Applier",
+        "actor": "Example Admin",
+        "createdUtc": "2026-11-07T12:15:00Z",
+        "updatedUtc": "2026-11-07T12:16:10Z",
+        "startedUtc": "2026-11-07T12:15:02Z",
+        "finishedUtc": null,
+        "options": {},
+        "steps": [
+          {
+            "key": "check",
+            "title": "Check the request",
+            "status": "done"
+          },
+          {
+            "key": "signin",
+            "title": "Sign in to the tenants",
+            "status": "done"
+          },
+          {
+            "key": "run",
+            "title": "Read both tenants and compare",
+            "status": "running"
+          },
+          {
+            "key": "result",
+            "title": "Record the result",
+            "status": "pending"
+          }
+        ],
+        "message": "",
+        "result": {},
+        "cancelRequested": false,
+        "progress": {
+          "done": 2,
+          "total": 4
+        },
+        "log": [
+          "2026-11-07T12:15:02Z job job-20261107-121500-k3m9qa started: drift",
+          "2026-11-07T12:15:04Z signed in to Prod",
+          "2026-11-07T12:15:05Z signed in to Dev",
+          "2026-11-07T12:15:05Z running Get-DriftReport.ps1 -ConfigPath -HistoryRoot"
+        ]
+      }
+    },
+    "GET /api/jobs/job-20261107-120900-p7x2zd": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "job-20261107-120900-p7x2zd",
+        "action": "plan-apply",
+        "status": "succeeded",
+        "role": "Applier",
+        "actor": "Example Admin",
+        "createdUtc": "2026-11-07T12:09:00Z",
+        "updatedUtc": "2026-11-07T12:10:05Z",
+        "startedUtc": "2026-11-07T12:09:02Z",
+        "finishedUtc": "2026-11-07T12:10:05Z",
+        "options": {
+          "area": "Intune"
+        },
+        "steps": [
+          {
+            "key": "check",
+            "title": "Check the request",
+            "status": "done"
+          },
+          {
+            "key": "signin",
+            "title": "Sign in to the tenants",
+            "status": "done"
+          },
+          {
+            "key": "run",
+            "title": "Read both tenants and build the plan",
+            "status": "done"
+          },
+          {
+            "key": "result",
+            "title": "Record the result",
+            "status": "done"
+          }
+        ],
+        "message": "The plan is ready. Nothing was changed; open the plan to check and apply it.",
+        "result": {
+          "planId": "apply-plan-20261107-121000",
+          "planHash": "317807241c91625ce8b12991401bdcf3be0ce671a3bad22dde559666f67d5318",
+          "exitCode": 0
+        },
+        "cancelRequested": false,
+        "progress": {
+          "done": 4,
+          "total": 4
+        },
+        "log": [
+          "2026-11-07T12:09:02Z job job-20261107-120900-p7x2zd started: plan-apply",
+          "2026-11-07T12:09:03Z signed in to Prod",
+          "2026-11-07T12:09:04Z signed in to Dev",
+          "2026-11-07T12:09:04Z running Invoke-ApplyDev.ps1 -ConfigPath -HistoryRoot -Plan -Area",
+          "Plan hash: 317807241c91625ce8b12991401bdcf3be0ce671a3bad22dde559666f67d5318",
+          "2026-11-07T12:10:05Z job succeeded. The plan is ready. Nothing was changed; open the plan to check and apply it."
+        ]
+      }
+    },
+    "GET /api/jobs/job-20261107-000000-zzzzzz": {
+      "status": 404,
+      "body": {
+        "code": "not-found",
+        "message": "No job with this id."
+      }
+    },
+    "POST /api/jobs": {
+      "status": 202,
+      "body": {
+        "schemaVersion": "2",
+        "id": "job-20261107-121500-k3m9qa",
+        "action": "drift",
+        "status": "queued",
+        "role": "Applier",
+        "actor": "Example Admin",
+        "createdUtc": "2026-11-07T12:15:00Z",
+        "updatedUtc": "2026-11-07T12:15:00Z",
+        "startedUtc": null,
+        "finishedUtc": null,
+        "options": {},
+        "steps": [],
+        "message": "Waiting for the job runner.",
+        "result": {},
+        "cancelRequested": false,
+        "progress": {
+          "done": 0,
+          "total": 4
+        }
+      }
+    },
+    "POST /api/jobs/job-20261107-121500-k3m9qa/cancel": {
+      "status": 202,
+      "body": {
+        "schemaVersion": "2",
+        "id": "job-20261107-121500-k3m9qa",
+        "action": "drift",
+        "status": "running",
+        "role": "Applier",
+        "actor": "Example Admin",
+        "createdUtc": "2026-11-07T12:15:00Z",
+        "updatedUtc": "2026-11-07T12:16:10Z",
+        "startedUtc": "2026-11-07T12:15:02Z",
+        "finishedUtc": null,
+        "options": {},
+        "steps": [
+          {
+            "key": "check",
+            "title": "Check the request",
+            "status": "done"
+          },
+          {
+            "key": "signin",
+            "title": "Sign in to the tenants",
+            "status": "done"
+          },
+          {
+            "key": "run",
+            "title": "Read both tenants and compare",
+            "status": "running"
+          },
+          {
+            "key": "result",
+            "title": "Record the result",
+            "status": "pending"
+          }
+        ],
+        "message": "",
+        "result": {},
+        "cancelRequested": true,
+        "progress": {
+          "done": 2,
+          "total": 4
+        }
       }
     }
   }

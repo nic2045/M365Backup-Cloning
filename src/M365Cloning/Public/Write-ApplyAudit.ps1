@@ -6,6 +6,7 @@ function Write-ApplyAudit {
     .SYNOPSIS
         Appends one line to History\audit.jsonl (append only). Only fixed fields are written, never properties,
         tokens, client IDs or certificate data; the tenant is shortened to its first 8 characters.
+        Started from the web interface, the line also carries Actor (environment variable M365CLONING_ACTOR).
     #>
     [CmdletBinding()]
     param(
@@ -34,5 +35,11 @@ function Write-ApplyAudit {
         Counts       = $safeCounts
         Reason       = if ($Reason.Length -gt 200) { $Reason.Substring(0, 200) } else { $Reason }
     }
+    # Actor (issue #14, ADR 0010): the person signed in to the web interface who started the job. The job runner
+    # (Invoke-WebJob) sets M365CLONING_ACTOR for the run; a script started by hand has none. Control characters are
+    # removed and the name is cut to 256 characters, as the schema allows.
+    $actor = ([string]$env:M365CLONING_ACTOR) -replace '[\p{C}]', ''
+    $actor = $actor.Trim()
+    if ($actor) { $entry['Actor'] = if ($actor.Length -gt 256) { $actor.Substring(0, 256) } else { $actor } }
     Add-Content -LiteralPath (Join-Path $HistoryRoot 'audit.jsonl') -Value (ConvertTo-Json -InputObject $entry -Compress -Depth 5) -Encoding utf8
 }

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, empty, crumbs, plan_line %}
+{% from "_macros.html" import start_form, busy with context %}
+{% block title %}{{ _("Start Dev fresh") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Goals"), ""), (_("Start Dev fresh"), "")]) }}{% endblock %}
+{% block content %}
+<h1>{{ _("Start Dev fresh") }}</h1>
+<p class="lead">{{ _("Clean Dev up and build it again in a controlled way. The reset is the only run that deletes; it needs a preview and two confirmations.") }}</p>
+{{ busy(running) }}
+
+<section class="card flow-step" aria-labelledby="reset-preview">
+  <h2 class="card-title" id="reset-preview"><span class="nav-step" aria-hidden="true">1</span> {{ _("Preview the reset") }}</h2>
+  {% call start_form("plan-reset", _("Create the reset plan"), "fresh", "Resetter", running=running) %}
+  <fieldset class="choice-group">
+    <legend>{{ _("Mode") }}</legend>
+    <label class="choice"><input type="radio" name="mode" value="Align" checked> <span><strong>{{ _("Align") }}</strong> <span class="meta">{{ _("(default, careful) deletes only what exists in Dev but not in Prod") }}</span></span></label>
+    <label class="choice"><input type="radio" name="mode" value="Full"> <span><strong>{{ _("Full") }}</strong> <span class="meta">{{ _("deletes everything in the reset scope except the protection list and the base state") }}</span></span></label>
+  </fieldset>
+  <fieldset class="choice-group">
+    <legend>{{ _("Intune devices") }}</legend>
+    <label class="choice"><input type="radio" name="deviceAction" value="Keep" checked> <span><strong>{{ _("Keep") }}</strong> <span class="meta">{{ _("(default) devices stay as they are") }}</span></span></label>
+    <label class="choice"><input type="radio" name="deviceAction" value="Remove"> <span><strong>{{ _("Remove from Intune") }}</strong> <span class="meta">{{ _("deletes the device object") }}</span></span></label>
+    <label class="choice"><input type="radio" name="deviceAction" value="Retire"> <span><strong>{{ _("Retire") }}</strong> <span class="meta">{{ _("removes company data") }}</span></span></label>
+    <p class="meta">{{ _("Protected devices (name prefix in the config, devices of protected accounts) are never touched. A wipe runs with the script only.") }}</p>
+  </fieldset>
+  {% endcall %}
+</section>
+
+<section class="card flow-step" aria-labelledby="reset-confirm">
+  <h2 class="card-title" id="reset-confirm"><span class="nav-step" aria-hidden="true">2</span> {{ _("Check and confirm") }}</h2>
+  <p>{{ _("Open the reset plan, check the protection list, then confirm with the plan and the ID of the Dev tenant.") }}</p>
+  {% if plans %}
+  <ul class="recent">{% for p in plans %}<li>{% if p.state == "outdated" %}{{ p.id }} {{ badge("outdated") }}{% else %}{{ plan_line(p) }}{% if p.mode %} <span class="tag">{{ p.mode }}</span>{% endif %}{% endif %}</li>{% endfor %}</ul>
+  {% else %}
+  {{ empty(_("No reset plan yet"), _("Create the reset plan above; it changes nothing."), "fresh") }}
+  {% endif %}
+</section>
+
+<section class="card flow-step" aria-labelledby="rebuild">
+  <h2 class="card-title" id="rebuild"><span class="nav-step" aria-hidden="true">3</span> {{ _("Build Dev again") }}</h2>
+  <ol class="later-list">
+    <li><a href="/goals/fill">{{ _("Base state") }}</a> <span class="meta">{{ _("persona and break-glass groups, cross-tenant partner") }}</span></li>
+    <li><a href="/goals/align">{{ _("Bring Dev in line") }}</a> <span class="meta">{{ _("copy the configuration of Prod") }}</span></li>
+    <li><a href="/goals/fill">{{ _("Dev users") }}</a> <span class="meta">{{ _("test users and invited admins") }}</span></li>
+  </ol>
+</section>
+{% endblock %}
