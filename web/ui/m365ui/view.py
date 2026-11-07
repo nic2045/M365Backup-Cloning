@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
+from urllib.parse import urlencode
 
 from markupsafe import Markup
 
@@ -116,6 +117,41 @@ def newest_first(items: Iterable[dict[str, Any]], key: str) -> list[dict[str, An
         dt = parse_utc(item.get(key)) or datetime.min.replace(tzinfo=timezone.utc)
         return (item.get("state") == "outdated", -dt.timestamp())
     return sorted(items, key=sort_key)
+
+
+# ---------------------------------------------------------------- audit filters (#13)
+
+# Modes of an audit line as the API knows them, in the order of the work, with a readable name and an icon.
+AUDIT_MODES = (
+    ("report", "Drift report", "compare"),
+    ("plan", "Plan", "plans"),
+    ("apply", "Apply", "next"),
+    ("refused", "Refused", "bad"),
+    ("reset", "Reset", "outdated"),
+    ("fitcheck", "Suitability check", "ok"),
+)
+# Period filter -> days back. Offered as a choice, not typed (docs: guided UX).
+AUDIT_PERIODS = (("1d", "Last 24 hours", 1), ("7d", "Last 7 days", 7), ("30d", "Last 30 days", 30))
+PLAN_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def audit_since(period: str, now: datetime) -> str | None:
+    """The ``since`` value for the API from a period key; unknown keys mean no limit."""
+    for key, _label, days in AUDIT_PERIODS:
+        if key == period:
+            return (now - timedelta(days=days)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return None
+
+
+def audit_query(mode: str = "", period: str = "", plan: str = "", page: int = 1) -> str:
+    """Query string of the audit page with the filters that are set (for pager and filter links)."""
+    pairs = [("mode", mode), ("period", period), ("plan", plan)] + ([("page", str(page))] if page > 1 else [])
+    return urlencode([(k, v) for k, v in pairs if v])
+
+
+def short_hash(value: Any) -> str:
+    text = str(value or "")
+    return text[:8] + "…" if len(text) > 8 else text
 
 
 # ---------------------------------------------------------------- next step (#63)

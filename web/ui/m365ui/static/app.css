@@ -108,6 +108,7 @@ h3 { margin: var(--gap-block) 0 var(--gap-row); font-size: 1.05rem; font-weight:
 .big { font-size: 1.1rem; }
 .eyebrow { margin: 0; font-size: var(--size-caption); font-weight: 600; color: var(--brand-fg); text-transform: uppercase; letter-spacing: 0.04em; }
 code.hash, code.cmd { font-family: var(--mono); font-size: 0.85rem; word-break: break-all; }
+.nowrap, code.hash.nowrap { white-space: nowrap; word-break: normal; }
 code.cmd { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-m); background: var(--bg-strong); color: var(--fg); }
 .rel { color: var(--muted); font-size: var(--size-caption); white-space: nowrap; }
 
@@ -152,6 +153,8 @@ code.cmd { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--
 .badge-muted { background: var(--muted-bg); color: var(--muted-fg); border-color: var(--muted-line); }
 .tag { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0 0.45rem; border: 1px solid var(--line-2); border-radius: var(--radius-m); background: var(--bg-subtle); color: var(--fg-2); font-size: 0.8rem; font-weight: 400; white-space: nowrap; vertical-align: middle; }
 .tag .icon { width: 1em; height: 1em; vertical-align: 0; }
+.active-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-xs) var(--gap-row); margin: 0 0 var(--gap-row); }
+.active-filter .icon { width: 1.1em; height: 1.1em; }
 
 /* ---- Forms and buttons ---- */
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--gap-row) var(--gap-block); margin: 0 0 var(--gap-block); padding: var(--gap-m) var(--gap-block); border: 1px solid var(--line-2); border-radius: var(--radius-xl); background: var(--bg); }

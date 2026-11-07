@@ -106,7 +106,8 @@ def create_app(history_dir: Path | str | None = None, auth: AuthConfig | None = 
         return respond("PlanResponse", lambda: store.get_plan(id))
 
     @app.get("/api/audit")
-    def audit(mode: str | None = None, since: str | None = None, page: str | None = None, pageSize: str | None = None) -> JSONResponse:  # noqa: N803
+    def audit(mode: str | None = None, since: str | None = None, planHash: str | None = None,  # noqa: N803
+              page: str | None = None, pageSize: str | None = None) -> JSONResponse:  # noqa: N803
         return respond(
             "AuditPage",
             lambda: store.audit_page(
@@ -114,6 +115,7 @@ def create_app(history_dir: Path | str | None = None, auth: AuthConfig | None = 
                 params.since(since),
                 params.bounded_int("page", page, 1, 1, None),
                 params.bounded_int("pageSize", pageSize, 50, 1, 500),
+                params.plan_hash(planHash),
             ),
         )
 

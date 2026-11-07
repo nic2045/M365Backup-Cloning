@@ -105,6 +105,8 @@ def test_lists_filter_by_kind(client):
         "/api/audit?page=0",
         "/api/audit?pageSize=501",
         "/api/audit?pageSize=abc",
+        "/api/audit?planHash=ABC",
+        "/api/audit?planHash=" + "A" * 64,
     ],
 )
 def test_bad_parameters_give_the_error_schema(client, url):
@@ -112,3 +114,21 @@ def test_bad_parameters_give_the_error_schema(client, url):
     assert response.status_code == 400
     assert errors("Error", response.json()) == []
     assert response.json()["code"] == "invalid-parameter"
+
+
+def test_audit_filters_by_plan_hash(client):
+    items = MOCK["GET /api/audit"]["body"]["items"]
+    wanted = next(i["PlanHash"] for i in items if i["PlanHash"])
+    got = client.get("/api/audit", params={"planHash": wanted}).json()
+    assert got["total"] == sum(1 for i in items if i["PlanHash"] == wanted) and got["total"] >= 1
+    assert {i["PlanHash"] for i in got["items"]} == {wanted}
+
+
+def test_audit_filters_by_report_mode(client):
+    got = client.get("/api/audit", params={"mode": "report"}).json()
+    assert got["total"] >= 1 and {i["Mode"] for i in got["items"]} == {"report"}
+
+
+def test_audit_query_parameters_match_openapi():
+    names = {p["name"] for p in OPENAPI["paths"]["/api/audit"]["get"]["parameters"]}
+    assert names == {"mode", "since", "planHash", "page", "pageSize"}

@@ -74,11 +74,11 @@ def test_lists_are_newest_first(client, history):
 
 def test_audit_paging_and_filters(client):
     first = client.get("/api/audit", params={"pageSize": 2}).json()
-    assert first["total"] == 6 and len(first["items"]) == 2 and first["page"] == 1
+    assert first["total"] == 15 and len(first["items"]) == 2 and first["page"] == 1
     third = client.get("/api/audit", params={"pageSize": 2, "page": 3}).json()
     assert len(third["items"]) == 2
     beyond = client.get("/api/audit", params={"pageSize": 2, "page": 9}).json()
-    assert beyond["items"] == [] and beyond["total"] == 6
+    assert beyond["items"] == [] and beyond["total"] == 15
     fit = client.get("/api/audit", params={"mode": "fitcheck"}).json()
     assert fit["total"] == 1 and fit["items"][0]["Mode"] == "fitcheck"
     later = client.get("/api/audit", params={"since": "2027-01-01T00:00:00Z"}).json()
@@ -88,7 +88,7 @@ def test_audit_paging_and_filters(client):
 def test_broken_audit_lines_are_skipped(client, history):
     with (history / "audit.jsonl").open("a", encoding="utf-8") as handle:
         handle.write("not json\n{\"Mode\": \"plan\"}\n")
-    assert client.get("/api/audit").json()["total"] == 6
+    assert client.get("/api/audit").json()["total"] == 15
 
 
 def test_empty_history(tmp_path):

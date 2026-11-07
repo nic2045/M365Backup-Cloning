@@ -69,3 +69,21 @@
   {%- endfor %}
 </ol></nav>
 {%- endmacro %}
+
+{#- A select whose options are tuples (value, label, ...): the person picks a readable name, the URL keeps the key. -#}
+{% macro choice(name, label, options, current, all_label) -%}
+<label class="field"><span>{{ label }}</span>
+  <select name="{{ name }}">
+    <option value="">{{ all_label }}</option>
+    {%- for o in options %}<option value="{{ o[0] }}"{% if o[0] == current %} selected{% endif %}>{{ _(o[1]) }}</option>{% endfor %}
+  </select>
+</label>
+{%- endmacro %}
+
+{#- Mode of an audit line (issue #13): icon + text; a refusal is shown as a red badge. -#}
+{% macro mode_tag(mode, modes) -%}
+{%- set found = namespace(text=mode, pic="info") -%}
+{%- for key, text, pic in modes if key == mode %}{% set found.text = _(text) %}{% set found.pic = pic %}{% endfor -%}
+{%- if mode == "refused" -%}<span class="badge badge-bad">{{ icon("bad") }}<span class="badge-text">{{ found.text }}</span></span>
+{%- else -%}<span class="tag">{{ icon(found.pic) }}<span>{{ found.text }}</span></span>{%- endif -%}
+{%- endmacro %}

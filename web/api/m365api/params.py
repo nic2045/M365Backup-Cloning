@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from . import contract
@@ -33,6 +34,18 @@ def since(value: str | None) -> datetime | None:
         return parse_utc(value)
     except ValueError as exc:
         raise StoreError(400, "invalid-parameter", "since must be a date and time in ISO 8601 (for example 2026-11-07T12:00:00Z).") from exc
+
+
+PLAN_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def plan_hash(value: str | None) -> str | None:
+    """The SHA-256 plan hash as the core writes it (issue #13): 64 lowercase hex characters."""
+    if value is None or value == "":
+        return None
+    if not PLAN_HASH_RE.fullmatch(value):
+        raise StoreError(400, "invalid-parameter", "planHash must be 64 lowercase hex characters (the plan hash).")
+    return value
 
 
 def bounded_int(name: str, value: str | None, default: int, minimum: int, maximum: int | None) -> int:

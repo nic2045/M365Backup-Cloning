@@ -36,6 +36,7 @@ Note: `ConfigurationMonitoring.ReadWrite.All` is a write-named permission. The t
 | Equal tenants | A Dev tenant that is a copy of Prod gives an empty report. |
 | Quotas | Snapshot: 20,000 resources per tenant per month, snapshots kept 7 days (we copy them). |
 | Tenant untouched | Entra audit log / Intune audit shows only the snapshot job, no change. |
+| Audit line | `History\audit.jsonl` has one new line with mode `report` and the counts of the report (issue #13). |
 
 Report anything unexpected as an issue. The apply step is part 2, see below.
 
@@ -73,7 +74,7 @@ Claude never ran any of this against a tenant. The unit tests use mocks; the DSC
 | Nothing deleted | A resource that only exists in Dev is still there after the apply |
 | Blocked entries | Policies with an unknown group, assignment filter or specific users are listed as blocked and are not in Dev |
 | Prod untouched | Entra audit log of the Prod tenant shows no change from the toolkit |
-| Audit log | `History\audit.jsonl` has one line per plan, refusal and apply, no IDs of the app registration, no thumbprint |
+| Audit log | `History\audit.jsonl` has one line per plan, refusal and apply, plus one line per applied object (`applied <type>: <name>`, issue #13), no IDs of the app registration, no thumbprint, no error text |
 
 # Part 3: Conditional Access copy with persona groups (writes to the Dev tenant)
 

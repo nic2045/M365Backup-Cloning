@@ -39,7 +39,8 @@ GUID_RE = re.compile(r"\b([0-9a-fA-F]{8})-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA
 
 REPORT_KINDS = ("drift", "tenantfit")
 PLAN_KINDS = ("apply", "baseline", "reset", "users")
-AUDIT_MODES = ("plan", "apply", "reset", "fitcheck")
+AUDIT_MODES = tuple(key for key, _label, _icon in view.AUDIT_MODES)
+AUDIT_PERIODS = tuple(key for key, _label, _days in view.AUDIT_PERIODS)
 DRIFT_STATES = ("added", "removed", "changed", "unchanged")
 
 
@@ -311,18 +312,31 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
                       type=type or "", state=state, states=states)
 
     @app.get("/audit", response_class=HTMLResponse)
-    def audit(request: Request, mode: str | None = None, page: int = 1):
+    def audit(request: Request, mode: str | None = None, period: str | None = None, plan: str | None = None,
+              page: int = 1):
         mode = _pick(mode, AUDIT_MODES)
+        period = _pick(period, AUDIT_PERIODS)
+        plan = plan if plan and view.PLAN_HASH_RE.fullmatch(plan) else ""
         page = max(1, min(page, 100000))
-        res = call(request, "/api/audit", {"mode": mode, "page": page if page > 1 else None})
+        res = call(request, "/api/audit", {"mode": mode, "since": view.audit_since(period, now()), "planHash": plan,
+                                          "page": page if page > 1 else None})
         if not res.ok:
             return failed(request, res)
         body = res.body
         size = max(1, int(body.get("pageSize", 50)))
         total = int(body.get("total", 0))
         pages = max(1, -(-total // size))
-        return render(request, "audit.html", nav="audit", items=body.get("items", []), mode=mode,
-                      modes=AUDIT_MODES, page=int(body.get("page", page)), pages=pages, total=total)
+        items = body.get("items", [])
+        # Plan hash -> plan id, so a line can open its plan (before/after is in the plan). Only when needed.
+        plan_ids: dict[str, str] = {}
+        if any(e.get("PlanHash") for e in items):
+            plans_res = call(request, "/api/plans")
+            if plans_res.ok and isinstance(plans_res.body, dict):
+                plan_ids = {p["planHash"]: p["id"] for p in plans_res.body.get("items", []) if p.get("planHash") and p.get("id")}
+        return render(request, "audit.html", nav="audit", items=items, mode=mode, period=period, plan=plan,
+                      plan_ids=plan_ids, modes=view.AUDIT_MODES, periods=view.AUDIT_PERIODS,
+                      page=int(body.get("page", page)), pages=pages, total=total, query=view.audit_query,
+                      short_hash=view.short_hash, filtered=bool(mode or period or plan))
 
     return app
 

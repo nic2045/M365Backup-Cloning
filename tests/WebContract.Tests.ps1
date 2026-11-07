@@ -31,6 +31,13 @@ Describe 'Core output files follow the schema' {
         $lines.Count | Should -BeGreaterThan 5
         foreach ($l in $lines) { Test-ContractJson -Json $l -Definition 'AuditEntry' -Folder $script:Work | Should -BeNullOrEmpty }
     }
+    It 'the drift report writes a report line with counts only (issue #13)' {
+        $lines = @(Get-Content -LiteralPath (Join-Path $script:History 'audit.jsonl') | ConvertFrom-Json)
+        $report = @($lines | Where-Object { $_.Mode -eq 'report' })
+        $report.Count | Should -Be 1
+        $report[0].Reason | Should -Match '^drift Prod -> Dev \(offline\): \d+ added, \d+ removed, \d+ changed$'
+        $report[0].PlanHash | Should -Be ''
+    }
     It 'an audit entry with an extra field is rejected (closed set of fields)' {
         $bad = '{"Timestamp":"2026-11-07T12:00:00Z","User":"x","Mode":"plan","PlanHash":"","TargetTenant":"t","Counts":{},"Reason":"","Token":"abc"}'
         Test-ContractJson -Json $bad -Definition 'AuditEntry' -Folder $script:Work | Should -Not -BeNullOrEmpty

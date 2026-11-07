@@ -823,6 +823,7 @@
         },
         "Mode": {
           "enum": [
+            "report",
             "plan",
             "apply",
             "refused",
