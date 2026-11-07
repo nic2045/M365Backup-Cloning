@@ -1,6 +1,6 @@
 # 0003. Persona groups and naming scheme for Conditional Access and the Dev tenant
 
-Status: Accepted (2026-11-07, personas from the owner's list "Groupings (2025 Active Policies)"; naming follows the Microsoft paper below, confirmed by the owner)
+Status: Proposed (2026-11-07, personas from the owner's list "Groupings (2025 Active Policies)"; naming follows the Microsoft paper below as the owner asked; to be confirmed by the owner)
 
 ## Context
 Conditional Access (CA) policies are organised by persona. The Dev tenant must carry the same persona logic as Prod, but without Prod users (ADR 0001, ADR 0002). Groups are matched by name, never by ID. Cross-tenant synchronisation brings only test users and administrators (as B2B guests) into the Dev tenant and must place them in the group of their persona.
