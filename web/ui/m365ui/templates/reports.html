@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, filter_form, select %}
+{% block title %}{{ _("Reports") }}{% endblock %}
+{% block content %}
+<h1>{{ _("Reports") }}</h1>
+{% call filter_form("/reports", []) %}
+  {{ select("kind", _("Kind"), kinds, kind, _("All kinds")) }}
+{% endcall %}
+<div id="results">
+{% if items %}
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Reports") }}</caption>
+  <thead><tr><th scope="col">{{ _("Report") }}</th><th scope="col">{{ _("Kind") }}</th><th scope="col">{{ _("Created (UTC)") }}</th><th scope="col">{{ _("Result") }}</th></tr></thead>
+  <tbody>
+  {% for r in items %}
+    <tr>
+      <td data-label="{{ _('Report') }}"><a href="/reports/{{ r.id }}">{{ r.id }}</a></td>
+      <td data-label="{{ _('Kind') }}">{{ r.kind }}</td>
+      <td data-label="{{ _('Created (UTC)') }}"><time>{{ r.createdUtc }}</time></td>
+      <td data-label="{{ _('Result') }}">{% if r.kind == "tenantfit" %}{{ badge(r.status) }}{% elif r.isIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p>{{ _("No reports.") }}</p>{% endif %}
+</div>
+{% endblock %}

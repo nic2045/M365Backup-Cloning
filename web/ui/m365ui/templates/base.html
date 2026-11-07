@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ _("Overview") }}{% endblock %} · {{ _("Dev tenant toolkit") }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx-2.0.4.min.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">{{ _("Skip to content") }}</a>
+  <header class="top">
+    <div class="brand">{{ _("Dev tenant toolkit") }}</div>
+    <nav aria-label="{{ _('Main') }}">
+      <a href="/" {% if nav == "overview" %}aria-current="page"{% endif %}>{{ _("Overview") }}</a>
+      <a href="/reports" {% if nav == "reports" %}aria-current="page"{% endif %}>{{ _("Reports") }}</a>
+      <a href="/plans" {% if nav == "plans" %}aria-current="page"{% endif %}>{{ _("Plans") }}</a>
+      <a href="/audit" {% if nav == "audit" %}aria-current="page"{% endif %}>{{ _("Audit") }}</a>
+    </nav>
+  </header>
+  {% if mock %}<p class="notice" role="note">{{ _("Example data: this page shows the mock answers, not your tenants.") }}</p>{% endif %}
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="foot">{{ _("Read only. Applying and resetting are done with the scripts.") }}</footer>
+</body>
+</html>

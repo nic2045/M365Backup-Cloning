@@ -68,3 +68,20 @@ python -m m365api      # http://127.0.0.1:8000/api/status
 ```
 
 The contract test builds a `History` folder from `web/mock/responses.json` and checks that every answer equals the example (masked) and matches the schema, that the app has no route outside `web/openapi.json`, that no answer contains a full GUID or the Prod tenant ID of the fixtures, and that ids outside `^[a-z0-9-]+$` or outside `History/reports` are refused.
+
+## Start the frontend (issue #12)
+
+The read-only interface in `web/ui` (FastAPI, Jinja2, HTMX 2.0.4 shipped as a file in `m365ui/static`, no CDN) renders the pages Overview, Reports (drift and suitability), Plans and Audit. It calls only the read routes of `web/openapi.json` (`/api/...`); any other path is refused before a request. It knows no file paths of the core and rebuilds none of its rules; filters on a report or plan only narrow what the API returned.
+
+- With `M365_UI_API_BASE` (for example `http://127.0.0.1:8000`) it talks to the server in `web/api`.
+- Without it, it answers from `web/mock/responses.json` and shows a yellow "Example data" banner (`M365_UI_MOCK_FILE` for another file).
+- Every output is passed through a GUID mask as a second line of defence; the server masks already (ADR 0009).
+- Status is shown as symbol, text and colour; tables become stacked rows below 40 rem, so the page never scrolls sideways (checked at 1280 and 390 px).
+
+```bash
+cd web/ui
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt     # includes web/api for the in-process test
+pytest                                  # pages against the mock and against the real API in process
+uvicorn m365ui.main:app --port 8080     # http://127.0.0.1:8080/  (mock unless M365_UI_API_BASE is set)
+```

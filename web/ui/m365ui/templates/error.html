@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ _("Error") }}{% endblock %}
+{% block content %}
+<h1>{{ _("This page could not be shown") }}</h1>
+<p class="error" role="alert">{{ message }} <span class="meta">({{ code }})</span></p>
+<p><a class="button button-secondary" href="/">{{ icon("back") }} {{ _("Back to the overview") }}</a></p>
+{% endblock %}

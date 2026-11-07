@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge %}
+{% block title %}{{ _("Overview") }}{% endblock %}
+{% block content %}
+<h1>{{ _("Overview") }}</h1>
+<section class="cards">
+  <article class="card">
+    <h2>{{ _("Is the Dev tenant enough?") }}</h2>
+    {% if fit %}
+      <p class="big">{{ badge(fit.report.Status) }}</p>
+      <p>{{ fit.report.Verdict }}</p>
+      <p class="meta">{{ _("Checked") }}: <time>{{ fit.createdUtc }}</time></p>
+      <p><a href="/reports/{{ fit.id }}">{{ _("Show the suitability report") }}</a></p>
+    {% else %}
+      <p>{{ badge("grey") }}</p>
+      <p>{{ _("No suitability check yet.") }}</p>
+    {% endif %}
+  </article>
+  <article class="card">
+    <h2>{{ _("Prod and Dev") }}</h2>
+    {% if status.differences == 0 %}<p class="big">{{ badge("identical") }}</p>{% else %}<p class="big">{{ badge("different") }}</p>{% endif %}
+    <dl class="pairs">
+      <dt>{{ _("Differences") }}</dt><dd>{{ status.differences }}</dd>
+      <dt>{{ _("Last comparison") }}</dt><dd><time>{{ status.lastComparisonUtc or _("never") }}</time></dd>
+    </dl>
+    {% if status.reportId %}<p><a href="/reports/{{ status.reportId }}">{{ _("Show the drift report") }}</a></p>{% endif %}
+  </article>
+</section>
+{% endblock %}

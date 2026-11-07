@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import filter_form, select %}
+{% block title %}{{ _("Plans") }}{% endblock %}
+{% block content %}
+<h1>{{ _("Plans") }}</h1>
+<p>{{ _("A plan is a preview: nothing was changed. Apply it with the script and the plan hash.") }}</p>
+{% call filter_form("/plans", []) %}
+  {{ select("kind", _("Kind"), kinds, kind, _("All kinds")) }}
+{% endcall %}
+<div id="results">
+{% if items %}
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Plans") }}</caption>
+  <thead><tr><th scope="col">{{ _("Plan") }}</th><th scope="col">{{ _("Kind") }}</th><th scope="col">{{ _("Created (UTC)") }}</th>
+    <th scope="col" class="num">{{ _("Planned") }}</th><th scope="col" class="num">{{ _("Blocked") }}</th><th scope="col" class="num">{{ _("Skipped") }}</th></tr></thead>
+  <tbody>
+  {% for p in items %}
+    <tr>
+      <td data-label="{{ _('Plan') }}"><a href="/plans/{{ p.id }}">{{ p.id }}</a></td>
+      <td data-label="{{ _('Kind') }}">{{ p.kind }}{% if p.mode %} ({{ p.mode }}){% endif %}</td>
+      <td data-label="{{ _('Created (UTC)') }}"><time>{{ p.createdUtc }}</time></td>
+      <td data-label="{{ _('Planned') }}" class="num">{{ p.summary.Planned }}</td><td data-label="{{ _('Blocked') }}" class="num">{{ p.summary.Blocked }}</td><td data-label="{{ _('Skipped') }}" class="num">{{ p.summary.Skipped }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p>{{ _("No plans.") }}</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+# Runtime dependencies of the read-only web interface (issue #12). Direct dependencies, pinned.
+# fastapi and uvicorn match web/api/requirements.txt so both apps can run in one environment.
+fastapi==0.156.4
+uvicorn==0.54.0
+jinja2==3.1.5
+markupsafe==3.0.3
+httpx==0.28.1
