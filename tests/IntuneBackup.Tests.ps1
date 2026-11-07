@@ -198,8 +198,13 @@ Describe 'Invoke-IntuneCdProcess' {
         $text | Should -Not -Match 'env:[A-Z_]*TOKEN'
     }
     It 'never calls the update of IntuneCD' {
-        foreach ($f in Get-ChildItem (Join-Path $PSScriptRoot '..' 'src', (Join-Path $PSScriptRoot '..' 'scripts')) -Recurse -Filter '*.ps1') {
-            Get-Content -LiteralPath $f.FullName -Raw | Should -Not -Match '(?i)IntuneCD-startupdate|run_update' -Because $f.Name
+        $folders = @((Join-Path $PSScriptRoot '..' 'src'), (Join-Path $PSScriptRoot '..' 'scripts'), (Join-Path $PSScriptRoot '..' 'tools' 'intunecd'))
+        $files = @(foreach ($d in $folders) { Get-ChildItem -LiteralPath $d -Recurse -File -Include '*.ps1', '*.py' | Where-Object { $_.FullName -notmatch '[\\/]tests[\\/]' } })
+        $files.Count | Should -BeGreaterThan 10  # the check must look at real files
+        ($files.Name) | Should -Contain 'Invoke-IntuneBackup.ps1'
+        ($files.Name) | Should -Contain 'intunecd_backup.py'
+        foreach ($f in $files) {
+            Get-Content -LiteralPath $f.FullName -Raw | Should -Not -Match '(?i)IntuneCD-startupdate|run_update|update_intune' -Because $f.Name
         }
     }
     It 'names the missing Python with the install hint' {
