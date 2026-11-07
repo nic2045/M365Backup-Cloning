@@ -129,3 +129,7 @@ never touched; device actions run last. Pass the same device options with `-Appl
 ## Web contract (issue #44, ADR 0008)
 
 The web server and interface (ADR 0002) are not built yet. Their contract is: `schema/m365cloning.schema.json` (formats the core writes and the API envelopes), `web/openapi.json` (read routes only) and `web/mock/responses.json` (example responses). `tests/WebContract.Tests.ps1` checks the core's files, the OpenAPI description and the mock against it. See [`docs/web-contract.md`](docs/web-contract.md).
+
+## Web API (read only, issue #55)
+
+`web/api` is the read-only API server (FastAPI) for the routes of `web/openapi.json`: reports, plans, audit, suitability check and status from `History/`. Tenant IDs and GUIDs are masked in every answer; there are no write routes. Start and test: see `docs/web-contract.md`, section "Start the backend".
