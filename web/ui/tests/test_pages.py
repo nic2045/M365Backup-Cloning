@@ -170,3 +170,31 @@ def test_http_client_passes_status_and_params():
     client = HttpClient("http://backend.test", transport=httpx.MockTransport(handler))
     res = client.get("/api/audit", {"mode": "plan", "page": 2, "since": None})
     assert res.ok and seen["url"] == "http://backend.test/api/audit?mode=plan&page=2"
+
+
+class OutdatedClient(BaseClient):
+    """Lists with one outdated entry each; details of outdated entries answer 409 (issue #59)."""
+
+    mock = False
+
+    def _get(self, path, params):
+        if path == "/api/plans":
+            return ApiResponse(200, {"schemaVersion": "2", "items": [
+                {"id": "apply-plan-20200101-000000", "kind": "apply", "createdUtc": "2020-01-01T00:00:00Z", "state": "outdated"}]})
+        if path == "/api/reports":
+            return ApiResponse(200, {"schemaVersion": "2", "items": [
+                {"id": "drift-20200101-000000", "kind": "drift", "createdUtc": "2020-01-01T00:00:00Z", "state": "outdated"}]})
+        return ApiResponse(409, {"code": "unsupported-format", "message": "The file has an older or unknown format. Regenerate it with the scripts."})
+
+
+def test_outdated_entries_and_409_page():
+    web = TestClient(create_app(OutdatedClient()))
+    plans = web.get("/plans")
+    assert plans.status_code == 200
+    assert "badge-warn" in plans.text and "Outdated" in plans.text and "⟳" in plans.text
+    reports = web.get("/reports")
+    assert "Outdated" in reports.text and "regenerate the report with the script" in reports.text
+    for page in ("/plans/apply-plan-20200101-000000", "/reports/drift-20200101-000000"):
+        r = web.get(page)
+        assert r.status_code == 409
+        assert "older or unknown format" in r.text and "Regenerate the plan or report" in r.text

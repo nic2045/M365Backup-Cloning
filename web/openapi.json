@@ -75,6 +75,9 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           }
         },
         "parameters": [
@@ -154,6 +157,9 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           }
         },
         "parameters": [
@@ -369,6 +375,16 @@
       },
       "ServerError": {
         "description": "Server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The stored file has an older or unknown format; regenerate it with the scripts (code 'unsupported-format', issue #59).",
         "content": {
           "application/json": {
             "schema": {

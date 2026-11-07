@@ -17,7 +17,7 @@
       <td data-label="{{ _('Report') }}"><a href="/reports/{{ r.id }}">{{ r.id }}</a></td>
       <td data-label="{{ _('Kind') }}">{{ r.kind }}</td>
       <td data-label="{{ _('Created (UTC)') }}"><time>{{ r.createdUtc }}</time></td>
-      <td data-label="{{ _('Result') }}">{% if r.kind == "tenantfit" %}{{ badge(r.status) }}{% elif r.isIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</td>
+      <td data-label="{{ _('Result') }}">{% if r.state == "outdated" %}{{ badge("outdated") }} <span class="meta">{{ _("Older format: regenerate the report with the script.") }}</span>{% elif r.kind == "tenantfit" %}{{ badge(r.status) }}{% elif r.isIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>

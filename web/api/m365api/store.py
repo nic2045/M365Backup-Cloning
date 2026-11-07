@@ -3,6 +3,7 @@
 Layout (written by the PowerShell core, see docs/web-contract.md):
     History/reports/<prefix>-<yyyyMMdd-HHmmss>.json   drift reports, suitability checks, plan files
     History/audit.jsonl                              one audit entry per line, append only
+Files in another or an unknown format are refused with 409 in detail and listed as 'outdated' (issue #59).
 The store only reads. Ids are file base names; they are checked against a fixed pattern and a known prefix
 and the resolved path must stay inside History/reports, so a request can never reach another file.
 """
@@ -115,42 +116,63 @@ class Store:
         return json.loads(path.read_text(encoding="utf-8-sig"))
 
     def _load_checked(self, entry: Entry, definition: str) -> dict[str, Any]:
+        """Reads and checks one core file. A file the server cannot open is a server error (500); a file in
+        another or an unknown format is a conflict with the stored data (409, issue #59): the cure is to make
+        it again with the scripts, so the message says so."""
         try:
             content = self._read_json(entry.path)
-        except (OSError, ValueError) as exc:
+        except OSError as exc:
             raise StoreError(500, "unreadable-file", f"The file {entry.id} cannot be read.") from exc
+        except ValueError as exc:
+            raise StoreError(409, "unsupported-format", f"The file {entry.id} is not valid JSON. Regenerate it with the scripts.") from exc
         if not isinstance(content, dict) or str(content.get("SchemaVersion", "")) != contract.schema_version():
-            raise StoreError(500, "unsupported-format", f"The file {entry.id} has another format; make it again with the scripts.")
+            raise StoreError(409, "unsupported-format", f"The file {entry.id} has an older or unknown format. Regenerate it with the scripts.")
         problems = contract.errors(definition, content)
         if problems:
             log.warning("%s does not match %s: %s", entry.id, definition, problems[:3])
-            raise StoreError(500, "unsupported-format", f"The file {entry.id} does not match the format; make it again with the scripts.")
+            raise StoreError(409, "unsupported-format", f"The file {entry.id} does not match the format. Regenerate it with the scripts.")
         if str(content.get("Kind", "")) != entry.kind:
-            raise StoreError(500, "unsupported-format", f"The file {entry.id} has kind {content.get('Kind')!r}, expected {entry.kind!r}.")
+            raise StoreError(409, "unsupported-format", f"The file {entry.id} has kind {content.get('Kind')!r}, expected {entry.kind!r}. Regenerate it with the scripts.")
         return content
 
-    def _load_many(self, group: str, definition: str, kind: str | None) -> list[tuple[Entry, dict[str, Any]]]:
-        loaded = []
+    @staticmethod
+    def _modified_utc(entry: Entry) -> str:
+        stamp = datetime.fromtimestamp(entry.path.stat().st_mtime, tz=timezone.utc)
+        return stamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def _load_many(
+        self, group: str, definition: str, kind: str | None, include_outdated: bool = False
+    ) -> list[tuple[Entry, dict[str, Any] | None, str]]:
+        """Entries with their checked content and their time, newest first. With include_outdated, files in
+        another format stay in the result with content None and the file time (lists show them as
+        'outdated', issue #59); status and the latest check use only current files."""
+        loaded: list[tuple[Entry, dict[str, Any] | None, str]] = []
         for entry in self._entries(group):
             if kind and entry.kind != kind:
                 continue
             definition_for = definition if group == "plans" else ("FitCheck" if entry.kind == "tenantfit" else "DriftReport")
             try:
-                loaded.append((entry, self._load_checked(entry, definition_for)))
+                content = self._load_checked(entry, definition_for)
             except StoreError as exc:
-                log.warning("skipped %s in the list: %s", entry.id, exc.message)
+                log.warning("%s in the list is not current: %s", entry.id, exc.message)
+                if include_outdated and exc.code == "unsupported-format":
+                    loaded.append((entry, None, self._modified_utc(entry)))
+                continue
+            loaded.append((entry, content, content["CreatedUtc"]))
         # Newest first; files of the same time in id order (as the contract examples).
         loaded.sort(key=lambda item: item[0].id)
-        loaded.sort(key=lambda item: parse_utc(item[1]["CreatedUtc"]), reverse=True)
+        loaded.sort(key=lambda item: parse_utc(item[2]), reverse=True)
         return loaded
 
     # --- reports ---------------------------------------------------------------------------------------------
 
     def list_reports(self, kind: str | None) -> dict[str, Any]:
         items = []
-        for entry, content in self._load_many("reports", "", kind):
-            item: dict[str, Any] = {"id": entry.id, "kind": entry.kind, "createdUtc": content["CreatedUtc"]}
-            if entry.kind == "drift":
+        for entry, content, created in self._load_many("reports", "", kind, include_outdated=True):
+            item: dict[str, Any] = {"id": entry.id, "kind": entry.kind, "createdUtc": created}
+            if content is None:
+                item["state"] = "outdated"
+            elif entry.kind == "drift":
                 item["isIdentical"] = bool(content["IsIdentical"])
             else:
                 item["status"] = content["Status"]
@@ -172,20 +194,22 @@ class Store:
         loaded = self._load_many("reports", "", "tenantfit")
         if not loaded:
             raise StoreError(404, "not-found", "No suitability check yet.")
-        entry, content = loaded[0]
+        entry, content, _ = loaded[0]
         return {"schemaVersion": contract.schema_version(), "id": entry.id, "createdUtc": content["CreatedUtc"], "report": content}
 
     # --- plans -----------------------------------------------------------------------------------------------
 
     def list_plans(self, kind: str | None) -> dict[str, Any]:
         items = []
-        for entry, content in self._load_many("plans", "PlanFile", kind):
-            item: dict[str, Any] = {
-                "id": entry.id,
-                "kind": entry.kind,
-                "createdUtc": content["CreatedUtc"],
-                "planHash": content["PlanHash"],
-            }
+        for entry, content, created in self._load_many("plans", "PlanFile", kind, include_outdated=True):
+            item: dict[str, Any] = {"id": entry.id, "kind": entry.kind, "createdUtc": created}
+            if content is None:
+                item["state"] = "outdated"
+                if entry.mode:
+                    item["mode"] = entry.mode
+                items.append(item)
+                continue
+            item["planHash"] = content["PlanHash"]
             if entry.mode:
                 item["mode"] = entry.mode
             item["summary"] = content["Plan"]["Summary"]
@@ -245,11 +269,12 @@ class Store:
             "schemaVersion": contract.schema_version(),
             "lastComparisonUtc": None,
             "differences": None,
-            "fitStatus": fit[0][1]["Status"] if fit else None,
+            "fitStatus": fit[0][1]["Status"] if fit else None,  # type: ignore[index]
             "reportId": None,
         }
         if drift:
-            entry, content = drift[0]
+            entry, content, _ = drift[0]
+            assert content is not None
             summary = content["Summary"]
             body["lastComparisonUtc"] = content["CreatedUtc"]
             body["differences"] = int(summary["Added"]) + int(summary["Removed"]) + int(summary["Changed"])
