@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 from m365api import create_app
 from m365api.contract import REPO_ROOT
 
+from . import authkit
+
 MOCK = json.loads((REPO_ROOT / "web" / "mock" / "responses.json").read_text(encoding="utf-8"))["responses"]
 
 
@@ -46,5 +48,16 @@ def history(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def client(history: Path) -> TestClient:
-    return TestClient(create_app(history))
+def app(history: Path):
+    return create_app(history, authkit.config())
+
+
+@pytest.fixture()
+def client(app) -> TestClient:
+    """Signed in as Reader (Entra ID test token)."""
+    return TestClient(app, headers=authkit.bearer(authkit.entra_token()))
+
+
+@pytest.fixture()
+def anonymous(app) -> TestClient:
+    return TestClient(app)

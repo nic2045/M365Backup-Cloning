@@ -816,6 +816,11 @@
         "User": {
           "type": "string"
         },
+        "Actor": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Optional: the person signed in to the web interface who started the action (display name, ADR 0010). User stays the account that ran the script."
+        },
         "Mode": {
           "enum": [
             "plan",

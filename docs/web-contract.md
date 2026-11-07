@@ -53,6 +53,7 @@ Invoke-Pester tests/WebContract.Tests.ps1
 |---|---|---|
 | `1` | #44 | First contract: the core files as they were; the envelope adds `schemaVersion`, `id`, `kind`, `createdUtc`. |
 | `2` | #51 (ADR 0009) | Every core file has `SchemaVersion`, `Kind` and `CreatedUtc`; plans also carry `SchemaVersion` and `Kind` inside. One plan shape for all kinds: same fields, same summary counters (0 when unused), `Licences` in every plan (reset: `Checked = false`), `Properties` always an object. Plans carry `TargetTenant` (shortened) and `TargetTenantHash` instead of the full `TargetTenantId`. Licence views share `Checked`, `Readable`, `Error`, `Available`. The suitability check uses `SchemaVersion`/`Kind` instead of `Schema`. `Operation`, `Status` and the audit counters are closed lists; every audit line has the same counters. Plan files of version 1 are refused with "make a new plan" (`Read-ApplyPlanFile`, apply gate). |
+| `2` | #60 (ADR 0010) | Same version, only additions: every route needs a bearer token (`security: bearerAuth`) and answers **401** (no or invalid token: `unauthorized`, `invalid-token`, `token-expired`, `sign-in-not-configured`) or **403** (`forbidden`, role missing) with the `Error` schema. `x-required-role` names the role (read routes: `Reader`). The audit line may carry `Actor` (the signed-in person in the web interface). |
 | `2` | #59 | Same version, only optional additions: list entries may carry `state` (`current`, `outdated`). A file in an older or unknown format is listed as `outdated` with its file time and without plan hash or summary, and its detail route answers **409** `unsupported-format` ("regenerate it with the scripts") instead of 500. A file the server cannot open stays 500 `unreadable-file`. |
 
 ## Start the backend (issue #55)
@@ -63,8 +64,8 @@ The read-only server in `web/api` (FastAPI) serves exactly the routes of `web/op
 cd web/api
 python -m venv .venv && . .venv/bin/activate
 pip install --require-hashes -r requirements-dev.txt
-pytest                 # contract test: routes, schema, masking, path checks
-python -m m365api      # http://127.0.0.1:8000/api/status
+pytest                 # contract test: routes, schema, masking, path checks, sign-in
+python -m m365api      # http://127.0.0.1:8000/api/status (needs a token, see "Sign-in")
 ```
 
 The contract test builds a `History` folder from `web/mock/responses.json` and checks that every answer equals the example (masked) and matches the schema, that the app has no route outside `web/openapi.json`, that no answer contains a full GUID or the Prod tenant ID of the fixtures, and that ids outside `^[a-z0-9-]+$` or outside `History/reports` are refused.
@@ -85,6 +86,31 @@ pip install --require-hashes -r requirements-dev.txt     # includes web/api for 
 pytest                                  # pages against the mock and against the real API in process
 uvicorn m365ui.main:app --port 8080     # http://127.0.0.1:8080/  (mock unless M365_UI_API_BASE is set)
 ```
+
+## Sign-in (issue #60, ADR 0010)
+
+Both apps need sign-in. Nothing is configured: the API answers 401 to every request, and the interface opens only on the mock answers (for an "Example user"). Set the values as environment variables or from your secret store; never commit them. The app registration is described in `validation/README.md`, part "Web sign-in".
+
+| Variable | App | Meaning |
+|---|---|---|
+| `M365CLONING_AUTH_TENANT_ID` | API | Your tenant ID (Entra ID tokens are accepted only from it) |
+| `M365CLONING_AUTH_AUDIENCE` | API | Audience of the access token: the application (client) ID of the API registration; several values separated by commas |
+| `M365_UI_OIDC_TENANT_ID` | UI | Your tenant ID |
+| `M365_UI_OIDC_CLIENT_ID` | UI | Application (client) ID of the interface registration |
+| `M365_UI_OIDC_API_SCOPE` | UI | Scope of the API, e.g. `api://<app id>/access_as_user` |
+| `M365_UI_OIDC_REDIRECT_URI` | UI | e.g. `http://localhost:8080/auth/callback` (must match the registration) |
+| `M365_UI_OIDC_CLIENT_SECRET` | UI | Only for a registration of the platform "Web" (hosted instance); from a secret store |
+| `M365_UI_COOKIE_SECURE` | UI | `1`: always set `Secure` on cookies (behind TLS termination); default: only on https |
+| `M365_UI_LOCAL_LOGIN` | UI | `1` switches the local account on (default off) |
+| `M365_UI_LOCAL_USER` | UI | User name of the local account |
+| `M365_UI_LOCAL_PASSWORD_HASH` | UI | scrypt hash from `python -m m365ui.passwords` (asks for the password, prints the hash) |
+| `M365_UI_LOCAL_ROLE` | UI | `Reader` (default), `Applier` or `Resetter` |
+| `M365CLONING_LOCAL_TOKEN_SECRET` | both | Shared secret (at least 32 bytes) for the short local tokens UI -> API, e.g. `openssl rand -hex 32` |
+
+- Roles: `Reader` reads; `Applier` and `Resetter` include `Reader` (write routes come with #14).
+- The local account is offered and accepted only from `127.0.0.1`/`::1` without proxy headers. Do not put it behind a reverse proxy.
+- The browser holds only an `HttpOnly`, `SameSite=Lax` session cookie (`Secure` on https); tokens stay on the server. Pages carry a CSRF token for forms (logout now, write actions later).
+- Tests make their own keys and tokens (`web/api/tests/authkit.py`, `web/ui/tests/uikit.py`); nothing calls Entra ID.
 
 ## Dependencies and lock files (issue #59)
 

@@ -15,7 +15,7 @@
   <tbody>
   {% for e in items %}
     <tr>
-      <td data-label="{{ _('Time (UTC)') }}"><time>{{ e.Timestamp }}</time></td><td data-label="{{ _('Mode') }}">{{ e.Mode }}</td><td data-label="{{ _('User') }}">{{ e.User }}</td><td data-label="{{ _('Target tenant') }}">{{ e.TargetTenant }}</td>
+      <td data-label="{{ _('Time (UTC)') }}"><time>{{ e.Timestamp }}</time></td><td data-label="{{ _('Mode') }}">{{ e.Mode }}</td><td data-label="{{ _('User') }}">{{ e.User }}{% if e.Actor %}<br><span class="meta">{{ _("Signed in") }}: {{ e.Actor }}</span>{% endif %}</td><td data-label="{{ _('Target tenant') }}">{{ e.TargetTenant }}</td>
       <td data-label="{{ _('Counts') }}">{% for k, v in e.Counts.items() if v %}{{ k }} {{ v }}{% if not loop.last %}, {% endif %}{% else %}–{% endfor %}</td>
       <td data-label="{{ _('Reason') }}">{{ e.Reason }}</td>
     </tr>

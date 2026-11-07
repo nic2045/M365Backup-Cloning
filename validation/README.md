@@ -227,3 +227,21 @@ Claude never ran any of this against a tenant (mocks and invented fixtures only)
 | 7 | Duplicate device name (#49) | Two test devices with the same name, `-DeviceActionFile` with `@{ '<shared name>' = 'Retire' }`, plan | Both entries `blocked: ambiguous device name`; a note names the shared name; nothing is written |
 | 8 | Serial number | Same file with `@{ '<serial number of one device>' = 'Retire' }`, plan | Exactly that device `Retire / planned`, the other one `Keep / skipped`; check the serial number in the Intune admin center matches |
 
+# Part 13: Web sign-in (issue #60, ADR 0010)
+
+Claude never ran this against a tenant (own test keys and a fake Entra ID only). Use your own tenant; nothing here writes to Prod or Dev data.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | API registration | Entra admin center > App registrations > New: name of your choice, single tenant. Manifest: `"accessTokenAcceptedVersion": 2`. Expose an API: Application ID URI `api://<app id>`, scope `access_as_user` (admins and users) | The registration exists; its application (client) ID is the API audience |
+| 2 | App roles | Same registration > App roles: `Reader`, `Applier`, `Resetter` (allowed member types: users/groups; value exactly as written) | Three roles listed |
+| 3 | Interface registration | New registration (or the same one) for the interface. Authentication > Add a platform: "Mobile and desktop applications" with redirect URI `http://localhost:8080/auth/callback` (local run, no secret). For a hosted instance use platform "Web" with `https://<your host>/auth/callback` and a client secret or certificate kept in your secret store. API permissions: the `access_as_user` scope of step 1, admin consent | Redirect URI and permission listed, consent granted |
+| 4 | Groups | Enterprise applications > the API app > Users and groups: assign a group to `Reader` (and later `Applier`/`Resetter`). Properties: "Assignment required" = Yes | Only members of assigned groups can sign in |
+| 5 | Settings | Set the variables of `docs/web-contract.md`, section "Sign-in", for API and interface (tenant ID, audience = API client ID, client ID, scope `api://<app id>/access_as_user`, redirect URI) | Both apps start without warnings |
+| 6 | Sign in | Open `http://localhost:8080/`, "Sign in with Microsoft" with a member of the Reader group | Overview opens; header shows your name and `Roles: Reader`; pages show your data (no "Example data" banner) |
+| 7 | No role | Sign in with an account that is in no assigned group (or remove "Assignment required" for this test and use an account without role) | Refused by Entra ID, or pages answer 403 ("This needs the role Reader") |
+| 8 | API directly | `curl -i http://127.0.0.1:8000/api/status` without token; then with an expired or edited token | 401 with `{"code": "unauthorized", ...}` / `invalid-token` / `token-expired` |
+| 9 | Sign out | "Sign out" in the header, then the browser's back button | Back on the sign-in page; old pages ask for sign-in again |
+| 10 | Browser storage | Developer tools > Application: cookies, local and session storage; page source | Only `m365ui_session` (HttpOnly, SameSite=Lax; Secure on https); no token anywhere in storage or HTML |
+| 11 | Local account (optional) | `python -m m365ui.passwords`, set `M365_UI_LOCAL_LOGIN=1`, user, hash, role and `M365CLONING_LOCAL_TOKEN_SECRET` (same value for API and interface); open the interface on the same machine | The local form appears only on `127.0.0.1`; a wrong password is refused; after five wrong attempts the form is locked for five minutes |
+| 12 | Local account from elsewhere | Open the interface from another machine (bind with `--host 0.0.0.0` for this test only) or through a reverse proxy | No local form; a posted form is refused |

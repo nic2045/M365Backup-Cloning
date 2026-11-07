@@ -137,3 +137,7 @@ The web server and interface (ADR 0002) are not built yet. Their contract is: `s
 ## Web interface (read only, issue #12)
 
 `web/ui` is the read-only interface (FastAPI, Jinja2, HTMX): overview, reports, plans and audit. It talks only to `/api/...` of `web/api`; without `M365_UI_API_BASE` it shows the example data of `web/mock/responses.json`. Applying and resetting stay with the scripts. Start and test: see `docs/web-contract.md`, section "Start the frontend".
+
+## Web sign-in (issue #60, ADR 0010)
+
+API and interface need sign-in: Entra ID (OpenID Connect with PKCE) with the app roles `Reader`, `Applier`, `Resetter` assigned through groups; optionally a local account that works only on the same machine (`127.0.0.1`) and is off by default. Settings are environment variables (never in the repository): see `docs/web-contract.md`, section "Sign-in". App registration and check: `validation/README.md`, part "Web sign-in".
