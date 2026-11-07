@@ -171,3 +171,17 @@ Issue #33. Only in the Dev tenant, plan first. Sources (Learn, checked 2026-11-0
 | 7 | Methods report-only | Prod and Dev differ in an authentication method (e.g. FIDO2 on/off) | Drift report shows it; the plan says `skipped: report-only`; nothing changes |
 | 8 | Reset | `scripts/Invoke-DevReset.ps1 -Mode Full` plan | Locations of break-glass policies are on the protection list; trusted locations `skipped`; custom locations and strengths deleted after the CA policies; built-in strengths not listed |
 | 9 | Unverified | Reset deletes a named location still used by a policy outside the plan | Graph refuses; the step is `failed`, later steps `not-run`. Tell me the message |
+
+# Part 9: licence check in the plan
+
+Issue #32. Read only: the plan reads the Dev licences and blocks entries whose licence is missing. Sources (Learn, checked 2026-11-07): `List subscribedSkus` (GET, least privileged application permission `LicenseAssignment.Read.All`), `servicePlanInfo` (provisioningStatus), `Product names and service plan identifiers for licensing`, `Microsoft Entra licensing`. The rules are data: `src/M365Cloning/Data/LicenceRequirements.psd1`.
+
+| # | Check | How | Expected |
+|---|---|---|---|
+| 1 | Permission | Dev registration: `LicenseAssignment.Read.All` (application) | The plan shows "## Licences" without "could not be read" |
+| 2 | Save the list | `GET https://graph.microsoft.com/v1.0/subscribedSkus` with the Dev registration, save the JSON | Offline preview with `-LicencePath <file>` gives the same plan hash as the online plan |
+| 3 | Service plan names | Compare the `servicePlanName` values of your SKUs with the rules (`AAD_PREMIUM`, `AAD_PREMIUM_P2`, `INTUNE_A`, `INTUNE_EDU`) | Your Intune and Entra plans appear under those names. Another name (e.g. a new Intune plan): tell me |
+| 4 | Missing P2 | A Prod policy with sign-in or user risk, Dev without P2 | The policy is `blocked` with `license: Risk-based Conditional Access ...`; everything else stays `planned` |
+| 5 | Not readable | Remove the permission for one run | Entries that need a licence are `blocked` with `license: not verified`; groups, users and invitations stay `planned` |
+| 6 | PendingActivation | A SKU whose service plan shows `PendingActivation` | It counts as missing until it is activated (Learn: it needs an explicit activation) |
+| 7 | Unverified | Entra ID Governance instead of P2 for PIM; terms of use | PIM accepts only `AAD_PREMIUM_P2` (the Governance plan name is not checked); terms of use only give a warning. Tell me if your tenant uses Governance |

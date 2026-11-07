@@ -13,12 +13,16 @@
     Offline plan: -TargetSnapshotPath <snapshot.json> of Dev, for a preview only.
     Order with the other scripts: this one first, then scripts/Invoke-DevUsers.ps1 (it needs the persona groups),
     then scripts/Invoke-ApplyDev.ps1.
+    Licences (issue #32): the plan reads the Dev licences (GET /subscribedSkus, read only; online with -DevToken,
+    offline from -LicencePath) and blocks entries whose licence is missing. An offline preview without -LicencePath
+    blocks every entry that needs a licence ('license: not verified').
 #>
 [CmdletBinding()]
 param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config.psd1'),
     [securestring]$DevToken,
     [string]$TargetSnapshotPath,
+    [string]$LicencePath,
     [string]$HistoryRoot = (Join-Path $PSScriptRoot '..\History'),
     [switch]$Plan,
     [switch]$Apply,
@@ -46,6 +50,8 @@ else {
 }
 
 $basePlan = New-DevBaselinePlan -Config $config -Target (Read-UtcmSnapshotFile -Path $devFile)
+# Licence check (issue #32): entries whose licence Dev lacks are blocked before anything is applied.
+$basePlan = Add-PlanLicenceCheck -Plan $basePlan -Licences (Get-DevPlanLicences -DevToken $DevToken -LicencePath $LicencePath)
 $hash = Get-ApplyPlanHash -Plan $basePlan
 
 if (-not $Apply) {

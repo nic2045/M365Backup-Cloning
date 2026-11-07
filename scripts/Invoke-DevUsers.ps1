@@ -11,12 +11,16 @@
     -ShowInitialPasswords prints the random initial passwords of new test users once to the console; they are never
     stored. Without it an admin resets the password before the first sign-in.
     Offline plan: -DirectoryPath <json> with the Dev state ({ Users, Groups, Members }), for a preview only.
+    Licences (issue #32): the plan reads the Dev licences (GET /subscribedSkus, read only; online with -DevToken,
+    offline from -LicencePath) and blocks entries whose licence is missing. An offline preview without -LicencePath
+    blocks every entry that needs a licence ('license: not verified').
 #>
 [CmdletBinding()]
 param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config.psd1'),
     [securestring]$DevToken,
     [string]$DirectoryPath,
+    [string]$LicencePath,
     [string]$HistoryRoot = (Join-Path $PSScriptRoot '..\History'),
     [switch]$Plan,
     [switch]$Apply,
@@ -47,6 +51,8 @@ else {
 }
 
 $userPlan = New-DevUserPlan -Config $config -Directory $directory
+# Licence check (issue #32): entries whose licence Dev lacks are blocked before anything is applied.
+$userPlan = Add-PlanLicenceCheck -Plan $userPlan -Licences (Get-DevPlanLicences -DevToken $DevToken -LicencePath $LicencePath)
 $hash = Get-ApplyPlanHash -Plan $userPlan
 
 if (-not $Apply) {

@@ -1,0 +1,18 @@
+{
+  "value": [
+    {
+      "skuPartNumber": "EXAMPLE_SKU_P1_INTUNE",
+      "capabilityStatus": "Enabled",
+      "servicePlans": [
+        { "servicePlanName": "AAD_PREMIUM", "provisioningStatus": "Success", "servicePlanId": "plan-0001" },
+        { "servicePlanName": "INTUNE_A", "provisioningStatus": "Success", "servicePlanId": "plan-0002" },
+        { "servicePlanName": "EXCHANGE_S_FOUNDATION", "provisioningStatus": "Success", "servicePlanId": "plan-0003" }
+      ]
+    },
+    {
+      "skuPartNumber": "EXAMPLE_SKU_LOCKED",
+      "capabilityStatus": "LockedOut",
+      "servicePlans": [ { "servicePlanName": "AAD_PREMIUM_P2", "provisioningStatus": "Success", "servicePlanId": "plan-0004" } ]
+    }
+  ]
+}
