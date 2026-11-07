@@ -102,10 +102,11 @@ a licence (`license: not verified`). The preview shows a "Licences" section.
 `scripts/Invoke-TenantFitCheck.ps1` compares the licences of Prod and Dev (`GET /subscribedSkus`) with what Prod uses
 (features found in the newest Prod snapshot, matched with the same licence rules as the plan check) and answers with
 a traffic light: **green** (Dev is enough), **yellow** (enough with gaps, the parts of Prod that cannot be mirrored are
-listed) or **red** (an equivalent tenant is needed, or not verified because a licence list could not be read). It also
-reports Dev SKUs in grace period, suspended or locked out, and fewer free licence units than test users in `DevUsers`.
+listed), **red** (an equivalent tenant is needed) or **grey** (not verified: a licence list could not be read). It also
+reports Dev SKUs in grace period, suspended or locked out, and fewer free licence units (enabled minus assigned) than
+test users in `DevUsers` (yellow, never red).
 Rules: `src/M365Cloning/Data/TenantFitRules.psd1`. Output: `History/reports/tenantfit-*.json` / `.md` and one audit
-line; exit code 0 / 1 / 2. It only reads, so it may run on a schedule (ADR 0004): see `docs/automation.md`.
+line; exit code 0 green, 1 yellow, 2 red, 3 grey. It only reads, so it may run on a schedule (ADR 0004): see `docs/automation.md`.
 
 ## Factory reset of Dev (deletes in the Dev tenant only, ADR 0005)
 

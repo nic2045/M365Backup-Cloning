@@ -10,7 +10,8 @@ writes to Dev are a separate, later decision (issue #30) and are not covered her
 
 - `Invoke-TenantFitCheck.ps1` reads `GET /subscribedSkus` in Prod and Dev and the newest saved Prod snapshot, then
   writes `History/reports/tenantfit-<timestamp>.json` / `.md` and one line in `History/audit.jsonl`.
-- Exit code: 0 green, 1 yellow, 2 red. Use it to mark the job as failed or to send an alert.
+- Exit code: 0 green (Dev is enough), 1 yellow (enough with gaps), 2 red (an equivalent tenant is needed), 3 grey
+  (not verified: a licence list could not be read). Use it to mark the job as failed or to send an alert.
 - Only Microsoft Graph is used, so a PowerShell 7 runbook is enough (Microsoft365DSC and Windows PowerShell 5.1 are not
   needed for this check).
 
@@ -27,7 +28,8 @@ writes to Dev are a separate, later decision (issue #30) and are not covered her
 
 ## What to watch
 
-- A red result with `Verified: False` means a licence list could not be read (permission, certificate, network), not
-  that a new tenant is needed. Fix the access first.
+- A grey result (`Verified: False`, exit code 3) means a licence list could not be read (permission, certificate,
+  network). It says nothing about the tenant; fix the access first. Red (exit code 2) only means an equivalent tenant
+  is needed.
 - The report contains no secrets and no tenant IDs beyond the shortened ID in the audit line; keep `History` private
   anyway.

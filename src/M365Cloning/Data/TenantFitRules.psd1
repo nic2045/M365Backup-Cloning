@@ -1,8 +1,10 @@
 # Rules of the suitability check (issue #39): is the Dev tenant enough to mirror Prod?
 # Data only; Get-TenantFitAssessment reads it. Features are the 'Feature' names of Data\LicenceRequirements.psd1, so
 # both checks use the same licence rules (Test-LicenceRuleApplies).
-# Severity: 'red' = an equivalent tenant is needed, 'yellow' = Dev is enough with gaps, 'info' = shown, no effect.
-# The overall result is the worst severity of all findings (red > yellow > green; info does not count).
+# Severity: 'red' = an equivalent tenant is needed, 'grey' = not verified (a licence list could not be read),
+# 'yellow' = Dev is enough with gaps, 'info' = shown, no effect.
+# The overall result is the worst severity of all findings (red > grey > yellow > green; info does not count).
+# Exit codes of scripts/Invoke-TenantFitCheck.ps1: green 0, yellow 1, red 2, grey 3.
 # Thresholds are conservative: when something cannot be checked, the result is not green.
 @{
     # A feature that Prod uses (or, without a Prod snapshot, that Prod is licensed for) and that Dev cannot provide.
@@ -34,19 +36,21 @@
         @{ Status = 'Deleted';   Severity = 'yellow'; Reason = 'Deleted: its service plans are not available.' }
     )
 
-    # Enough licences for the test users of DevUsers (Type TestUser). Admin guests are not counted: B2B guests are
+    # Enough licences for the test users of DevUsers (Type TestUser): free = prepaidUnits.enabled - consumedUnits
+    # (Learn: subscribedSku, 'consumedUnits: the number of licenses that have been assigned'). Never red, at most
+    # yellow. Admin guests are not counted: B2B guests are
     # billed by monthly active users (Learn: Microsoft Entra External ID pricing and billing; Entra licensing: External
     # ID core features free for the first 50,000 MAU).
     Capacity = @{
         ServicePlans = @('INTUNE_A', 'INTUNE_EDU', 'AAD_PREMIUM')
         Severity     = 'yellow'
-        Reason       = 'Fewer free licence units in Dev than test users in DevUsers. Units already assigned to test users are not known, so this may be a false alarm; check before adding users.'
+        Reason       = 'Fewer free licence units in Dev (enabled minus assigned) than test users in DevUsers; assign or buy licences before creating the test users.'
     }
 
-    # A licence list that cannot be read: the result cannot be verified. Red is the careful choice: a scheduled run must
-    # not report green or yellow when it did not see the licences.
+    # A licence list that cannot be read: the result cannot be verified. Its own level 'grey' (not red: red means an
+    # equivalent tenant is needed); a scheduled run must not report green or yellow when it did not see the licences.
     NotReadable = @{
-        Severity = 'red'
+        Severity = 'grey'
         Reason   = 'The licence list could not be read, so the result is not verified (needs LicenseAssignment.Read.All).'
     }
 

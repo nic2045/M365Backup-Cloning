@@ -11,8 +11,9 @@ function Get-TenantFitAssessment {
           Data\TenantFitRules.psd1 (Intune and Conditional Access P1 are red, everything else yellow).
         - Dev SKU states (Warning, Suspended, LockedOut, Deleted), free licence units for the test users of DevUsers,
           and licence lists that cannot be read give their own findings (rules in the same data file).
-        Status = worst severity: 'green' (Dev is enough), 'yellow' (enough with gaps), 'red' (equivalent tenant needed,
-        or not verified when a licence list could not be read). Field names are stable for the web schema (#44).
+        Status = worst severity: 'green' (Dev is enough), 'yellow' (enough with gaps), 'grey' (not verified: a licence
+        list could not be read), 'red' (equivalent tenant needed). Capacity is never red. Field names are stable for
+        the web schema (#44).
     #>
     [CmdletBinding()]
     param(
@@ -106,23 +107,26 @@ function Get-TenantFitAssessment {
                 $skus = @($DevLicences['Skus'] | Where-Object { @($_['ProvidedPlans']) -contains $plan })
                 if ($skus.Count -eq 0) { continue }
                 $free = 0
-                foreach ($s in $skus) { $free += [int]$s['PrepaidEnabled'] + [int]$s['PrepaidWarning'] - [int]$s['ConsumedUnits'] }
+                foreach ($s in $skus) { $free += [int]$s['PrepaidEnabled'] - [int]$s['ConsumedUnits'] }
+                if ($free -lt 0) { $free = 0 }
                 if ($free -lt $testUsers) {
-                    & $add "capacity:$plan" $fit.Capacity.Severity 'capacity' '' "Dev has $free free unit(s) with $plan, DevUsers lists $testUsers test user(s). $($fit.Capacity.Reason)" @($plan) @() $testUsers 'https://learn.microsoft.com/graph/api/resources/subscribedsku'
+                    $sev = if ($fit.Capacity.Severity -eq 'red') { 'yellow' } else { $fit.Capacity.Severity }
+                    & $add "capacity:$plan" $sev 'capacity' '' "Dev has $free free unit(s) with $plan (enabled minus assigned), DevUsers lists $testUsers test user(s). $($fit.Capacity.Reason)" @($plan) @() $testUsers 'https://learn.microsoft.com/graph/api/resources/subscribedsku#properties'
                 }
             }
         }
     }
 
-    $rank = @{ red = 2; yellow = 1; info = 0 }
+    $rank = @{ red = 3; grey = 2; yellow = 1; info = 0 }
     $worst = 0
     foreach ($f in $findings) { if ($rank[$f.Severity] -gt $worst) { $worst = $rank[$f.Severity] } }
-    $status = @('green', 'yellow', 'red')[$worst]
+    $status = @('green', 'yellow', 'grey', 'red')[$worst]
     $verified = $devOk -and ($hasSnapshot -or $prodOk)
     $verdict = switch ($status) {
         'green' { 'Dev is enough to mirror Prod.' }
         'yellow' { 'Dev is enough with gaps: the listed parts of Prod cannot be mirrored.' }
-        'red' { if ($verified) { 'An equivalent tenant is needed: a core feature of Prod is missing in Dev.' } else { 'Not verified: a licence list could not be read.' } }
+        'grey' { 'Not verified: a licence list could not be read.' }
+        'red' { 'An equivalent tenant is needed: a core feature of Prod is missing in Dev.' }
     }
     $view = { param($l) [ordered]@{ Readable = [bool]$l['Readable']; Error = [string]$l['Error']; Available = [string[]]@($l['Available']); Skus = [object[]]@($l['Skus']) } }
     $sorted = @($findings | Sort-Object @{ Expression = { -$rank[$_.Severity] } }, @{ Expression = { $_.Id } })

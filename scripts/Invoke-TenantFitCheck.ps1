@@ -9,11 +9,12 @@
     plus one audit line (History\audit.jsonl, mode 'fitcheck').
     Licences: -ProdLicencePath / -DevLicencePath (saved answer of GET /subscribedSkus) or online with -ProdToken /
     -DevToken (app-only Graph tokens, permission LicenseAssignment.Read.All). Without either, that list counts as
-    not readable and the result is red ('not verified').
+    not readable and the result is grey ('not verified').
     Prod usage: -ProdSnapshotPath, else the newest History\Tenants\Prod\*\snapshot.json, else with -TakeProdSnapshot
     a new UTCM snapshot of Prod (only a read job; it counts against the UTCM snapshot quota). Without a snapshot every
     feature Prod is licensed for counts as used.
-    Exit code: 0 green (Dev is enough), 1 yellow (enough with gaps), 2 red (equivalent tenant needed or not verified).
+    Exit code: 0 green (Dev is enough), 1 yellow (enough with gaps), 2 red (equivalent tenant needed),
+    3 grey (not verified: a licence list could not be read).
     Meant to run on a schedule (docs/automation.md); ADR 0004 allows a schedule because it only reports.
 #>
 [CmdletBinding()]
@@ -67,4 +68,4 @@ Write-ApplyAudit -HistoryRoot $HistoryRoot -Mode fitcheck -TargetTenantId ([stri
 
 Write-Host "Result: $($assessment.Status) - $($assessment.Verdict)"
 Write-Host "Report: $($files.Markdown)"
-exit @{ green = 0; yellow = 1; red = 2 }[$assessment.Status]
+exit @{ green = 0; yellow = 1; red = 2; grey = 3 }[$assessment.Status]

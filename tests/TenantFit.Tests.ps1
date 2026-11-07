@@ -56,16 +56,23 @@ Describe 'Tenant suitability check' {
         $r = Get-TenantFitAssessment -ProdLicences $script:ProdFull -DevLicences (Lic @(Sku 'DEV_E5' $script:Full 'Warning')) -ProdSnapshot (Snap @(Res $script:CA 'CA001')) -Config $script:Cfg
         $r.Status | Should -Be 'yellow'
     }
-    It 'is yellow when there are fewer free units than test users, and does not count admin guests' {
+    It 'is yellow, never red, when there are fewer free units than test users, and does not count admin guests' {
         $r = Get-TenantFitAssessment -ProdLicences $script:ProdFull -DevLicences (Lic @(Sku 'DEV_E5' $script:Full 'Enabled' 3 3)) -ProdSnapshot (Snap @(Res $script:CA 'CA001')) -Config $script:Cfg
         $r.Status | Should -Be 'yellow'
         $c = @($r.Findings | Where-Object { $_.Category -eq 'capacity' })
         $c.Count | Should -BeGreaterThan 0
+        @($c | Where-Object { $_.Severity -ne 'yellow' }).Count | Should -Be 0
         $c[0].AffectedCount | Should -Be 1
+        $c[0].Message | Should -Match '0 free unit'
     }
-    It 'is red and not verified when the Dev licence list cannot be read' {
+    It 'gives no capacity finding when free units (enabled minus assigned) cover the test users' {
+        $r = Get-TenantFitAssessment -ProdLicences $script:ProdFull -DevLicences (Lic @(Sku 'DEV_E5' $script:Full 'Enabled' 3 2)) -ProdSnapshot (Snap @(Res $script:CA 'CA001')) -Config $script:Cfg
+        @($r.Findings | Where-Object { $_.Category -eq 'capacity' }).Count | Should -Be 0
+        $r.Status | Should -Be 'green'
+    }
+    It 'is grey and not verified when the Dev licence list cannot be read' {
         $r = Get-TenantFitAssessment -ProdLicences $script:ProdFull -DevLicences (Unreadable) -ProdSnapshot (Snap @(Res $script:CA 'CA001')) -Config $script:Cfg
-        $r.Status | Should -Be 'red'
+        $r.Status | Should -Be 'grey'
         $r.Verified | Should -BeFalse
         $r.Verdict | Should -Match 'Not verified'
     }
@@ -75,9 +82,10 @@ Describe 'Tenant suitability check' {
         $r.Status | Should -Be 'yellow'
         @($r.Findings | Where-Object { $_.Id -eq 'usage:no-snapshot' }).Count | Should -Be 1
     }
-    It 'is red when neither a Prod snapshot nor Prod licences are available' {
+    It 'is grey when neither a Prod snapshot nor Prod licences are available' {
         $r = Get-TenantFitAssessment -ProdLicences (Unreadable) -DevLicences (Lic @(Sku 'DEV_E5' $script:Full)) -ProdSnapshot $null -Config $script:Cfg
-        $r.Status | Should -Be 'red'
+        $r.Status | Should -Be 'grey'
+        $r.Verdict | Should -Match 'Not verified'
         $r.Verified | Should -BeFalse
     }
     It 'reports an unconfirmed licence rule as info only' {
