@@ -73,3 +73,19 @@ pwsh scripts/Invoke-DevUsers.ps1 -DevToken $d -Apply -ConfirmPlanHash <hash> [-S
 - Microsoft Graph with an allow list of three write endpoints (users, invitations, group members), Dev tenant only. No invitation mail is sent.
 - Initial passwords: random, must be changed at first sign-in, never stored or logged. `-ShowInitialPasswords` prints them once to the console; without it an admin resets the password before the first sign-in.
 - Cross-tenant sync as the automatic way is a later step (#21).
+
+## Factory reset of Dev (deletes in the Dev tenant only, ADR 0005)
+
+```powershell
+# 1. Plan: nothing is changed. Mode Align (default) deletes only what exists in Dev but not in Prod;
+#    -Mode Full deletes the whole reset scope except the protection list and the base state.
+pwsh scripts/Invoke-DevReset.ps1 -ProdToken $p -DevToken $d
+# 2. Run exactly that plan: needs Dev.AllowReset = $true, the plan hash and the Dev tenant ID as second confirmation.
+#    -RebuildAfter then runs base state -> apply -> Dev users, each with its own plan and confirmation.
+pwsh scripts/Invoke-DevReset.ps1 -Apply -ConfirmPlanHash <hash> -ConfirmTenant <Dev tenant ID> -ProdToken $p -DevToken $d
+```
+
+Never deleted: devices, guests, synced objects, other member users, Microsoft 365 and role groups, app registrations,
+cross-tenant settings. The Global Administrators of Prod (without break-glass) are always protected. Offline preview:
+`-InventoryPath tests/fixtures/dev.reset-inventory.json` (Align also needs the two snapshot files).
+

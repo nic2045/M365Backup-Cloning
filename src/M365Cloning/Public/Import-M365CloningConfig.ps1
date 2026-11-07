@@ -46,7 +46,11 @@ function Import-M365CloningConfig {
     if ($config.Dev.ContainsKey('ApplyAllowed') -and $config.Dev.ApplyAllowed -isnot [bool]) {
         throw 'Dev.ApplyAllowed must be $true or $false.'
     }
-    foreach ($listName in 'BreakGlass', 'BreakGlassGroups') {
+    # Factory reset (ADR 0005): off unless Dev.AllowReset is $true.
+    if ($config.Dev.ContainsKey('AllowReset') -and $config.Dev.AllowReset -isnot [bool]) {
+        throw 'Dev.AllowReset must be $true or $false.'
+    }
+    foreach ($listName in 'BreakGlass', 'BreakGlassGroups', 'ServiceAccounts', 'ProtectedAccounts') {
         if ($config.ContainsKey($listName) -and $null -ne $config[$listName]) {
             foreach ($entry in @($config[$listName])) {
                 if ($entry -isnot [string]) { throw "$listName must be a list of strings." }

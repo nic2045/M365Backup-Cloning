@@ -139,3 +139,19 @@ The UTCM type `microsoft.entra.crosstenantaccesspolicyconfigurationpartner` and 
 | 7 | Unverified: nested CIM settings | The runner turns entries with `__CimClass` into CIM instances (`New-CimInstance -ClientOnly`) before `Invoke-DscResource` | The partner is created. If `Invoke-DscResource` rejects the nested settings, tell me the message |
 | 8 | Unverified: update of an existing partner | A partner with automatic redemption off | Only `AutomaticUserConsentSettings` (and an unset B2B inbound rule) change; B2B direct connect, outbound and inbound trust stay as they were |
 | 9 | Not changed on purpose | A dynamic persona group; a B2B inbound rule for the Prod tenant limited to some groups | Both `blocked` with a reason; change them by hand if the base state should hold |
+
+# Part 7: factory reset of Dev (deletes in the Dev tenant)
+
+Only with your explicit go, only in the Dev tenant, always the plan first. Endpoints (Learn, checked 2026-11-07): v1.0 `DELETE /identity/conditionalAccess/policies/{id}` (plus `PATCH` with `state = 'disabled'` first), `/deviceManagement/deviceConfigurations/{id}`, `/deviceManagement/deviceCompliancePolicies/{id}`, `/groups/{id}`, `/users/{id}`; beta `/deviceManagement/configurationPolicies/{id}`, `/deviceManagement/intents/{id}`, `/deviceManagement/assignmentFilters/{id}`. Prod: v1.0 `directoryRoles(roleTemplateId='62e90394-69f5-4237-9190-012177145e10')/members`.
+
+| # | Check | How | Expected |
+|---|---|---|---|
+| 1 | Permissions | Prod registration: `RoleManagement.Read.Directory`. Dev registration: `Directory.Read.All` (or `User.Read.All` + `Group.Read.All`), `Policy.Read.All`, `Policy.ReadWrite.ConditionalAccess`, `DeviceManagementConfiguration.ReadWrite.All`, `DeviceManagementManagedDevices.Read.All`, `Group.ReadWrite.All`, `User.ReadWrite.All` | The plan reads without 403 |
+| 2 | Config | `Dev.AllowReset = $true` only for the run; `ProtectedAccounts` holds at least your own Dev admin; `BreakGlass` set | Without them the plan refuses |
+| 3 | Plan Align | `pwsh scripts/Invoke-DevReset.ps1 -ProdToken $p -DevToken $d` | Only Dev-only objects `planned`; the protection list shows your admins, break-glass, the Prod Global Administrators and their guests, the toolkit app and the Prod partner |
+| 4 | Plan Full | Same with `-Mode Full` | The whole scope `planned`; guests, devices, synced objects, Microsoft 365 and role groups `skipped` |
+| 5 | Lockout check | Temporarily remove your admin from `ProtectedAccounts` and `BreakGlass` in a copy of the config | The plan refuses ("protects no account" or "none of the protected accounts") |
+| 6 | First run | Align on a Dev tenant with one test object only in Dev: `-Apply -ConfirmPlanHash <hash> -ConfirmTenant <Dev tenant ID>` | Only that object is deleted; one audit line per delete; you can still sign in |
+| 7 | Restore check | Entra admin center > Deleted users / groups, Conditional Access deleted items | The deleted users, groups and policies are listed and restorable |
+| 8 | Rebuild | `-RebuildAfter` on a test run | Base state, apply and users each ask for their plan hash; the drift report at the end is empty except for excluded points |
+| 9 | Unverified | Deleting a filter or group still used by an object outside the scope (e.g. an app assignment) | Graph refuses; the step is `failed`, later steps `not-run`. Tell me the message |

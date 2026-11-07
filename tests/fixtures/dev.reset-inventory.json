@@ -1,0 +1,175 @@
+{
+  "Dev": {
+    "Groups": [
+      {
+        "groupTypes": [],
+        "id": "group-bg-0001",
+        "displayName": "CA-BreakglassAccounts"
+      },
+      {
+        "groupTypes": [],
+        "id": "group-admins-0001",
+        "displayName": "CA-Persona-Admins"
+      },
+      {
+        "groupTypes": [],
+        "id": "group-old-0001",
+        "displayName": "Old Test Group"
+      },
+      {
+        "groupTypes": [],
+        "id": "group-prod-0001",
+        "displayName": "Pilot Ring"
+      },
+      {
+        "groupTypes": [
+          "Unified"
+        ],
+        "id": "group-m365-0001",
+        "displayName": "Team Site"
+      },
+      {
+        "groupTypes": [],
+        "isAssignableToRole": true,
+        "id": "group-role-0001",
+        "displayName": "Role Group"
+      },
+      {
+        "groupTypes": [],
+        "onPremisesSyncEnabled": true,
+        "id": "group-sync-0001",
+        "displayName": "Synced Group"
+      }
+    ],
+    "Users": [
+      {
+        "userPrincipalName": "dev.admin@dev.example",
+        "onPremisesSyncEnabled": null,
+        "id": "user-admin-0001",
+        "userType": "Member",
+        "mail": ""
+      },
+      {
+        "userPrincipalName": "bg-user@dev.example",
+        "id": "user-bg-0001",
+        "userType": "Member",
+        "mail": ""
+      },
+      {
+        "userPrincipalName": "svc.sync@dev.example",
+        "id": "user-svc-0001",
+        "userType": "Member",
+        "mail": ""
+      },
+      {
+        "userPrincipalName": "test.internal@dev.example",
+        "id": "user-test-0001",
+        "userType": "Member",
+        "mail": ""
+      },
+      {
+        "userPrincipalName": "someone@dev.example",
+        "id": "user-other-0001",
+        "userType": "Member",
+        "mail": ""
+      },
+      {
+        "userPrincipalName": "synced@dev.example",
+        "onPremisesSyncEnabled": true,
+        "id": "user-synced-0001",
+        "userType": "Member",
+        "mail": ""
+      },
+      {
+        "userPrincipalName": "admin.one_prod.example#EXT#@dev.example",
+        "id": "guest-admin-0001",
+        "userType": "Guest",
+        "mail": "admin.one@prod.example"
+      },
+      {
+        "userPrincipalName": "partner_x.example#EXT#@dev.example",
+        "id": "guest-other-0001",
+        "userType": "Guest",
+        "mail": "partner@x.example"
+      }
+    ],
+    "ToolkitServicePrincipals": [
+      {
+        "displayName": "Toolkit Dev",
+        "id": "sp-0001",
+        "appId": "client-dev-0001"
+      }
+    ],
+    "DeviceConfigurations": [
+      {
+        "id": "dc-0001",
+        "displayName": "Win - Base"
+      },
+      {
+        "id": "dc-0002",
+        "displayName": "Win - Dev Trial"
+      }
+    ],
+    "ConfigurationPolicies": [
+      {
+        "id": "sc-0001",
+        "name": "SC - Defender"
+      }
+    ],
+    "Intents": [],
+    "ConditionalAccessPolicies": [
+      {
+        "state": "enabled",
+        "id": "ca-0001",
+        "displayName": "CA001-Global-Base"
+      },
+      {
+        "state": "enabled",
+        "id": "ca-0002",
+        "displayName": "CA999-Dev-Only"
+      }
+    ],
+    "ManagedDevices": [
+      {
+        "deviceName": "VM-TEST-01",
+        "operatingSystem": "Windows",
+        "id": "dev-0001"
+      }
+    ],
+    "AssignmentFilters": [
+      {
+        "id": "flt-0001",
+        "displayName": "Filter Dev Only"
+      }
+    ],
+    "DeviceCompliancePolicies": [
+      {
+        "id": "cp-0001",
+        "displayName": "Win - Compliance"
+      }
+    ],
+    "CrossTenantPartners": [
+      {
+        "tenantId": "tenant-prod-0001"
+      }
+    ]
+  },
+  "ProdReadError": "",
+  "ProdGlobalAdmins": [
+    {
+      "userPrincipalName": "admin.one@prod.example",
+      "id": "prod-admin-0001",
+      "mail": "admin.one@prod.example"
+    },
+    {
+      "userPrincipalName": "admin.two@prod.example",
+      "id": "prod-admin-0002",
+      "mail": "admin.two@prod.example"
+    },
+    {
+      "userPrincipalName": "bg-user@dev.example",
+      "id": "prod-bg-0001",
+      "mail": ""
+    }
+  ]
+}
