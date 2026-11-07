@@ -32,7 +32,7 @@ function Invoke-DevResetPlan {
     )
 
     $hash = Assert-DevApplyGate -Plan $Plan -Config $Config -ConfirmPlanHash $ConfirmPlanHash -HistoryRoot $HistoryRoot -Purpose Reset -ConfirmTenant $ConfirmTenant
-    $target = [string]$Plan['TargetTenantId']
+    $target = [string]$Plan['TargetTenant']
     $devId = [string]$Config['Dev']['TenantId']
 
     $protected = @($Plan['Protected'])

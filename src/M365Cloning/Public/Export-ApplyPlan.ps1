@@ -15,7 +15,16 @@ function Export-ApplyPlan {
     $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss')
     $jsonPath = Join-Path $dir "$FilePrefix-$stamp.json"
     $mdPath = Join-Path $dir "$FilePrefix-$stamp.md"
-    [ordered]@{ PlanHash = $hash; Plan = $Plan } | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $jsonPath -Encoding utf8
+    # Header of the file (issue #51). CreatedUtc is not part of the plan, so the plan hash stays the same when the
+    # script builds the plan again for -Apply.
+    $kind = if ($Plan.Contains('Kind')) { [string]$Plan['Kind'] } else { '' }
+    [ordered]@{
+        SchemaVersion = $script:M365CloningSchemaVersion
+        Kind          = $kind
+        CreatedUtc    = (Get-Date).ToUniversalTime().ToString('o')
+        PlanHash      = $hash
+        Plan          = $Plan
+    } | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $jsonPath -Encoding utf8
     ConvertTo-ApplyPlanMarkdown -Plan $Plan -PlanHash $hash | Set-Content -LiteralPath $mdPath -Encoding utf8 -NoNewline
     [pscustomobject]@{ Json = $jsonPath; Markdown = $mdPath; PlanHash = $hash }
 }

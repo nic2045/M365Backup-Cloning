@@ -27,12 +27,25 @@
     "DriftReport": {
       "type": "object",
       "required": [
+        "SchemaVersion",
+        "Kind",
+        "CreatedUtc",
         "Direction",
         "Types",
         "Summary",
         "IsIdentical"
       ],
       "properties": {
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "const": "drift"
+        },
+        "CreatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
         "Direction": {
           "type": "string",
           "description": "Always 'Prod -> Dev' (desired -> actual)."
@@ -134,6 +147,7 @@
         "Status",
         "Reason",
         "DscResource",
+        "AssignmentClass",
         "Differences",
         "Properties"
       ],
@@ -145,13 +159,10 @@
           "type": "string"
         },
         "Operation": {
-          "type": "string",
-          "description": "What the plan does with the entry, e.g. Create, Update, SkipDelete, Delete, Disable, CreateUser, InviteGuest, AddMember, Invite, device actions. Open set: new operations may appear."
+          "$ref": "#/$defs/PlanOperation"
         },
         "Status": {
-          "type": "string",
-          "pattern": "^[a-z][a-z-]*$",
-          "description": "Plan status, e.g. planned, blocked, skipped, exists, protected; after a run: applied, failed, not-run, stopped, unchanged, nothing-to-do."
+          "$ref": "#/$defs/PlanStatus"
         },
         "Reason": {
           "type": "string"
@@ -162,7 +173,7 @@
         },
         "AssignmentClass": {
           "type": "string",
-          "description": "Only in apply and baseline plans."
+          "description": "Assignment class of the DSC resource; empty when the resource has none."
         },
         "Differences": {
           "type": "array",
@@ -171,11 +182,8 @@
           }
         },
         "Properties": {
-          "type": [
-            "object",
-            "null"
-          ],
-          "description": "Desired properties (free form, never secrets); null when nothing is written."
+          "type": "object",
+          "description": "Desired properties (free form, never secrets); an empty object when nothing is written."
         }
       }
     },
@@ -215,7 +223,13 @@
       "required": [
         "Planned",
         "Blocked",
-        "Skipped"
+        "Skipped",
+        "Excluded",
+        "Exists",
+        "Invite",
+        "Protected",
+        "InBaseline",
+        "Devices"
       ],
       "properties": {
         "Planned": {
@@ -248,7 +262,7 @@
         },
         "InBaseline": {
           "type": "boolean",
-          "description": "Baseline plans only: true when the base state is reached."
+          "description": "True when nothing is planned or blocked (for a baseline plan: the base state is reached)."
         },
         "Devices": {
           "type": "object",
@@ -281,14 +295,16 @@
               "minimum": 0
             }
           },
-          "description": "Reset plans only."
+          "description": "Device actions of a reset plan; 0 for the other kinds."
         }
       },
-      "description": "Counts of a plan. Planned/Blocked/Skipped always; the other keys depend on the plan kind."
+      "description": "The same counters for every plan kind (issue #51); a counter a kind does not use is 0.",
+      "additionalProperties": false
     },
     "PlanLicences": {
       "type": "object",
       "required": [
+        "Checked",
         "Readable",
         "Error",
         "Available",
@@ -296,6 +312,10 @@
         "Warnings"
       ],
       "properties": {
+        "Checked": {
+          "type": "boolean",
+          "description": "False when this plan kind needs no licence check (reset); then Readable is false and Error says why."
+        },
         "Readable": {
           "type": "boolean"
         },
@@ -306,7 +326,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Service plan names that are available (sorted)."
         },
         "Missing": {
           "type": "array",
@@ -347,36 +368,66 @@
           }
         }
       },
-      "description": "Licence section of a plan (issue #32)."
+      "description": "Licence section of a plan (issue #32): LicenceStatus plus what is missing for which entries. No SKU list: seat counts change and must not change the plan hash.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/LicenceStatus"
+        }
+      ]
     },
     "Plan": {
       "type": "object",
       "required": [
+        "SchemaVersion",
+        "Kind",
         "Direction",
-        "TargetTenantId",
+        "Title",
+        "ApplyHint",
+        "Mode",
+        "TargetTenant",
+        "TargetTenantHash",
         "Actions",
+        "Protected",
         "Notes",
-        "Summary"
+        "Summary",
+        "TypeSummary",
+        "ExcludedTypes",
+        "Licences"
       ],
       "properties": {
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "$ref": "#/$defs/PlanKind"
+        },
         "Direction": {
           "type": "string"
         },
         "Title": {
-          "type": "string"
+          "type": "string",
+          "description": "Empty for apply plans (the Markdown has a default title)."
         },
         "ApplyHint": {
           "type": "string"
         },
         "Mode": {
           "enum": [
+            "",
             "Align",
             "Full"
           ],
-          "description": "Reset plans only."
+          "description": "Reset plans: Align or Full; empty for the other kinds."
         },
-        "TargetTenantId": {
-          "type": "string"
+        "TargetTenant": {
+          "type": "string",
+          "maxLength": 11,
+          "description": "Dev tenant shortened to 8 characters plus '...' (as in the audit log)."
+        },
+        "TargetTenantHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the Dev tenant ID in lower case. The gate compares it with the Dev tenant of the local config; the plan never carries the full ID."
         },
         "Actions": {
           "type": "array",
@@ -408,7 +459,8 @@
                 "description": "Device entries only: the Intune device ID; the run checks device protection by this ID."
               }
             }
-          }
+          },
+          "description": "Reset plans: the protection list; empty for the other kinds."
         },
         "Notes": {
           "type": "array",
@@ -423,7 +475,8 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/TypeSummaryEntry"
-          }
+          },
+          "description": "Apply plans: counts per resource type; empty for the other kinds."
         },
         "ExcludedTypes": {
           "type": "array",
@@ -441,21 +494,36 @@
                 "type": "string"
               }
             }
-          }
+          },
+          "description": "Apply plans: excluded resource types; empty for the other kinds."
         },
         "Licences": {
           "$ref": "#/$defs/PlanLicences"
         }
       },
-      "description": "One plan (apply, baseline, reset or users). The kind is not part of the plan; see PlanKind."
+      "description": "One plan of any kind (apply, baseline, reset, users) in one shape (schema version 2, issue #51). The plan hash is the SHA-256 of this object; it has no time, so the same tenants give the same hash.",
+      "additionalProperties": false
     },
     "PlanFile": {
       "type": "object",
       "required": [
+        "SchemaVersion",
+        "Kind",
+        "CreatedUtc",
         "PlanHash",
         "Plan"
       ],
       "properties": {
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "$ref": "#/$defs/PlanKind"
+        },
+        "CreatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
         "PlanHash": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
@@ -464,7 +532,8 @@
           "$ref": "#/$defs/Plan"
         }
       },
-      "description": "A plan file as written by Export-ApplyPlan (History/reports/<prefix>-<timestamp>.json)."
+      "description": "A plan file as written by Export-ApplyPlan (History/reports/<prefix>-<timestamp>.json). Files without SchemaVersion 2 are refused (Read-ApplyPlanFile): make a new plan.",
+      "additionalProperties": false
     },
     "PlanKind": {
       "enum": [
@@ -473,17 +542,22 @@
         "reset",
         "users"
       ],
-      "description": "Derived from the file name prefix: apply-plan, dev-baseline-plan, dev-reset-plan-align|full, dev-users-plan."
+      "description": "Kind of a plan; written into the plan and the plan file (issue #51)."
     },
     "TenantLicences": {
       "type": "object",
       "required": [
+        "Checked",
         "Readable",
         "Error",
         "Available",
         "Skus"
       ],
       "properties": {
+        "Checked": {
+          "type": "boolean",
+          "description": "False when this plan kind needs no licence check (reset); then Readable is false and Error says why."
+        },
         "Readable": {
           "type": "boolean"
         },
@@ -494,7 +568,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Service plan names that are available (sorted)."
         },
         "Skus": {
           "type": "array",
@@ -557,7 +632,13 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/LicenceStatus"
+        }
+      ],
+      "description": "Licences of one tenant in the suitability check (issue #39): LicenceStatus plus the SKU list."
     },
     "FitStatus": {
       "enum": [
@@ -570,7 +651,8 @@
     "FitCheck": {
       "type": "object",
       "required": [
-        "Schema",
+        "SchemaVersion",
+        "Kind",
         "CreatedUtc",
         "Status",
         "Verified",
@@ -581,8 +663,11 @@
         "Licences"
       ],
       "properties": {
-        "Schema": {
-          "const": "m365cloning.tenantfit/1"
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "const": "tenantfit"
         },
         "CreatedUtc": {
           "type": "string",
@@ -751,9 +836,92 @@
         },
         "Counts": {
           "type": "object",
-          "additionalProperties": {
-            "type": "integer"
-          }
+          "required": [
+            "Planned",
+            "Blocked",
+            "Skipped",
+            "Excluded",
+            "Exists",
+            "Invite",
+            "Protected",
+            "Applied",
+            "Failed",
+            "Deleted",
+            "Retired",
+            "Wiped",
+            "NotRun",
+            "Red",
+            "Yellow",
+            "Info"
+          ],
+          "properties": {
+            "Planned": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Blocked": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Skipped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Excluded": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Exists": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Invite": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Protected": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Applied": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Deleted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Retired": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Wiped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "NotRun": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Red": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Yellow": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Info": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "The same counters in every line, whatever the mode (issue #51); unused counters are 0."
         },
         "Reason": {
           "type": "string",
@@ -764,8 +932,8 @@
       "description": "One line of History/audit.jsonl. Closed set of fields: an audit entry never carries properties, tokens or certificate data."
     },
     "SchemaVersion": {
-      "const": "1",
-      "description": "Version of this contract (ADR 0008)."
+      "const": "2",
+      "description": "Version of the file formats and of this contract (ADR 0008, issue #51). Version 2: every core file carries SchemaVersion and Kind; plans have one shape for all kinds and no full tenant ID."
     },
     "Error": {
       "type": "object",
@@ -1092,6 +1260,69 @@
       },
       "additionalProperties": false,
       "description": "Read-only status for consumers (ADR 0002 point 8). The toolkit does not know its consumers."
+    },
+    "PlanOperation": {
+      "enum": [
+        "Create",
+        "Update",
+        "None",
+        "SkipDelete",
+        "Delete",
+        "Keep",
+        "Retire",
+        "Wipe",
+        "Invite",
+        "CreateUser",
+        "InviteGuest",
+        "AddMember"
+      ],
+      "description": "What the plan does with an entry (closed list, issue #51). A new operation is added here in the same pull request that introduces it."
+    },
+    "PlanStatus": {
+      "enum": [
+        "planned",
+        "blocked",
+        "skipped",
+        "exists",
+        "protected",
+        "info",
+        "applied",
+        "failed",
+        "not-run",
+        "stopped",
+        "unchanged",
+        "nothing-to-do"
+      ],
+      "description": "Plan status (planned, blocked, skipped, exists, protected, info) or, in run results, the outcome (applied, failed, not-run, stopped, unchanged, nothing-to-do). Closed list (issue #51)."
+    },
+    "LicenceStatus": {
+      "type": "object",
+      "required": [
+        "Checked",
+        "Readable",
+        "Error",
+        "Available"
+      ],
+      "properties": {
+        "Checked": {
+          "type": "boolean",
+          "description": "False when this plan kind needs no licence check (reset); then Readable is false and Error says why."
+        },
+        "Readable": {
+          "type": "boolean"
+        },
+        "Error": {
+          "type": "string"
+        },
+        "Available": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Service plan names that are available (sorted)."
+        }
+      },
+      "description": "Common core of every licence section (issue #51): the plan check (PlanLicences) and the suitability check (TenantLicences) both start with these fields."
     }
   }
 }

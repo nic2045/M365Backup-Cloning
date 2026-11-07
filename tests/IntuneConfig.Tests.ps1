@@ -52,7 +52,7 @@ Describe 'Intune policies: secrets are never copied' {
         $a = script:Get-Action (New-ApplyPlan -Source $src -Target (script:New-Snap @()) -Config (script:New-Config)) 'Office Wi-Fi'
         $a['Status'] | Should -Be 'skipped'
         $a['Reason'] | Should -Match '^secret:'
-        $a['Properties'] | Should -BeNullOrEmpty
+        @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
     }
     It 'skips a custom profile with an encrypted OMA-URI value' {
         $oma = @(@{ OmaUri = './Device/Vendor/X'; IsEncrypted = $true; SecretReferenceValueId = 'ref-0001'; Value = '****' })

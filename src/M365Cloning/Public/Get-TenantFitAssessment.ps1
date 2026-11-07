@@ -128,10 +128,11 @@ function Get-TenantFitAssessment {
         'grey' { 'Not verified: a licence list could not be read.' }
         'red' { 'An equivalent tenant is needed: a core feature of Prod is missing in Dev.' }
     }
-    $view = { param($l) [ordered]@{ Readable = [bool]$l['Readable']; Error = [string]$l['Error']; Available = [string[]]@($l['Available']); Skus = [object[]]@($l['Skus']) } }
+    $view = { param($l) [ordered]@{ Checked = $true; Readable = [bool]$l['Readable']; Error = [string]$l['Error']; Available = [string[]]@($l['Available']); Skus = [object[]]@($l['Skus']) } }
     $sorted = @($findings | Sort-Object @{ Expression = { -$rank[$_.Severity] } }, @{ Expression = { $_.Id } })
     [ordered]@{
-        Schema          = 'm365cloning.tenantfit/1'
+        SchemaVersion   = $script:M365CloningSchemaVersion
+        Kind            = 'tenantfit'
         CreatedUtc      = (Get-Date).ToUniversalTime().ToString('o')
         Status          = $status
         Verified        = $verified

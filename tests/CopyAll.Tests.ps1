@@ -88,7 +88,7 @@ Describe 'Plan: exclusion list' {
         $a = script:Get-Action $plan 'Security defaults'
         $a['Status'] | Should -Be 'skipped'
         $a['Reason'] | Should -Match '^excluded: '
-        $a['Properties'] | Should -BeNullOrEmpty
+        @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
         $plan['Summary']['Excluded'] | Should -Be 1
         $plan['Summary']['Skipped'] | Should -Be 0
     }

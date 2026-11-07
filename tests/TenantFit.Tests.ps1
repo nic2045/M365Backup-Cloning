@@ -21,7 +21,8 @@ Describe 'Tenant suitability check' {
         $r = Get-TenantFitAssessment -ProdLicences $script:ProdFull -DevLicences (Lic @(Sku 'DEV_E5' $script:Full)) -ProdSnapshot (Snap @(Res $script:CA 'CA001')) -Config $script:Cfg
         $r.Status | Should -Be 'green'
         $r.Verified | Should -BeTrue
-        $r.Schema | Should -Be 'm365cloning.tenantfit/1'
+        $r.SchemaVersion | Should -Be '2'
+        $r.Kind | Should -Be 'tenantfit'
     }
     It 'is yellow when Prod uses risk-based CA and Dev has no P2' {
         $prodSnap = Snap @(Res $script:CA 'CA101' @{ SignInRiskLevels = @('high') })

@@ -11,7 +11,7 @@ function New-DevUserPlan {
         first, it creates the persona groups as empty copies (ADR 0003). Only add, never remove or disable.
         Only accounts of the positive list are in the plan; break-glass accounts are refused by the config check.
         -Directory is the Dev state (Get-DevDirectory or a saved JSON file). No password is part of the plan.
-        The plan has the shape of New-ApplyPlan (TargetTenantId, Actions, Summary) so Get-ApplyPlanHash and
+        The plan has the shape of New-ApplyPlan (schema version 2, Complete-PlanShape) so Get-ApplyPlanHash and
         Export-ApplyPlan work on it.
     #>
     [CmdletBinding()]
@@ -104,7 +104,7 @@ function New-DevUserPlan {
     $keyed.Sort([System.Comparison[object]] { param($x, $y) [string]::CompareOrdinal($x.Key, $y.Key) })
     $sorted = [object[]]@($keyed | ForEach-Object { $_.Action })
     $count = { param($status) @($sorted | Where-Object { $_['Status'] -eq $status }).Count }
-    [ordered]@{
+    Complete-PlanShape -Kind 'users' -Plan ([ordered]@{
         Direction      = 'Dev users (positive list)'
         Title          = 'Dev users plan (preview, nothing was changed)'
         ApplyHint      = 'scripts/Invoke-DevUsers.ps1 -Apply -ConfirmPlanHash <hash above>'
@@ -117,5 +117,5 @@ function New-DevUserPlan {
             Skipped = [int](& $count 'skipped')
             Exists  = [int](& $count 'exists')
         }
-    }
+    })
 }

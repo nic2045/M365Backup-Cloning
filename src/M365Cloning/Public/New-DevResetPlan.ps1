@@ -338,7 +338,7 @@ function New-DevResetPlan {
     if ($Mode -eq 'Align') { $notes.Add('Align: after the reset run scripts/Invoke-ApplyDev.ps1 to align what differs (or -RebuildAfter).') }
     else { $notes.Add('Full: rebuild with -RebuildAfter (baseline -> apply -> users, each with its own plan and confirmation).') }
     $count = { param($status) @($sorted | Where-Object { $_['Status'] -eq $status }).Count }
-    [ordered]@{
+    Complete-PlanShape -Kind 'reset' -Plan ([ordered]@{
         Direction      = "Factory reset of Dev ($Mode)"
         Title          = "Dev reset plan, mode $Mode (preview, nothing was changed)"
         ApplyHint      = "scripts/Invoke-DevReset.ps1 -Mode $Mode -Apply -ConfirmPlanHash <hash above> -ConfirmTenant <Dev tenant ID>"
@@ -361,5 +361,5 @@ function New-DevResetPlan {
                 Wipe      = [int]@($sorted | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Status'] -eq 'planned' -and $_['Operation'] -eq 'Wipe' }).Count
             }
         }
-    }
+    })
 }

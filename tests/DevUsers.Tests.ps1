@@ -146,7 +146,7 @@ Describe 'Invoke-DevUserPlan: refusals (nothing is written)' {
     }
     It 'refuses the Prod tenant' {
         $script:Config['Dev']['TenantId'] = $script:Config['Prod']['TenantId']
-        $script:Plan['TargetTenantId'] = $script:Config['Prod']['TenantId']
+        $script:Plan['TargetTenantHash'] = Get-TenantIdHash -TenantId $script:Config['Prod']['TenantId']
         { Invoke-DevUserPlan -Plan $script:Plan -Config $script:Config -ConfirmPlanHash (Get-ApplyPlanHash -Plan $script:Plan) -GraphWriter $script:Writer -HistoryRoot $script:Root -RetryDelaySeconds 0 } | Should -Throw '*Prod*'
         $script:Writes.Count | Should -Be 0
     }

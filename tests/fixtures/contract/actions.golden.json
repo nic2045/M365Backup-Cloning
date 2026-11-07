@@ -1,0 +1,125 @@
+{
+  "apply-plan": {
+    "Actions": [
+      "microsoft.entra.group | BG-Group | Create | planned | empty static copy (persona BreakGlass): a Conditional Access policy refers to it; no members",
+      "microsoft.entra.group | SW-Ring2 | Create | planned | empty static copy: Intune policy 'Windows baseline' assigns to it; no members",
+      "microsoft.intune.devicecompliancepolicywindows10 | Old dev only policy | SkipDelete | skipped | exists only in Dev; an apply never deletes",
+      "microsoft.intune.deviceconfigurationpolicywindows10 | Windows baseline | Update | planned | ",
+      "microsoft.entra.conditionalaccesspolicy | CA require MFA | Create | planned | "
+    ],
+    "Protected": [],
+    "Counts": "4/0/1"
+  },
+  "dev-baseline-plan": {
+    "Actions": [
+      "microsoft.entra.group | BG-Group | Create | planned | break-glass group of the base state: static, empty",
+      "microsoft.entra.group | CA-BreakglassAccounts | Create | planned | break-glass group of the base state: static, empty",
+      "microsoft.entra.group | CA-Persona-Admins | Create | planned | persona group (Admins) of the base state: static, empty",
+      "microsoft.entra.group | CA-Persona-Externals | Create | planned | persona group (Externals) of the base state: static, empty",
+      "microsoft.entra.group | CA-Persona-Guests | Create | planned | persona group (Guests) of the base state: static, empty",
+      "microsoft.entra.group | CA-Persona-Internals | Create | planned | persona group (Internals) of the base state: static, empty",
+      "microsoft.entra.group | CA-Persona-Microsoft365ServiceAccounts | Create | planned | persona group (Microsoft365ServiceAccounts) of the base state: static, empty",
+      "microsoft.entra.crosstenantaccesspolicyconfigurationpartner | Prod tenant as partner (tenant-prod-0001) | Create | planned | cross-tenant access: B2B collaboration inbound allowed for the Prod tenant, inbound invitations redeemed automatically (no cross-tenant sync)"
+    ],
+    "Protected": [],
+    "Counts": "8/0/0"
+  },
+  "dev-reset-plan-align": {
+    "Actions": [
+      "AssignmentFilter | Filter Dev Only | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "ConditionalAccessPolicy | CA001-Global-Base | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "ConditionalAccessPolicy | CA999-Dev-Only | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "ConfigurationPolicy | SC - Defender | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "DeviceCompliancePolicy | Win - Compliance | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "DeviceConfiguration | Win - Base | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "DeviceConfiguration | Win - Dev Trial | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "Group | Old Test Group | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "Group | Pilot Ring | Keep | skipped | not only in Dev (or not in the drift report): kept, the apply aligns it",
+      "Group | Role Group | Keep | skipped | role-assignable group: not deleted by the reset",
+      "Group | Synced Group | Keep | skipped | synced from on-premises: never deleted",
+      "Group | Team Site | Keep | skipped | Microsoft 365 group (mailbox, site, team): not deleted by the reset, delete by hand if wanted",
+      "Invite | admin.two@prod.example | Invite | info | Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+      "Invite | bg-user@dev.example | Invite | info | Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+      "ManagedDevice | VM-TEST-01 | Keep | skipped | kept (default); choose -DeviceAction or -DeviceActionFile to remove, retire or wipe",
+      "User | dev.admin@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset",
+      "User | someone@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset",
+      "User | svc.sync@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset",
+      "User | synced@dev.example | Keep | skipped | synced from on-premises: never deleted",
+      "User | test.internal@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset"
+    ],
+    "Protected": [
+      "Account | admin.one_prod.example#EXT#@dev.example | Dev: B2B guest of a Prod Global Administrator",
+      "Account | admin.one_prod.example#EXT#@dev.example | Dev: guest (guests are never deleted)",
+      "Account | partner_x.example#EXT#@dev.example | Dev: guest (guests are never deleted)",
+      "Account | admin.one@prod.example | Prod: Global Administrator",
+      "Account | admin.two@prod.example | Prod: Global Administrator",
+      "Account | bg-user@dev.example | Prod: Global Administrator",
+      "Account | bg-user-0001 | config: BreakGlass",
+      "Account | admin-0001 | config: ProtectedAccounts",
+      "App | Toolkit Dev | Dev: app registration of this toolkit",
+      "Group | BG-Group | base state (break-glass)",
+      "Group | CA-BreakglassAccounts | base state (break-glass)",
+      "Group | CA-Persona-Admins | base state (persona)",
+      "Group | CA-Persona-Externals | base state (persona)",
+      "Group | CA-Persona-Guests | base state (persona)",
+      "Group | CA-Persona-Internals | base state (persona)",
+      "Group | CA-Persona-Microsoft365ServiceAccounts | base state (persona)",
+      "Partner | tenant-prod-0001 | Dev: cross-tenant access partner and cross-tenant sync (kept)"
+    ],
+    "Counts": "0/0/18"
+  },
+  "dev-reset-plan-full": {
+    "Actions": [
+      "ConditionalAccessPolicy | CA001-Global-Base | Delete | planned | in the reset scope (Full); switched off first, then deleted",
+      "ConditionalAccessPolicy | CA999-Dev-Only | Delete | planned | in the reset scope (Full); switched off first, then deleted",
+      "ConfigurationPolicy | SC - Defender | Delete | planned | in the reset scope (Full)",
+      "DeviceCompliancePolicy | Win - Compliance | Delete | planned | in the reset scope (Full)",
+      "DeviceConfiguration | Win - Base | Delete | planned | in the reset scope (Full)",
+      "DeviceConfiguration | Win - Dev Trial | Delete | planned | in the reset scope (Full)",
+      "AssignmentFilter | Filter Dev Only | Delete | planned | in the reset scope (Full); after the policies that use it",
+      "Group | Old Test Group | Delete | planned | in the reset scope (Full); goes to the deleted items (restorable for 30 days)",
+      "Group | Pilot Ring | Delete | planned | in the reset scope (Full); goes to the deleted items (restorable for 30 days)",
+      "Group | Role Group | Keep | skipped | role-assignable group: not deleted by the reset",
+      "Group | Synced Group | Keep | skipped | synced from on-premises: never deleted",
+      "Group | Team Site | Keep | skipped | Microsoft 365 group (mailbox, site, team): not deleted by the reset, delete by hand if wanted",
+      "Invite | admin.two@prod.example | Invite | info | Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+      "Invite | bg-user@dev.example | Invite | info | Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)",
+      "ManagedDevice | VM-TEST-01 | Keep | skipped | kept (default); choose -DeviceAction or -DeviceActionFile to remove, retire or wipe",
+      "User | dev.admin@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset",
+      "User | someone@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset",
+      "User | svc.sync@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset",
+      "User | synced@dev.example | Keep | skipped | synced from on-premises: never deleted",
+      "User | test.internal@dev.example | Keep | skipped | not a test user of the positive list (DevUsers): never deleted by the reset"
+    ],
+    "Protected": [
+      "Account | admin.one_prod.example#EXT#@dev.example | Dev: B2B guest of a Prod Global Administrator",
+      "Account | admin.one_prod.example#EXT#@dev.example | Dev: guest (guests are never deleted)",
+      "Account | partner_x.example#EXT#@dev.example | Dev: guest (guests are never deleted)",
+      "Account | admin.one@prod.example | Prod: Global Administrator",
+      "Account | admin.two@prod.example | Prod: Global Administrator",
+      "Account | bg-user@dev.example | Prod: Global Administrator",
+      "Account | bg-user-0001 | config: BreakGlass",
+      "Account | admin-0001 | config: ProtectedAccounts",
+      "App | Toolkit Dev | Dev: app registration of this toolkit",
+      "Group | BG-Group | base state (break-glass)",
+      "Group | CA-BreakglassAccounts | base state (break-glass)",
+      "Group | CA-Persona-Admins | base state (persona)",
+      "Group | CA-Persona-Externals | base state (persona)",
+      "Group | CA-Persona-Guests | base state (persona)",
+      "Group | CA-Persona-Internals | base state (persona)",
+      "Group | CA-Persona-Microsoft365ServiceAccounts | base state (persona)",
+      "Partner | tenant-prod-0001 | Dev: cross-tenant access partner and cross-tenant sync (kept)"
+    ],
+    "Counts": "9/0/9"
+  },
+  "dev-users-plan": {
+    "Actions": [
+      "microsoft.graph.invitation | admin.one@prod.example | InviteGuest | planned | admin from Prod as B2B guest (persona Admins); no invitation mail",
+      "microsoft.graph.user | test.internal@dev.example | CreateUser | planned | test user (persona Internals); random initial password, change at first sign-in",
+      "microsoft.graph.groupMember | admin.one@prod.example -> CA-Persona-Admins | AddMember | planned | add to the persona group (persona Admins); never removed",
+      "microsoft.graph.groupMember | test.internal@dev.example -> CA-Persona-Internals | AddMember | planned | add to the persona group (persona Internals); never removed"
+    ],
+    "Protected": [],
+    "Counts": "4/0/0"
+  }
+}

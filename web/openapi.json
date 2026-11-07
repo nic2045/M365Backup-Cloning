@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "M365Backup-Cloning API",
-    "version": "1",
+    "version": "2",
     "description": "Read-only API of one toolkit instance (ADR 0002, ADR 0008). Write actions (apply, reset) follow with issue #14. Every route has a schema for 200 and the Error schema for 400 and 500."
   },
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
