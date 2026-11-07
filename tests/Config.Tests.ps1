@@ -9,6 +9,6 @@ Describe 'config.example.psd1' {
     }
     It 'does not allow reset by default' {
         $c = Import-PowerShellDataFile -Path $script:Path
-        $c.Customers[0].Dev.AllowReset | Should -BeFalse
+        $c.Dev.AllowReset | Should -BeFalse
     }
 }

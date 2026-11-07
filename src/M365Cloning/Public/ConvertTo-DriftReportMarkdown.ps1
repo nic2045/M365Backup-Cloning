@@ -2,12 +2,10 @@ function ConvertTo-DriftReportMarkdown {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]$Report,
-        [string]$Customer = '',
         [string]$GeneratedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm') + ' UTC'
     )
     $lines = [System.Collections.Generic.List[string]]::new()
-    $title = if ($Customer) { "Drift report: $Customer" } else { 'Drift report' }
-    $lines.Add("# $title")
+    $lines.Add('# Drift report')
     $lines.Add('')
     $lines.Add("Direction: $($Report.Direction). Generated: $GeneratedAt. Read only: nothing was changed.")
     $lines.Add('')

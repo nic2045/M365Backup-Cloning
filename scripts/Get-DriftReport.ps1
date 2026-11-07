@@ -4,8 +4,8 @@
     Read-only drift report Prod -> Dev (ADR 0001). Changes nothing in any tenant.
 .DESCRIPTION
     Online: takes a UTCM snapshot of the Prod and the Dev tenant (the only POST is createSnapshot, which
-    only reads), keeps both under History\Tenants\<Customer>\<Prod|Dev>\<timestamp>\, compares them and
-    writes drift-*.json / drift-*.md to History\Tenants\<Customer>\reports\.
+    only reads), keeps both under History\Tenants\<Prod|Dev>\<timestamp>\, compares them and
+    writes drift-*.json / drift-*.md to History\reports\.
     Offline: -SourceSnapshotPath / -TargetSnapshotPath compare two saved snapshot.json files, no network.
     -DryRun prints what would be called and does nothing else.
     Tokens: app-only Graph tokens (scope https://graph.microsoft.com/.default) from the app registration of
@@ -14,7 +14,6 @@
 [CmdletBinding()]
 param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config.psd1'),
-    [string]$Customer,
     [securestring]$ProdToken,
     [securestring]$DevToken,
     [string]$SourceSnapshotPath,
@@ -33,11 +32,11 @@ if ($offline -and -not ($SourceSnapshotPath -and $TargetSnapshotPath)) {
 }
 
 $config = Import-M365CloningConfig -Path $ConfigPath
-$entry = Get-M365CloningCustomer -Config $config -Name $Customer
+$entry = $config
 $resources = if ($entry.ContainsKey('Resources') -and $entry.Resources) { $entry.Resources } else { Get-M365CloningDefaultResources }
 
 if ($DryRun) {
-    Write-Host "Dry run for customer '$($entry.Name)': no request is sent."
+    Write-Host 'Dry run: no request is sent.'
     Write-Host "Prod tenant: $($entry.Prod.TenantId)  Dev tenant: $($entry.Dev.TenantId)"
     Write-Host 'Per tenant: POST .../admin/configurationManagement/configurationSnapshots/createSnapshot (read only job), then GET job and snapshot.'
     Write-Host ('Resources: ' + ($resources -join ', '))
@@ -49,12 +48,12 @@ if ($offline) {
 }
 else {
     if (-not $ProdToken -or -not $DevToken) { throw 'Pass -ProdToken and -DevToken (or use the offline parameters).' }
-    $prodFile = Get-UtcmTenantSnapshot -Token $ProdToken -CustomerName $entry.Name -Side Prod -TenantId $entry.Prod.TenantId -Resources $resources -HistoryRoot $HistoryRoot
-    $devFile = Get-UtcmTenantSnapshot -Token $DevToken -CustomerName $entry.Name -Side Dev -TenantId $entry.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
+    $prodFile = Get-UtcmTenantSnapshot -Token $ProdToken -Side Prod -TenantId $entry.Prod.TenantId -Resources $resources -HistoryRoot $HistoryRoot
+    $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $entry.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
 }
 
 $report = Compare-TenantSnapshot -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile)
-$files = Export-DriftReport -Report $report -Customer $entry.Name -HistoryRoot $HistoryRoot
+$files = Export-DriftReport -Report $report -HistoryRoot $HistoryRoot
 $report.Summary | Format-Table | Out-String | Write-Host
 Write-Host "Report: $($files.Markdown)"
 if ($report.IsIdentical) { Write-Host 'No differences.' }

@@ -7,7 +7,6 @@
     PowerShellVersion = '7.0'
     FunctionsToExport = @(
         'Import-M365CloningConfig'
-        'Get-M365CloningCustomer'
         'Get-M365CloningDefaultResources'
         'New-UtcmSnapshot'
         'Wait-UtcmSnapshot'

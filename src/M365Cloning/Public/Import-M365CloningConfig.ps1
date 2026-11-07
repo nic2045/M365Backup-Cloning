@@ -1,10 +1,10 @@
 function Import-M365CloningConfig {
     <#
     .SYNOPSIS
-        Loads and validates config.psd1 (see config.example.psd1).
+        Loads and validates config.psd1 (see config.example.psd1): exactly one Prod/Dev pair.
     .DESCRIPTION
-        Rejects a config without a customer, without a Prod/Dev pair, with placeholders such as
-        '<prod-tenant-guid>' still in it, or with identical Prod and Dev tenant IDs.
+        Rejects a config without a Prod or Dev tenant, with placeholders such as '<prod-tenant-guid>'
+        still in it, with identical Prod and Dev tenant IDs, or with the old 'Customers' list.
         -AllowPlaceholders is only for tests with the example file.
     #>
     [CmdletBinding()]
@@ -18,31 +18,24 @@ function Import-M365CloningConfig {
     }
     $config = Import-PowerShellDataFile -LiteralPath $Path
 
-    if (-not $config.ContainsKey('Customers') -or @($config.Customers).Count -eq 0) {
-        throw 'Config has no customer (Customers is empty).'
+    if ($config.ContainsKey('Customers')) {
+        throw "The 'Customers' list is not supported: one instance of this toolkit serves one Prod/Dev pair. Use Prod and Dev at the top level."
     }
 
-    $isPlaceholder = { param($v) [string]$v -match '^\s*<.*>\s*$' -or [string]::IsNullOrWhiteSpace([string]$v) }
+    $isPlaceholder = { param($v) [string]::IsNullOrWhiteSpace([string]$v) -or [string]$v -match '^\s*<.*>\s*$' }
 
-    foreach ($customer in $config.Customers) {
-        $name = $customer['Name']
-        if (-not $AllowPlaceholders -and (& $isPlaceholder $name)) { throw 'A customer Name is empty or still a placeholder.' }
-        foreach ($side in 'Prod', 'Dev') {
-            if (-not $customer.ContainsKey($side) -or $customer[$side] -isnot [hashtable]) {
-                throw "Customer '$name': the $side tenant is missing (a Dev/Prod pair is required)."
-            }
-            foreach ($key in 'TenantId', 'ClientId', 'CertThumbprint') {
-                $value = $customer[$side][$key]
-                if (& $isPlaceholder $value) {
-                    if (-not $AllowPlaceholders) {
-                        throw "Customer '$name': $side.$key is empty or still a placeholder."
-                    }
-                }
+    foreach ($side in 'Prod', 'Dev') {
+        if (-not $config.ContainsKey($side) -or $config[$side] -isnot [hashtable]) {
+            throw "The $side tenant is missing (a Prod/Dev pair is required)."
+        }
+        foreach ($key in 'TenantId', 'ClientId', 'CertThumbprint') {
+            if (-not $AllowPlaceholders -and (& $isPlaceholder $config[$side][$key])) {
+                throw "$side.$key is empty or still a placeholder."
             }
         }
-        if (-not $AllowPlaceholders -and $customer.Prod.TenantId -eq $customer.Dev.TenantId) {
-            throw "Customer '$name': Prod and Dev have the same TenantId."
-        }
+    }
+    if (-not $AllowPlaceholders -and $config.Prod.TenantId -eq $config.Dev.TenantId) {
+        throw 'Prod and Dev have the same TenantId.'
     }
     $config
 }

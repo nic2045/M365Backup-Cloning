@@ -15,21 +15,21 @@ Note: `ConfigurationMonitoring.ReadWrite.All` is a write-named permission. The t
 
 ## Resource names (open, must be verified)
 
-`Get-M365CloningDefaultResources` uses the documented pattern `microsoft.<workload>.<resource>`. Only `microsoft.entra.conditionalaccesspolicy` is named literally in the docs. The Intune, group and role names are inferred. Check each name against the *Supported ... resources* pages. A name the API does not know shows up as a failed or partial snapshot. Fix per customer with `Resources = @(...)` in `config.psd1`.
+`Get-M365CloningDefaultResources` uses the documented pattern `microsoft.<workload>.<resource>`. Only `microsoft.entra.conditionalaccesspolicy` is named literally in the docs. The Intune, group and role names are inferred. Check each name against the *Supported ... resources* pages. A name the API does not know shows up as a failed or partial snapshot. Fix with `Resources = @(...)` in `config.psd1`.
 
 ## Run
 
-1. `Copy-Item config.example.psd1 config.psd1` and fill in the Dev/Prod pair (real data stays in the git-ignored file).
+1. `Copy-Item config.example.psd1 config.psd1` and fill in your Prod/Dev pair (real data stays in the git-ignored file).
 2. Dry run, nothing is sent: `pwsh scripts/Get-DriftReport.ps1 -DryRun`
 3. Get a token per tenant (your own way, certificate flow) as `SecureString`.
 4. `pwsh scripts/Get-DriftReport.ps1 -ProdToken $prod -DevToken $dev`
-5. Look at `History\Tenants\<Customer>\reports\drift-*.md`.
+5. Look at `History\reports\drift-*.md`.
 
 ## What to look at
 
 | Check | Expected |
 |---|---|
-| Both snapshots end `succeeded` | `History\Tenants\<Customer>\Prod\<stamp>\meta.json` and `Dev\...` exist |
+| Both snapshots end `succeeded` | `History\Tenants\Prod\<stamp>\meta.json` and `History\Tenants\Dev\...` exist |
 | Snapshot shape | `snapshot.json` has `resources[]` with `displayName`, `resourceType`, `properties` (Learn: same schema as a configurationBaseline). If not, `Compare-TenantSnapshot` needs an adjustment. |
 | Group names | Assignments carry `groupDisplayName`. If a resource type only has `groupId`, the report shows it as a difference (cannot be matched by name). Tell me which types. |
 | Volatile fields | Differences that are only IDs or timestamps: tell me the property names, they go into the ignore list in `ConvertTo-FlatProperty`. |

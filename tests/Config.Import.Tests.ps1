@@ -10,9 +10,11 @@ BeforeAll {
 }
 
 Describe 'Import-M365CloningConfig' {
-    It 'loads a valid config' {
+    It 'loads a valid config with one Prod/Dev pair' {
         $c = Import-M365CloningConfig -Path $script:Valid
-        $c.Customers[0].Name | Should -Be 'TestCustomer'
+        $c.Prod.TenantId | Should -Be 'tenant-prod-0001'
+        $c.Dev.AllowReset | Should -BeFalse
+        $c.ProtectedAccounts | Should -Contain 'admin-0001'
     }
     It 'rejects the example file because of its placeholders' {
         { Import-M365CloningConfig -Path $script:Example } | Should -Throw '*placeholder*'
@@ -23,27 +25,20 @@ Describe 'Import-M365CloningConfig' {
     It 'rejects a missing file' {
         { Import-M365CloningConfig -Path (Join-Path $TestDrive 'nope.psd1') } | Should -Throw '*not found*'
     }
-    It 'rejects a config without customers' {
-        $p = script:New-ConfigFile '@{ Customers = @() }'
-        { Import-M365CloningConfig -Path $p } | Should -Throw '*no customer*'
-    }
-    It 'rejects a customer without a Dev tenant' {
-        $p = script:New-ConfigFile "@{ Customers = @( @{ Name='X'; Prod=@{TenantId='a';ClientId='b';CertThumbprint='c'} } ) }"
+    It 'rejects a config without a Dev tenant' {
+        $p = script:New-ConfigFile "@{ Prod=@{TenantId='a';ClientId='b';CertThumbprint='c'} }"
         { Import-M365CloningConfig -Path $p } | Should -Throw '*Dev tenant is missing*'
     }
+    It 'rejects a config without a Prod tenant' {
+        $p = script:New-ConfigFile "@{ Dev=@{TenantId='a';ClientId='b';CertThumbprint='c'} }"
+        { Import-M365CloningConfig -Path $p } | Should -Throw '*Prod tenant is missing*'
+    }
     It 'rejects identical Prod and Dev tenant IDs' {
-        $p = script:New-ConfigFile "@{ Customers = @( @{ Name='X'; Prod=@{TenantId='same';ClientId='b';CertThumbprint='c'}; Dev=@{TenantId='same';ClientId='b';CertThumbprint='c'} } ) }"
+        $p = script:New-ConfigFile "@{ Prod=@{TenantId='same';ClientId='b';CertThumbprint='c'}; Dev=@{TenantId='same';ClientId='b';CertThumbprint='c'} }"
         { Import-M365CloningConfig -Path $p } | Should -Throw '*same TenantId*'
     }
-}
-
-Describe 'Get-M365CloningCustomer' {
-    It 'returns the only customer without a name' {
-        $c = Import-M365CloningConfig -Path $script:Valid
-        (Get-M365CloningCustomer -Config $c).Name | Should -Be 'TestCustomer'
-    }
-    It 'throws for an unknown name' {
-        $c = Import-M365CloningConfig -Path $script:Valid
-        { Get-M365CloningCustomer -Config $c -Name 'Other' } | Should -Throw '*not in the config*'
+    It 'rejects the old Customers list' {
+        $p = script:New-ConfigFile "@{ Customers = @( @{ Prod=@{}; Dev=@{} } ) }"
+        { Import-M365CloningConfig -Path $p } | Should -Throw '*Customers*'
     }
 }

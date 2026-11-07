@@ -73,11 +73,11 @@ Describe 'Compare-TenantSnapshot' {
 Describe 'ConvertTo-DriftReportMarkdown' {
     It 'says so when there are no differences' {
         $r = Compare-TenantSnapshot -Source $script:Prod -Target $script:Prod
-        ConvertTo-DriftReportMarkdown -Report $r -Customer 'C' | Should -Match 'No differences'
+        ConvertTo-DriftReportMarkdown -Report $r | Should -Match 'No differences'
     }
     It 'lists added, removed and changed entries' {
         $r = Compare-TenantSnapshot -Source $script:Prod -Target $script:Dev
-        $md = ConvertTo-DriftReportMarkdown -Report $r -Customer 'C'
+        $md = ConvertTo-DriftReportMarkdown -Report $r
         $md | Should -Match 'Added: CA require MFA'
         $md | Should -Match 'Removed: Old dev only policy'
         $md | Should -Match 'PasswordMinimumLength'
@@ -85,12 +85,12 @@ Describe 'ConvertTo-DriftReportMarkdown' {
 }
 
 Describe 'Export-DriftReport' {
-    It 'writes JSON and Markdown under Tenants/<Customer>/reports' {
+    It 'writes JSON and Markdown under reports' {
         $r = Compare-TenantSnapshot -Source $script:Prod -Target $script:Dev
-        $f = Export-DriftReport -Report $r -Customer 'C' -HistoryRoot (Join-Path $TestDrive 'History')
+        $f = Export-DriftReport -Report $r -HistoryRoot (Join-Path $TestDrive 'History')
         Test-Path $f.Json | Should -BeTrue
         Test-Path $f.Markdown | Should -BeTrue
-        $f.Json | Should -BeLike '*Tenants*C*reports*'
+        $f.Json | Should -BeLike '*reports*'
         (Get-Content $f.Json -Raw | ConvertFrom-Json).Summary.Changed | Should -Be 1
     }
 }

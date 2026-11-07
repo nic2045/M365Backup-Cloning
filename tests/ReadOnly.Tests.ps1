@@ -64,16 +64,16 @@ Describe 'Get-UtcmTenantSnapshot (mocked Graph)' {
     }
     AfterEach { Remove-Variable -Name UtcmTestPolls -Scope Global -ErrorAction SilentlyContinue }
 
-    It 'starts, waits, downloads and keeps the snapshot under History/Tenants/<Customer>/<Side>/<stamp>' {
-        $path = Get-UtcmTenantSnapshot -Token $script:Token -CustomerName 'C' -Side Prod -TenantId 'tenant-prod-0001' `
+    It 'starts, waits, downloads and keeps the snapshot under History/Tenants/<Side>/<stamp>' {
+        $path = Get-UtcmTenantSnapshot -Token $script:Token -Side Prod -TenantId 'tenant-prod-0001' `
             -Resources @('microsoft.entra.group') -HistoryRoot (Join-Path $TestDrive 'History') -PollSeconds 0
         Test-Path $path | Should -BeTrue
-        $path | Should -BeLike '*Tenants*C*Prod*snapshot.json'
+        $path | Should -BeLike '*Tenants*Prod*snapshot.json'
         (Join-Path (Split-Path $path) 'meta.json') | Should -Exist
         (Read-UtcmSnapshotFile -Path $path).resources[0].displayName | Should -Be 'G'
     }
     It 'makes exactly one POST (createSnapshot) and otherwise only GET calls' {
-        Get-UtcmTenantSnapshot -Token $script:Token -CustomerName 'C' -Side Dev -TenantId 'tenant-dev-0001' `
+        Get-UtcmTenantSnapshot -Token $script:Token -Side Dev -TenantId 'tenant-dev-0001' `
             -Resources @('microsoft.entra.group') -HistoryRoot (Join-Path $TestDrive 'History') -PollSeconds 0 | Out-Null
         Should -Invoke -ModuleName M365Cloning Invoke-UtcmGraphRequest -Times 1 -Exactly -ParameterFilter { $Method -eq 'POST' -and $Uri -like '*createSnapshot' }
         Should -Invoke -ModuleName M365Cloning Invoke-UtcmGraphRequest -Times 0 -Exactly -ParameterFilter { $Method -notin 'GET', 'POST' }
@@ -107,7 +107,7 @@ Describe 'Get-DriftReport.ps1' {
         & $script:Script -ConfigPath $script:Cfg -HistoryRoot $hist `
             -SourceSnapshotPath (Join-Path $script:Fx 'prod.snapshot.json') `
             -TargetSnapshotPath (Join-Path $script:Fx 'dev.snapshot.json') 6>$null | Out-Null
-        $json = Get-ChildItem -Path (Join-Path $hist 'Tenants' 'TestCustomer' 'reports') -Filter 'drift-*.json'
+        $json = Get-ChildItem -Path (Join-Path $hist 'reports') -Filter 'drift-*.json'
         $json | Should -Not -BeNullOrEmpty
     }
     It 'sends nothing and writes nothing in a dry run' {

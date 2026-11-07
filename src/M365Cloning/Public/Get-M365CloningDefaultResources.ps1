@@ -11,7 +11,7 @@ function Get-M365CloningDefaultResources {
         INFERRED from that pattern and the documented resource types deviceConfigurationPolicyWindows10 and
         deviceCompliancePolicyWindows10: the Intune and group entries. The role entries are a best guess.
         validation/README.md asks the owner to check every name against a real tenant;
-        a customer can override the list with 'Resources' in config.psd1.
+        you can override the list with 'Resources' in config.psd1.
     #>
     [CmdletBinding()]
     param()

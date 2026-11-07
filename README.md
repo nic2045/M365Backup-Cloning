@@ -16,13 +16,13 @@ See [`THIRD-PARTY.md`](THIRD-PARTY.md). License: MIT.
 ## Drift report (read only)
 
 ```powershell
-Copy-Item config.example.psd1 config.psd1        # fill in; git-ignored
+Copy-Item config.example.psd1 config.psd1        # fill in your Prod/Dev pair; git-ignored
 pwsh scripts/Get-DriftReport.ps1 -DryRun          # prints the plan, sends nothing
 pwsh scripts/Get-DriftReport.ps1 -ProdToken $p -DevToken $d
 pwsh scripts/Get-DriftReport.ps1 -SourceSnapshotPath prod.json -TargetSnapshotPath dev.json   # offline compare
 ```
 
-- UTCM snapshot per tenant (Microsoft Graph `createSnapshot`, the only POST; it reads), kept under `History\Tenants\<Customer>\<Prod|Dev>\<timestamp>\`.
+- UTCM snapshot per tenant (Microsoft Graph `createSnapshot`, the only POST; it reads), kept under `History\Tenants\<Prod|Dev>\<timestamp>\`.
 - Prod (desired) is compared with Dev (actual). Groups and assignments are matched by name, IDs and timestamps are ignored.
-- Report: `History\Tenants\<Customer>\reports\drift-*.json` and `.md`. An empty report means identical.
+- Report: `History\reports\drift-*.json` and `.md`. An empty report means identical.
 - Module: `src/M365Cloning`. Tests: `Invoke-Pester tests`. What needs a real tenant: `validation/README.md`.

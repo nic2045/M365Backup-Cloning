@@ -4,7 +4,7 @@ function Save-UtcmSnapshot {
         Downloads the finished snapshot and keeps it locally.
     .DESCRIPTION
         Graph deletes snapshots after 7 days (Learn: 'Configuration management'), so the file is copied to
-        History\Tenants\<Customer>\<Tenant>\<timestamp>\snapshot.json (git-ignored). The snapshot
+        History\Tenants\<Prod|Dev>\<timestamp>\snapshot.json (git-ignored). The snapshot
         schema matches configurationBaseline: resources[] with displayName, resourceType, properties.
         meta.json holds the job id, status and resource list, no token.
     #>

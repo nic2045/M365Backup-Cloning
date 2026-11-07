@@ -6,7 +6,6 @@ function Get-UtcmTenantSnapshot {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][securestring]$Token,
-        [Parameter(Mandatory)][string]$CustomerName,
         [Parameter(Mandatory)][ValidateSet('Prod', 'Dev')][string]$Side,
         [Parameter(Mandatory)][string]$TenantId,
         [Parameter(Mandatory)][string[]]$Resources,
@@ -15,7 +14,7 @@ function Get-UtcmTenantSnapshot {
         [int]$PollSeconds = 10
     )
     $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss')
-    $outDir = Join-Path $HistoryRoot (Join-Path 'Tenants' (Join-Path $CustomerName (Join-Path $Side $stamp)))
+    $outDir = Join-Path $HistoryRoot (Join-Path 'Tenants' (Join-Path $Side $stamp))
     $job = New-UtcmSnapshot -Token $Token -DisplayName "drift-report-$Side-$stamp" -Resources $Resources
     $done = Wait-UtcmSnapshot -Token $Token -JobId $job.id -TimeoutSeconds $TimeoutSeconds -PollSeconds $PollSeconds
     Save-UtcmSnapshot -Token $Token -Job $done -OutDir $outDir
