@@ -10,9 +10,15 @@
         TenantId       = '<dev-tenant-guid>'
         ClientId       = '<dev-app-registration-guid>'
         CertThumbprint = '<certificate-thumbprint>'
-        # Reset and apply only run against the Dev tenant ID above, and only when this is $true.
+        # Reset only runs against the Dev tenant ID above, and only when this is $true.
         AllowReset     = $false
+        # Apply (scripts/Invoke-ApplyDev.ps1 -Apply) only runs against the Dev tenant ID above, and only when this is $true.
+        ApplyAllowed   = $false
     }
+    # Break-glass accounts: always excluded from every Conditional Access policy that is applied to Dev.
+    # Users (UPN) and groups (display name). Without them no Conditional Access policy is applied.
+    BreakGlass       = @('<break-glass-upn>')
+    BreakGlassGroups = @()
     # Accounts that are never touched (admins, service accounts, break-glass).
     ProtectedAccounts = @('<upn-or-object-id>')
     # Optional: override the resource types of the snapshot (see Get-M365CloningDefaultResources).

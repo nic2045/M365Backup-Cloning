@@ -11,4 +11,9 @@ Describe 'config.example.psd1' {
         $c = Import-PowerShellDataFile -Path $script:Path
         $c.Dev.AllowReset | Should -BeFalse
     }
+    It 'does not allow apply by default and has a break-glass placeholder' {
+        $c = Import-PowerShellDataFile -Path $script:Path
+        $c.Dev.ApplyAllowed | Should -BeFalse
+        $c.BreakGlass | Should -Not -BeNullOrEmpty
+    }
 }
