@@ -19,7 +19,9 @@ Describe 'Core output files follow the schema' {
         }
     }
     It '<_> is valid' -ForEach @('drift-', 'tenantfit-', 'apply-plan-', 'dev-baseline-plan-', 'dev-reset-plan-align-', 'dev-reset-plan-full-', 'dev-users-plan-') {
-        $file = @($script:Files | Where-Object { $_.Name -like "$_*" })[0]
+        $prefix = $_   # inside Where-Object, $_ is the file, not the prefix
+        $file = @($script:Files | Where-Object { $_.Name -like "$prefix*" })[0]
+        $file | Should -Not -BeNullOrEmpty -Because "$prefix must be produced"
         $def = Get-ContractDefinitionForFile -Name $file.Name
         $def | Should -Not -BeNullOrEmpty
         Test-ContractJson -Json (Get-Content -LiteralPath $file.FullName -Raw) -Definition $def -Folder $script:Work | Should -BeNullOrEmpty
