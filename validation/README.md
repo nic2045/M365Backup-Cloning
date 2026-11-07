@@ -198,3 +198,16 @@ Claude never ran any of this against a tenant (mocks and invented fixtures only)
 | 4 | Authentication contexts (#38) | A Conditional Access policy that uses an authentication context | The context (`c1` ... `c25`) is created first with the same key, the policy is planned; without the context in Prod or Dev the policy is `needs-auth-context`. |
 | 5 | Enrollment (#35) | Prod with an enrollment status page, enrollment restrictions, an Autopilot profile | The defaults (priority 0) are `skipped: tenant default`. A platform restriction whose key `Identity` is a Prod object ID is blocked; an ESP with selected apps is blocked (apps are matched by ID). Tell me which ones Dev needs. |
 | 6 | Exclusion list | `ExcludeResourceTypes` in `config.psd1` | The type is no longer in the snapshot; in a snapshot that still has it, its objects show `excluded: <reason>`. |
+
+# Part 11: suitability check, is Dev enough? (issue #39)
+
+Read only. Claude never ran it against a tenant (mocks and invented fixtures only).
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Permission | App registrations of Prod and Dev have `LicenseAssignment.Read.All` (application) | `GET /subscribedSkus` works in both tenants |
+| 2 | Run with tokens | `scripts/Invoke-TenantFitCheck.ps1 -ProdToken ... -DevToken ...` (uses the newest Prod snapshot in `History\Tenants\Prod\`) | A traffic light, exit code 0/1/2, `History\reports\tenantfit-*.md` and an audit line with mode `fitcheck` |
+| 3 | Plausibility | Compare the findings with what you know of both tenants | Every yellow or red finding names the feature, the missing service plan and the Prod types that use it. A feature Prod has but does not use gives no finding |
+| 4 | Capacity | `DevUsers` with test users, Dev with few free units | A `capacity` finding when free units (enabled + warning - consumed) are fewer than test users. Admin guests are not counted (B2B guests are billed by monthly active users) |
+| 5 | Without access | Run without tokens or with a token that lacks the permission | Red, `Verified: False`, "Not verified". That is on purpose: a scheduled run must not report green when it saw nothing |
+| 6 | Schedule | Runbook as in `docs/automation.md` | The run writes its report and audit line; the job status follows the exit code |
