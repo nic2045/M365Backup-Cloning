@@ -75,6 +75,15 @@ pwsh scripts/Invoke-DevUsers.ps1 -DevToken $d -Apply -ConfirmPlanHash <hash> [-S
 - Initial passwords: random, must be changed at first sign-in, never stored or logged. `-ShowInitialPasswords` prints them once to the console; without it an admin resets the password before the first sign-in.
 - Cross-tenant sync as the automatic way is a later step (#21).
 
+## Licence check (read only, issue #32)
+
+Every plan that writes to Dev (`Invoke-ApplyDev.ps1`, `Invoke-DevBaseline.ps1`, `Invoke-DevUsers.ps1`, and so the rebuild
+after a reset) first reads the Dev licences (`GET /subscribedSkus`, permission `LicenseAssignment.Read.All`) and blocks
+entries whose licence is missing, for example a risk-based Conditional Access policy without Entra ID P2
+(`blocked: license: ...`). The rules are data in `src/M365Cloning/Data/LicenceRequirements.psd1`, each with its Learn
+source. Offline: `-LicencePath <saved subscribedSkus JSON>`; without it an offline preview blocks every entry that needs
+a licence (`license: not verified`). The preview shows a "Licences" section.
+
 ## Factory reset of Dev (deletes in the Dev tenant only, ADR 0005)
 
 ```powershell

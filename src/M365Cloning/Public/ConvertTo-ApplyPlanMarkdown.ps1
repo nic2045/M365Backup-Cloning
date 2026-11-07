@@ -39,6 +39,21 @@ function ConvertTo-ApplyPlanMarkdown {
         $null = $sb.AppendLine('|---|---|---|')
         foreach ($p in $Plan['Protected']) { $null = $sb.AppendLine("| $($p['Kind']) | $(([string]$p['Name']).Replace('|', '\|')) | $($p['Source']) |") }
     }
+    if ($Plan.Contains('Licences') -and $Plan['Licences']) {
+        $lic = $Plan['Licences']
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('## Licences')
+        $null = $sb.AppendLine()
+        if (-not $lic['Readable']) { $null = $sb.AppendLine("The licence list of Dev could not be read ($($lic['Error'])). Entries that need a licence are blocked.") }
+        elseif (@($lic['Missing']).Count -eq 0) { $null = $sb.AppendLine('All licences that the planned entries need are present in Dev.') }
+        if (@($lic['Missing']).Count -gt 0) {
+            $null = $sb.AppendLine()
+            $null = $sb.AppendLine('| Missing | Service plans (any of) | Blocked entries |')
+            $null = $sb.AppendLine('|---|---|---|')
+            foreach ($m in $lic['Missing']) { $null = $sb.AppendLine("| $($m['Feature']) | $(@($m['ServicePlans']) -join ', ') | $((@($m['Entries']) -join '<br>').Replace('|', '\|')) |") }
+        }
+        foreach ($w in @($lic['Warnings'])) { $null = $sb.AppendLine("- Warning: $w") }
+    }
     if ($Plan.Contains('Notes') -and @($Plan['Notes']).Count -gt 0) {
         $null = $sb.AppendLine()
         $null = $sb.AppendLine('Notes:')

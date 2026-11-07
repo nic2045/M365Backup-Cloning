@@ -11,6 +11,9 @@
     Snapshots: offline with -SourceSnapshotPath (Prod) and -TargetSnapshotPath (Dev), or online with -ProdToken
     and -DevToken (UTCM snapshot, read only, as in Get-DriftReport.ps1).
     Never run by an automatic job: the hash must come from a person who looked at the plan.
+    Licences (issue #32): the plan reads the Dev licences (GET /subscribedSkus, read only; online with -DevToken,
+    offline from -LicencePath) and blocks entries whose licence is missing. An offline preview without -LicencePath
+    blocks every entry that needs a licence ('license: not verified').
 #>
 [CmdletBinding()]
 param(
@@ -19,6 +22,7 @@ param(
     [securestring]$DevToken,
     [string]$SourceSnapshotPath,
     [string]$TargetSnapshotPath,
+    [string]$LicencePath,
     [string]$HistoryRoot = (Join-Path $PSScriptRoot '..\History'),
     [switch]$Plan,
     [switch]$Apply,
@@ -52,6 +56,8 @@ else {
 }
 
 $applyPlan = New-ApplyPlan -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile) -Config $config
+# Licence check (issue #32): entries whose licence Dev lacks are blocked before anything is applied.
+$applyPlan = Add-PlanLicenceCheck -Plan $applyPlan -Licences (Get-DevPlanLicences -DevToken $DevToken -LicencePath $LicencePath)
 $hash = Get-ApplyPlanHash -Plan $applyPlan
 
 if (-not $Apply) {

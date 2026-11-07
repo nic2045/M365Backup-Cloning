@@ -32,6 +32,10 @@
         'New-DevResetPlan'
         'Invoke-DevResetPlan'
         'Invoke-DevRebuildChain'
+        'ConvertTo-TenantLicences'
+        'Get-TenantLicences'
+        'Add-PlanLicenceCheck'
+        'Get-DevPlanLicences'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
