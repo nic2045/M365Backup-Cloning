@@ -1,0 +1,8 @@
+{
+  "Users": [ { "id": "user-exist-0001", "userPrincipalName": "old.test@dev.example", "mail": "", "userType": "Member" } ],
+  "Groups": [
+    { "id": "group-admins-0001", "displayName": "CA-Persona-Admins" },
+    { "id": "group-internals-0001", "displayName": "CA-Persona-Internals" }
+  ],
+  "Members": { "CA-Persona-Admins": [], "CA-Persona-Internals": [] }
+}

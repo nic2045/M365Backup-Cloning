@@ -1,0 +1,1093 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m365cloning.invalid/schema/m365cloning.schema.json",
+  "title": "M365Backup-Cloning data contract",
+  "description": "Formats written by the core (History/) and the read-only web API (web/openapi.json). See docs/web-contract.md.",
+  "$defs": {
+    "Difference": {
+      "type": "object",
+      "required": [
+        "Property",
+        "Source",
+        "Target"
+      ],
+      "properties": {
+        "Property": {
+          "type": "string"
+        },
+        "Source": {
+          "type": "string"
+        },
+        "Target": {
+          "type": "string"
+        }
+      },
+      "description": "One property that differs. Values are flattened strings; '<absent>' means the property is missing on that side."
+    },
+    "DriftReport": {
+      "type": "object",
+      "required": [
+        "Direction",
+        "Types",
+        "Summary",
+        "IsIdentical"
+      ],
+      "properties": {
+        "Direction": {
+          "type": "string",
+          "description": "Always 'Prod -> Dev' (desired -> actual)."
+        },
+        "Types": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "ResourceType",
+              "Added",
+              "Removed",
+              "Changed",
+              "Unchanged"
+            ],
+            "properties": {
+              "ResourceType": {
+                "type": "string"
+              },
+              "Added": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "Removed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "Changed": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "Name",
+                    "Differences"
+                  ],
+                  "properties": {
+                    "Name": {
+                      "type": "string"
+                    },
+                    "Differences": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/Difference"
+                      }
+                    }
+                  }
+                }
+              },
+              "Unchanged": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "Summary": {
+          "type": "object",
+          "required": [
+            "Added",
+            "Removed",
+            "Changed",
+            "Unchanged"
+          ],
+          "properties": {
+            "Added": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Removed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Changed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Unchanged": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "IsIdentical": {
+          "type": "boolean"
+        }
+      },
+      "description": "Drift report as written by Export-DriftReport (History/reports/drift-*.json)."
+    },
+    "PlanAction": {
+      "type": "object",
+      "required": [
+        "ResourceType",
+        "Name",
+        "Operation",
+        "Status",
+        "Reason",
+        "DscResource",
+        "Differences",
+        "Properties"
+      ],
+      "properties": {
+        "ResourceType": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Operation": {
+          "type": "string",
+          "description": "What the plan does with the entry, e.g. Create, Update, SkipDelete, Delete, Disable, CreateUser, InviteGuest, AddMember, Invite, device actions. Open set: new operations may appear."
+        },
+        "Status": {
+          "type": "string",
+          "pattern": "^[a-z][a-z-]*$",
+          "description": "Plan status, e.g. planned, blocked, skipped, exists, protected; after a run: applied, failed, not-run, stopped, unchanged, nothing-to-do."
+        },
+        "Reason": {
+          "type": "string"
+        },
+        "DscResource": {
+          "type": "string",
+          "description": "Microsoft365DSC resource; empty for Graph-based entries."
+        },
+        "AssignmentClass": {
+          "type": "string",
+          "description": "Only in apply and baseline plans."
+        },
+        "Differences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Difference"
+          }
+        },
+        "Properties": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Desired properties (free form, never secrets); null when nothing is written."
+        }
+      }
+    },
+    "TypeSummaryEntry": {
+      "type": "object",
+      "required": [
+        "ResourceType",
+        "Planned",
+        "Blocked",
+        "Skipped",
+        "Excluded"
+      ],
+      "properties": {
+        "ResourceType": {
+          "type": "string"
+        },
+        "Planned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Skipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Excluded": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "PlanSummary": {
+      "type": "object",
+      "required": [
+        "Planned",
+        "Blocked",
+        "Skipped"
+      ],
+      "properties": {
+        "Planned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Skipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Excluded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Exists": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Invite": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Protected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "InBaseline": {
+          "type": "boolean",
+          "description": "Baseline plans only: true when the base state is reached."
+        },
+        "Devices": {
+          "type": "object",
+          "required": [
+            "Keep",
+            "Protected",
+            "Remove",
+            "Retire",
+            "Wipe"
+          ],
+          "properties": {
+            "Keep": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Protected": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Remove": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Retire": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Wipe": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Reset plans only."
+        }
+      },
+      "description": "Counts of a plan. Planned/Blocked/Skipped always; the other keys depend on the plan kind."
+    },
+    "PlanLicences": {
+      "type": "object",
+      "required": [
+        "Readable",
+        "Error",
+        "Available",
+        "Missing",
+        "Warnings"
+      ],
+      "properties": {
+        "Readable": {
+          "type": "boolean"
+        },
+        "Error": {
+          "type": "string"
+        },
+        "Available": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Missing": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "Feature",
+              "ServicePlans",
+              "Source",
+              "Entries"
+            ],
+            "properties": {
+              "Feature": {
+                "type": "string"
+              },
+              "ServicePlans": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "Source": {
+                "type": "string"
+              },
+              "Entries": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "Warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Licence section of a plan (issue #32)."
+    },
+    "Plan": {
+      "type": "object",
+      "required": [
+        "Direction",
+        "TargetTenantId",
+        "Actions",
+        "Notes",
+        "Summary"
+      ],
+      "properties": {
+        "Direction": {
+          "type": "string"
+        },
+        "Title": {
+          "type": "string"
+        },
+        "ApplyHint": {
+          "type": "string"
+        },
+        "Mode": {
+          "enum": [
+            "Align",
+            "Full"
+          ],
+          "description": "Reset plans only."
+        },
+        "TargetTenantId": {
+          "type": "string"
+        },
+        "Actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanAction"
+          }
+        },
+        "Protected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "Kind",
+              "Name",
+              "Source"
+            ],
+            "properties": {
+              "Kind": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Source": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "Notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Summary": {
+          "$ref": "#/$defs/PlanSummary"
+        },
+        "TypeSummary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TypeSummaryEntry"
+          }
+        },
+        "ExcludedTypes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "ResourceType",
+              "Reason"
+            ],
+            "properties": {
+              "ResourceType": {
+                "type": "string"
+              },
+              "Reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "Licences": {
+          "$ref": "#/$defs/PlanLicences"
+        }
+      },
+      "description": "One plan (apply, baseline, reset or users). The kind is not part of the plan; see PlanKind."
+    },
+    "PlanFile": {
+      "type": "object",
+      "required": [
+        "PlanHash",
+        "Plan"
+      ],
+      "properties": {
+        "PlanHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "Plan": {
+          "$ref": "#/$defs/Plan"
+        }
+      },
+      "description": "A plan file as written by Export-ApplyPlan (History/reports/<prefix>-<timestamp>.json)."
+    },
+    "PlanKind": {
+      "enum": [
+        "apply",
+        "baseline",
+        "reset",
+        "users"
+      ],
+      "description": "Derived from the file name prefix: apply-plan, dev-baseline-plan, dev-reset-plan-align|full, dev-users-plan."
+    },
+    "TenantLicences": {
+      "type": "object",
+      "required": [
+        "Readable",
+        "Error",
+        "Available",
+        "Skus"
+      ],
+      "properties": {
+        "Readable": {
+          "type": "boolean"
+        },
+        "Error": {
+          "type": "string"
+        },
+        "Available": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Skus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "SkuPartNumber",
+              "CapabilityStatus",
+              "AppliesTo",
+              "ConsumedUnits",
+              "PrepaidEnabled",
+              "PrepaidWarning",
+              "PrepaidSuspended",
+              "PrepaidLockedOut",
+              "ServicePlans",
+              "ProvidedPlans"
+            ],
+            "properties": {
+              "SkuPartNumber": {
+                "type": "string"
+              },
+              "CapabilityStatus": {
+                "type": "string"
+              },
+              "AppliesTo": {
+                "type": "string"
+              },
+              "ConsumedUnits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "PrepaidEnabled": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "PrepaidWarning": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "PrepaidSuspended": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "PrepaidLockedOut": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "ServicePlans": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "ProvidedPlans": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "FitStatus": {
+      "enum": [
+        "green",
+        "yellow",
+        "red",
+        "grey"
+      ]
+    },
+    "FitCheck": {
+      "type": "object",
+      "required": [
+        "Schema",
+        "CreatedUtc",
+        "Status",
+        "Verified",
+        "Verdict",
+        "ProdUsageSource",
+        "Summary",
+        "Findings",
+        "Licences"
+      ],
+      "properties": {
+        "Schema": {
+          "const": "m365cloning.tenantfit/1"
+        },
+        "CreatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Status": {
+          "$ref": "#/$defs/FitStatus"
+        },
+        "Verified": {
+          "type": "boolean"
+        },
+        "Verdict": {
+          "type": "string"
+        },
+        "ProdUsageSource": {
+          "enum": [
+            "snapshot",
+            "licences",
+            "none"
+          ]
+        },
+        "Summary": {
+          "type": "object",
+          "required": [
+            "Red",
+            "Yellow",
+            "Info",
+            "FeaturesUsedInProd",
+            "FeaturesMissingInDev"
+          ],
+          "properties": {
+            "Red": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Yellow": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Info": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "FeaturesUsedInProd": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "FeaturesMissingInDev": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "Findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "Id",
+              "Severity",
+              "Category",
+              "Feature",
+              "Message",
+              "ServicePlans",
+              "AffectedTypes",
+              "AffectedCount",
+              "Source"
+            ],
+            "properties": {
+              "Id": {
+                "type": "string"
+              },
+              "Severity": {
+                "enum": [
+                  "red",
+                  "yellow",
+                  "grey",
+                  "info"
+                ]
+              },
+              "Category": {
+                "type": "string"
+              },
+              "Feature": {
+                "type": "string"
+              },
+              "Message": {
+                "type": "string"
+              },
+              "ServicePlans": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "AffectedTypes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "AffectedCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "Source": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "Licences": {
+          "type": "object",
+          "required": [
+            "Prod",
+            "Dev"
+          ],
+          "properties": {
+            "Prod": {
+              "$ref": "#/$defs/TenantLicences"
+            },
+            "Dev": {
+              "$ref": "#/$defs/TenantLicences"
+            }
+          }
+        }
+      },
+      "description": "Suitability check (issue #39, History/reports/tenantfit-*.json)."
+    },
+    "AuditEntry": {
+      "type": "object",
+      "required": [
+        "Timestamp",
+        "User",
+        "Mode",
+        "PlanHash",
+        "TargetTenant",
+        "Counts",
+        "Reason"
+      ],
+      "properties": {
+        "Timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "User": {
+          "type": "string"
+        },
+        "Mode": {
+          "enum": [
+            "plan",
+            "apply",
+            "refused",
+            "reset",
+            "fitcheck"
+          ]
+        },
+        "PlanHash": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{64})?$"
+        },
+        "TargetTenant": {
+          "type": "string",
+          "maxLength": 11,
+          "description": "Shortened to 8 characters plus '...'."
+        },
+        "Counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "Reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": false,
+      "description": "One line of History/audit.jsonl. Closed set of fields: an audit entry never carries properties, tokens or certificate data."
+    },
+    "SchemaVersion": {
+      "const": "1",
+      "description": "Version of this contract (ADR 0008)."
+    },
+    "Error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReportKind": {
+      "enum": [
+        "drift",
+        "tenantfit"
+      ]
+    },
+    "ReportListItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "createdUtc"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "kind": {
+          "$ref": "#/$defs/ReportKind"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "isIdentical": {
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/FitStatus"
+        }
+      }
+    },
+    "ReportList": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "items"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReportListItem"
+          }
+        }
+      }
+    },
+    "ReportResponse": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "createdUtc",
+        "report"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "kind": {
+          "$ref": "#/$defs/ReportKind"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "report": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "drift"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "report": {
+                "$ref": "#/$defs/DriftReport"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "tenantfit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "report": {
+                "$ref": "#/$defs/FitCheck"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PlanListItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "createdUtc",
+        "planHash",
+        "summary"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "kind": {
+          "$ref": "#/$defs/PlanKind"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mode": {
+          "enum": [
+            "Align",
+            "Full"
+          ]
+        },
+        "summary": {
+          "$ref": "#/$defs/PlanSummary"
+        }
+      }
+    },
+    "PlanList": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "items"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanListItem"
+          }
+        }
+      }
+    },
+    "PlanResponse": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "createdUtc",
+        "planHash",
+        "plan"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "kind": {
+          "$ref": "#/$defs/PlanKind"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "plan": {
+          "$ref": "#/$defs/Plan"
+        }
+      }
+    },
+    "AuditPage": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "items",
+        "page",
+        "pageSize",
+        "total"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AuditEntry"
+          }
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "FitCheckResponse": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "createdUtc",
+        "report"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "report": {
+          "$ref": "#/$defs/FitCheck"
+        }
+      }
+    },
+    "Status": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "lastComparisonUtc",
+        "differences",
+        "fitStatus"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "lastComparisonUtc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "Time of the latest drift report; null when there is none."
+        },
+        "differences": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Added + Removed + Changed of the latest drift report."
+        },
+        "fitStatus": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FitStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reportId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Read-only status for consumers (ADR 0002 point 8). The toolkit does not know its consumers."
+    }
+  }
+}
