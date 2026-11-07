@@ -158,7 +158,7 @@ Describe 'Reset plan, mode Full' {
     }
     It 'never deletes devices, other members, synced objects, Microsoft 365 or role groups' {
         $script:Del | Should -Not -Contain 'ManagedDevice|VM-TEST-01'
-        @($script:Plan['Actions'] | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Operation'] -eq 'None' }).Count | Should -Be 1
+        @($script:Plan['Actions'] | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Operation'] -eq 'Keep' -and $_['Status'] -eq 'skipped' }).Count | Should -Be 1
         foreach ($d in 'User|someone@dev.example', 'User|synced@dev.example', 'Group|Team Site', 'Group|Role Group', 'Group|Synced Group') {
             $script:Del | Should -Not -Contain $d
         }

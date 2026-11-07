@@ -119,7 +119,10 @@ pwsh scripts/Invoke-DevReset.ps1 -ProdToken $p -DevToken $d
 pwsh scripts/Invoke-DevReset.ps1 -Apply -ConfirmPlanHash <hash> -ConfirmTenant <Dev tenant ID> -ProdToken $p -DevToken $d
 ```
 
-Never deleted: devices, guests, synced objects, other member users, Microsoft 365 and role groups, app registrations,
-cross-tenant settings. The Global Administrators of Prod (without break-glass) are always protected. Offline preview:
+Never deleted: guests, synced objects, other member users, Microsoft 365 and role groups, app registrations,
+cross-tenant settings. Devices (ADR 0007, issue #46) are kept unless chosen: `-DeviceAction Keep|Remove|Retire|Wipe`
+for all, `-DeviceActionFile <.psd1/.json>` per device name (for example `@{ 'LAPTOP-01' = 'Retire' }`). Wipe needs
+`Dev.AllowDeviceWipe = $true`; devices with a name from `Dev.ProtectedDevicePrefixes` and devices of protected users are
+never touched; device actions run last. Pass the same device options with `-Apply` as with the preview. The Global Administrators of Prod (without break-glass) are always protected. Offline preview:
 `-InventoryPath tests/fixtures/dev.reset-inventory.json` (Align also needs the two snapshot files).
 

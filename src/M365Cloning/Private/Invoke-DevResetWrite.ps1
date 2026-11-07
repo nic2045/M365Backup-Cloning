@@ -15,6 +15,9 @@ function Get-DevResetEndpoint {
                                    custom policies only; built-in ones are never planned)
           Group                    v1.0 DELETE /groups/{id}  (deleted items, restorable for 30 days)
           User                     v1.0 DELETE /users/{id}   (deleted items, restorable for 30 days)
+          ManagedDevice            v1.0 DELETE /deviceManagement/managedDevices/{id}          ("Delete managedDevice"),
+                                   POST {id}/retire ("retire action", no body), POST {id}/wipe ("wipe action"); issue #46.
+                                   Device writes are allowed only with -DeviceWrites, the wipe only with Dev.AllowDeviceWipe.
         The permanent delete (/directory/deletedItems) is not on the list.
     #>
     [CmdletBinding()]
@@ -30,6 +33,7 @@ function Get-DevResetEndpoint {
         AuthenticationStrength  = 'v1.0/policies/authenticationStrengthPolicies'
         Group                   = 'v1.0/groups'
         User                    = 'v1.0/users'
+        ManagedDevice           = 'v1.0/deviceManagement/managedDevices'
     }
     if (-not $map.ContainsKey($Kind)) { throw "Blocked: the reset does not delete objects of kind '$Kind'." }
     $map[$Kind]
@@ -40,6 +44,8 @@ function Assert-DevResetWriteAllowed {
     .SYNOPSIS
         Throws unless the write is one of the reset writes: DELETE of one object of an allowed kind, or the PATCH that
         switches a Conditional Access policy off ({ state = 'disabled' } and nothing else). Dev tenant only.
+        Device writes (issue #46) only with -DeviceWrites: DELETE of a managed device, POST {id}/retire, and POST
+        {id}/wipe only when the config sets Dev.AllowDeviceWipe = $true. Device actions carry no body from the caller.
     #>
     [CmdletBinding()]
     param(
@@ -47,7 +53,8 @@ function Assert-DevResetWriteAllowed {
         [Parameter(Mandatory)][string]$Uri,
         [System.Collections.IDictionary]$Body,
         [Parameter(Mandatory)][string]$TenantId,
-        [Parameter(Mandatory)][System.Collections.IDictionary]$Config
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Config,
+        [switch]$DeviceWrites
     )
     $devId = [string]$Config['Dev']['TenantId']
     $prodId = [string]$Config['Prod']['TenantId']
@@ -70,7 +77,18 @@ function Assert-DevResetWriteAllowed {
         "^/v1\.0/groups/$id$"
         "^/v1\.0/users/$id$"
     )
+    $devicePath = "^/v1\.0/deviceManagement/managedDevices/$id$"
+    $deviceAction = "^/v1\.0/deviceManagement/managedDevices/$id/(retire|wipe)$"
+    if (($path -match $devicePath -or $path -match $deviceAction) -and -not $DeviceWrites) {
+        throw "Blocked: device writes need a reset plan with chosen device actions: $Uri"
+    }
+    if ($DeviceWrites -and $path -match $devicePath) { $deletable += $devicePath }
     switch ($Method) {
+        'POST' {
+            if (-not $DeviceWrites -or $path -notmatch $deviceAction) { throw "Blocked: the reset only posts the device actions retire and wipe: $Uri" }
+            if ($null -ne $Body -and $Body.Count -gt 0) { throw 'Blocked: a device action has no body from the caller.' }
+            if ($path -match '/wipe$' -and $Config['Dev']['AllowDeviceWipe'] -ne $true) { throw 'Blocked: wipe needs Dev.AllowDeviceWipe = $true in the config.' }
+        }
         'DELETE' {
             if (-not ($deletable | Where-Object { $path -match $_ })) { throw "Blocked: the reset may not delete this path: $Uri" }
             if ($null -ne $Body -and $Body.Count -gt 0) { throw 'Blocked: a delete has no body.' }
@@ -79,7 +97,7 @@ function Assert-DevResetWriteAllowed {
             if ($path -notmatch "^/v1\.0/identity/conditionalAccess/policies/$id$") { throw "Blocked: the reset patches Conditional Access policies only: $Uri" }
             if ($null -eq $Body -or $Body.Count -ne 1 -or [string]$Body['state'] -ne 'disabled') { throw "Blocked: the only patch is { state = 'disabled' }." }
         }
-        default { throw "Blocked: the reset only uses DELETE (and the PATCH that switches a policy off), not $Method." }
+        default { throw "Blocked: the reset only uses DELETE, the PATCH that switches a policy off and the device actions, not $Method." }
     }
 }
 
@@ -91,16 +109,22 @@ function Invoke-DevResetWrite {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][ValidateSet('DELETE', 'PATCH')][string]$Method,
+        [Parameter(Mandatory)][ValidateSet('DELETE', 'PATCH', 'POST')][string]$Method,
         [Parameter(Mandatory)][string]$Uri,
         [System.Collections.IDictionary]$Body,
         [Parameter(Mandatory)][string]$TenantId,
         [Parameter(Mandatory)][System.Collections.IDictionary]$Config,
-        [Parameter(Mandatory)][securestring]$Token
+        [Parameter(Mandatory)][securestring]$Token,
+        [switch]$DeviceWrites
     )
-    Assert-DevResetWriteAllowed -Method $Method -Uri $Uri -Body $Body -TenantId $TenantId -Config $Config
+    Assert-DevResetWriteAllowed -Method $Method -Uri $Uri -Body $Body -TenantId $TenantId -Config $Config -DeviceWrites:$DeviceWrites
     $headers = @{ Authorization = 'Bearer ' + (ConvertFrom-SecureString -SecureString $Token -AsPlainText) }
-    if ($Method -eq 'PATCH') {
+    if ($Method -eq 'POST') {
+        # retire takes no body ("Do not supply a request body"); wipe takes optional parameters, none are set here.
+        if ($Uri -match '/wipe$') { Invoke-RestMethod -Method POST -Uri $Uri -Headers $headers -ContentType 'application/json' -Body '{}' -ErrorAction Stop }
+        else { Invoke-RestMethod -Method POST -Uri $Uri -Headers $headers -ErrorAction Stop }
+    }
+    elseif ($Method -eq 'PATCH') {
         Invoke-RestMethod -Method PATCH -Uri $Uri -Headers $headers -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Compress) -ErrorAction Stop
     }
     else {
