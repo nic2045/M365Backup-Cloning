@@ -44,6 +44,20 @@ pwsh scripts/Invoke-ApplyDev.ps1 -SourceSnapshotPath prod.json -TargetSnapshotPa
 - Intune (issue #2): configuration profiles (classic and Settings Catalog), compliance, endpoint security, update rings and assignment filters (list: `Get-M365CloningDefaultResources`). A missing **inclusion** group of an assignment is created empty and static; a missing exclusion group blocks the policy. Filters are matched by name; a filter that Dev lacks is created first and the policy follows in the next run (`needs-filter`). Profiles with secrets (Wi-Fi, VPN, wired network, certificates, encrypted OMA-URI values) are **skipped** (`secret:`), create them in Dev by hand. Role scope tags are not handled (no TCM resource). Apps are uploaded by SW-Depoyment.
 - Microsoft365DSC runs in its own Windows PowerShell 5.1 process. Refused attempts and applies are logged in `History\audit.jsonl` (no secrets).
 
+## Dev base state (writes to the Dev tenant only)
+
+```powershell
+# 1. Plan: reads a Dev snapshot (groups, cross-tenant access partners), nothing is changed.
+#    Writes History\reports\dev-baseline-plan-*.md/.json; "Base state reached" = nothing planned or blocked.
+pwsh scripts/Invoke-DevBaseline.ps1 -DevToken $d
+# 2. Apply exactly that plan (needs Dev.ApplyAllowed = $true), then run step 1 again.
+pwsh scripts/Invoke-DevBaseline.ps1 -DevToken $d -Apply -ConfirmPlanHash <hash>
+```
+
+- The base state is the section `Baseline` of `config.psd1` (all keys optional): the break-glass groups, one static, empty group per persona, extra exclusion groups, and the Prod tenant as partner in the cross-tenant access settings (B2B collaboration inbound allowed, invitations redeemed automatically). No app registrations, no cross-tenant sync.
+- Only what is described is created or set; nothing is deleted, no member is added or removed. A dynamic group and a B2B rule that someone set differently are `blocked`, not changed.
+- Order: this script first, then `Invoke-DevUsers.ps1` (needs the persona groups), then `Invoke-ApplyDev.ps1`. A later reset (#7) returns Dev to this base state.
+
 ## Dev users: test users and invited admins (writes to the Dev tenant only)
 
 ```powershell

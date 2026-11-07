@@ -18,6 +18,10 @@ function ConvertTo-ApplyPlanMarkdown {
     $line = "Planned: $($s['Planned']) | Blocked: $($s['Blocked']) | Skipped: $($s['Skipped'])"
     if ($s.Contains('Exists')) { $line += " | Exists: $($s['Exists'])" }
     $null = $sb.AppendLine($line)
+    if ($s.Contains('InBaseline')) {
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine($(if ($s['InBaseline']) { 'Base state reached: no difference.' } else { 'Difference to the base state: see the planned and blocked entries.' }))
+    }
     $null = $sb.AppendLine()
     $null = $sb.AppendLine('| Status | Operation | Resource type | Name | Reason |')
     $null = $sb.AppendLine('|---|---|---|---|---|')

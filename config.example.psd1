@@ -37,6 +37,17 @@
     )
     # Where an invited guest lands after redeeming (https). Default: https://myapps.microsoft.com
     # InviteRedirectUrl = 'https://myapps.microsoft.com'
+    # Dev base state (scripts/Invoke-DevBaseline.ps1, issue #8). All keys optional; the defaults are shown.
+    # Always included: the break-glass groups (BreakGlassGroups and CA-BreakglassAccounts), static and empty.
+    Baseline = @{
+        # One static, empty group per active persona (Personas / PersonaMap), e.g. CA-Persona-Admins.
+        PersonaGroups      = $true
+        # Extra exclusion groups (ADR 0003), each with a recognisable persona, e.g. 'CA-Persona-Admins-BaseProtection-Exclusions'.
+        ExclusionGroups    = @()
+        # The Prod tenant as partner in the cross-tenant access settings of Dev: B2B collaboration inbound allowed,
+        # inbound invitations redeemed automatically (invited Prod admins get no consent prompt). No cross-tenant sync.
+        CrossTenantPartner = $true
+    }
     # Accounts that are never touched (admins, service accounts, break-glass).
     ProtectedAccounts = @('<upn-or-object-id>')
     # Optional: override the resource types of the snapshot (see Get-M365CloningDefaultResources).

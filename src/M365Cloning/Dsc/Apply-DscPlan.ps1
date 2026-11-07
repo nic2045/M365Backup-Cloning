@@ -34,6 +34,26 @@ function ConvertTo-PlainHash($Object) {
     $Object
 }
 
+# Nested settings whose plan entry names a CIM class in '__CimClass' (Dev baseline: cross-tenant access partner,
+# classes MSFT_AADCrossTenantAccessPolicy...). Children first, then the instance itself. Arrays stay arrays.
+function ConvertTo-CimTree($Value) {
+    if ($Value -is [hashtable]) {
+        $copy = @{}
+        foreach ($k in $Value.Keys) { if ($k -ne '__CimClass') { $copy[$k] = ConvertTo-CimTree $Value[$k] } }
+        if ($Value.ContainsKey('__CimClass')) {
+            return New-CimInstance -ClassName ([string]$Value['__CimClass']) -Namespace root/microsoft/Windows/DesiredStateConfiguration -Property $copy -ClientOnly
+        }
+        return $copy
+    }
+    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+        $list = @()
+        foreach ($e in $Value) { $list += , (ConvertTo-CimTree $e) }
+        if ($list.Count -gt 0 -and $list[0] -is [Microsoft.Management.Infrastructure.CimInstance]) { return , ([Microsoft.Management.Infrastructure.CimInstance[]]$list) }
+        return , $list
+    }
+    $Value
+}
+
 $results = @()
 try {
     Import-Module Microsoft365DSC -ErrorAction Stop
@@ -66,6 +86,9 @@ foreach ($action in $actions) {
                     -Namespace root/microsoft/Windows/DesiredStateConfiguration -Property $assignment -ClientOnly
             }
             $props['Assignments'] = $cim
+        }
+        foreach ($key in @($props.Keys)) {
+            if ($props[$key] -is [hashtable] -and $props[$key].ContainsKey('__CimClass')) { $props[$key] = ConvertTo-CimTree $props[$key] }
         }
         $props['ApplicationId'] = $ClientId
         $props['TenantId'] = $TenantId
