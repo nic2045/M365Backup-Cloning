@@ -14,6 +14,11 @@ function New-ApplyPlan {
         PersonaMap, see Get-PersonaSettings); the configured break-glass groups are planned the same way. Without a
         recognisable persona the policy is blocked ('needs-group'). Plan.Notes lists referenced groups without a
         recognisable persona that are copied anyway.
+        Intune (issue #2): an inclusion group of an Intune assignment that Dev lacks is planned as an empty static copy
+        (assigned to nobody, never wider than Prod); a missing exclusion group blocks the policy. Assignment filters are
+        matched by name through both snapshots; a filter that Dev lacks is created first and the policy is blocked
+        until the next run ('needs-filter'). Secret-bearing types (Get-DscResourceMap, Secret) and profiles with an
+        encrypted OMA-URI value (Test-ResourceHasSecret) are 'skipped' with a reason starting with 'secret:'.
         The plan holds the properties to apply (from Prod, ids removed). The plan file is local and git-ignored.
     #>
     [CmdletBinding()]
@@ -84,6 +89,40 @@ function New-ApplyPlan {
         }
     }
 
+    # Intune assignment groups: an INCLUSION group that Dev lacks becomes an empty static copy (assigned to nobody,
+    # so never wider than Prod). An exclusion group that Dev lacks stays blocked: an empty exclusion would widen.
+    $intuneGroups = [ordered]@{}
+    foreach ($t in $comparison.Types) {
+        if ($t.ResourceType -notlike 'microsoft.intune.*') { continue }
+        $entryMap = $map[$t.ResourceType]
+        if (-not $entryMap -or $entryMap.Secret) { continue }
+        foreach ($polName in (@($t.Added) + @($t.Changed | ForEach-Object { $_.Name }))) {
+            $entry = $srcIndex["$($t.ResourceType)|$polName"]
+            if (-not $entry -or $entry.Resource['properties'] -isnot [System.Collections.IDictionary]) { continue }
+            $p = $entry.Resource['properties']
+            $aKey = @($p.Keys | Where-Object { $_ -ieq 'Assignments' }) | Select-Object -First 1
+            if (-not $aKey) { continue }
+            foreach ($asg in @($p[$aKey])) {
+                if ($asg -isnot [System.Collections.IDictionary]) { continue }
+                $dt = [string]$asg['dataType']; $gName = [string]$asg['groupDisplayName']
+                if ($dt -notmatch 'groupassignmenttarget$' -or $dt -match 'exclusion' -or [string]::IsNullOrWhiteSpace($gName)) { continue }
+                if (-not $known.Contains($gName)) { $intuneGroups[$gName] = $polName; $null = $known.Add($gName) }
+            }
+        }
+    }
+
+    # Assignment filters are referenced by ID: Prod ID -> name (Prod snapshot) -> Dev ID (Dev snapshot).
+    $filterType = 'microsoft.intune.deviceandappmanagementassignmentfilter'
+    $idOf = { param($res) $pp = $res['properties']; if ($pp -is [System.Collections.IDictionary]) { foreach ($k in 'Identity', 'Id') { $hit = @($pp.Keys | Where-Object { $_ -ieq $k }) | Select-Object -First 1; if ($hit -and -not [string]::IsNullOrWhiteSpace([string]$pp[$hit])) { return [string]$pp[$hit] } } }; '' }
+    $filterMap = @{
+        ProdIdToName = @{}
+        DevNameToId  = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        Planned      = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    }
+    foreach ($entry in $srcIndex.Values) { if ($entry.Type -eq $filterType) { $fid = & $idOf $entry.Resource; if ($fid) { $filterMap.ProdIdToName[$fid] = $entry.Name } } }
+    foreach ($entry in $tgtIndex.Values) { if ($entry.Type -eq $filterType) { $fid = & $idOf $entry.Resource; if ($fid) { $filterMap.DevNameToId[$entry.Name] = $fid } } }
+    foreach ($t in $comparison.Types) { if ($t.ResourceType -eq $filterType) { foreach ($n in $t.Added) { $null = $filterMap.Planned.Add($n) } } }
+
     $built = [System.Collections.Generic.List[object]]::new()
     $add = {
         param($Type, $Name, $Operation, $Differences)
@@ -97,12 +136,22 @@ function New-ApplyPlan {
             Status       = 'planned'
             Reason       = ''
             DscResource  = if ($entry) { [string]$entry.Dsc } else { '' }
+            AssignmentClass = if ($entry) { [string]$entry.AssignmentClass } else { '' }
             Differences  = [object[]]@($Differences)
             Properties   = $null
         }
+        $srcResource = if ($srcIndex.ContainsKey("$Type|$Name")) { $srcIndex["$Type|$Name"].Resource } else { $null }
         if ($Operation -eq 'SkipDelete') {
             $action.Status = 'skipped'
             $action.Reason = 'exists only in Dev; an apply never deletes'
+        }
+        elseif ($entry -and $entry.Secret) {
+            $action.Status = 'skipped'
+            $action.Reason = "secret: $($entry.SecretReason) is never copied; create it in Dev by hand"
+        }
+        elseif ($srcResource -and (Test-ResourceHasSecret -Resource $srcResource)) {
+            $action.Status = 'skipped'
+            $action.Reason = 'secret: the profile holds an encrypted value (OMA-URI); it is never copied, create it in Dev by hand'
         }
         elseif (-not $entry) {
             $action.Status = 'blocked'
@@ -114,7 +163,7 @@ function New-ApplyPlan {
         }
         else {
             $resource = $srcIndex["$Type|$Name"].Resource
-            $converted = ConvertTo-ApplyProperties -Type $Type -Resource $resource -KnownGroups $known -BreakGlassUsers $breakUsers -BreakGlassGroups $breakGroups
+            $converted = ConvertTo-ApplyProperties -Type $Type -Resource $resource -KnownGroups $known -BreakGlassUsers $breakUsers -BreakGlassGroups $breakGroups -FilterMap $filterMap
             if ($converted.Reasons.Count -gt 0) {
                 $action.Status = 'blocked'
                 $action.Reason = ($converted.Reasons -join '; ')
@@ -144,8 +193,26 @@ function New-ApplyPlan {
                     Status       = 'planned'
                     Reason       = "empty static copy (persona $($emptyGroups[$gName])): a Conditional Access policy refers to it; no members"
                     DscResource  = [string]$groupEntry.Dsc
+                    AssignmentClass = ''
                     Differences  = [object[]]@()
                     Properties   = (New-EmptyGroupProperties -Name $gName -Description "Empty copy for Conditional Access (persona $($emptyGroups[$gName])); no members.")
+                }
+            })
+    }
+    foreach ($gName in $intuneGroups.Keys) {
+        $groupEntry = $map['microsoft.entra.group']
+        $built.Add([pscustomobject]@{
+                Key    = ('{0}|{1}|{2}' -f [int]$groupEntry.Order, 'microsoft.entra.group', $gName)
+                Action = [ordered]@{
+                    ResourceType = 'microsoft.entra.group'
+                    Name         = $gName
+                    Operation    = 'Create'
+                    Status       = 'planned'
+                    Reason       = "empty static copy: Intune policy '$($intuneGroups[$gName])' assigns to it; no members"
+                    DscResource  = [string]$groupEntry.Dsc
+                    AssignmentClass = ''
+                    Differences  = [object[]]@()
+                    Properties   = (New-EmptyGroupProperties -Name $gName -Description 'Empty copy for an Intune assignment; no members.')
                 }
             })
     }

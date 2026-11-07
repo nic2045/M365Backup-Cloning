@@ -2,7 +2,7 @@
 
 Dev tenant toolkit for Microsoft 365 / Intune: read and report differences between a Prod and a Dev tenant (UTCM), apply a mirror to the Dev tenant only (Microsoft365DSC), reset and rebuild the Dev tenant.
 
-Status: #2 part 1 (read-only drift report) and part 2 (apply to Dev with preview and confirmation) are in the repository; nothing has been run against a real tenant yet (see `validation/README.md`). Origin: nic2045/SW-Depoyment#1585. Decisions: [`docs/adr/`](docs/adr/README.md).
+Status: drift report, apply to Dev (Intune configuration, compliance, endpoint security, update rings, filters, groups, Conditional Access) and Dev users are in the repository; nothing has been run against a real tenant yet (see `validation/README.md`). Origin: nic2045/SW-Depoyment#1585. Decisions: [`docs/adr/`](docs/adr/README.md).
 
 ## Rules
 - Apply direction is Prod -> Dev only.
@@ -38,9 +38,10 @@ pwsh scripts/Invoke-ApplyDev.ps1 -SourceSnapshotPath prod.json -TargetSnapshotPa
 
 - Never automatic: the hash of the plan you looked at is the confirmation (`-Confirm:$false` does not replace it). A changed tenant gives another hash and is refused.
 - Create and update only. A resource that exists only in Dev is shown as skipped, never deleted (no `Ensure = Absent`).
-- Groups and assignments by name. Anything that cannot be resolved (unknown group, assignment filter, specific users) is **blocked**, never widened.
+- Groups and assignments by name. Anything that cannot be resolved (unknown exclusion group, unknown assignment filter, specific users) is **blocked**, never widened.
 - Conditional Access is always planned as Report-only, the break-glass accounts from `config.psd1` are always excluded; without them no policy is applied.
 - Conditional Access copy (ADR 0003): your real Prod policies are copied to Dev with their names. The groups they refer to are created in Dev as **static, empty** groups with the same name (no members, no dynamic rule); the policy then points to them by name. A group is a persona group by prefix and persona name (`CA-Persona-Admins`, `CA-Persona-Admins-...-Exclusions`) or through `PersonaMap` in `config.psd1` for other Prod names. A group without a recognisable persona that does not exist in Dev blocks the policy (`needs-group`); copied groups without a persona are listed under Notes in the plan.
+- Intune (issue #2): configuration profiles (classic and Settings Catalog), compliance, endpoint security, update rings and assignment filters (list: `Get-M365CloningDefaultResources`). A missing **inclusion** group of an assignment is created empty and static; a missing exclusion group blocks the policy. Filters are matched by name; a filter that Dev lacks is created first and the policy follows in the next run (`needs-filter`). Profiles with secrets (Wi-Fi, VPN, wired network, certificates, encrypted OMA-URI values) are **skipped** (`secret:`), create them in Dev by hand. Role scope tags are not handled (no TCM resource). Apps are uploaded by SW-Depoyment.
 - Microsoft365DSC runs in its own Windows PowerShell 5.1 process. Refused attempts and applies are logged in `History\audit.jsonl` (no secrets).
 
 ## Dev users: test users and invited admins (writes to the Dev tenant only)

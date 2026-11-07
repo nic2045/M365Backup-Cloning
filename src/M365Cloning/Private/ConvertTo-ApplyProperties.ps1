@@ -6,8 +6,10 @@ function ConvertTo-ApplyProperties {
         Rules (ADR 0001, fail-closed: when in doubt the resource is blocked, never widened):
         - Ids are dropped, Ensure is always 'Present' (an automatic run never deletes).
         - Assignments and CA group lists refer to groups by NAME. A group must exist in Dev or be created
-          earlier in the same plan. A group target without a name, a ConfigMgr collection and an assignment
-          filter (filters cannot be matched by name in the snapshot) block the resource.
+          earlier in the same plan. A group target without a name and a ConfigMgr collection block the resource.
+        - Assignment filters are referenced by ID: the Prod ID is turned into the filter name (Prod snapshot) and
+          then into the ID of the Dev filter with that name. A filter that Dev lacks, or that this plan creates first,
+          blocks the resource ('needs-filter'); the filter's Dev ID exists only after the apply.
         - Conditional Access: State is always 'enabledForReportingButNotEnforced' (Report-only); the break-glass
           users and groups from the config are always in ExcludeUsers / ExcludeGroups; without them the policy is
           blocked. Specific users in IncludeUsers / ExcludeUsers (other than All, None, GuestsOrExternalUsers and
@@ -22,7 +24,9 @@ function ConvertTo-ApplyProperties {
         [Parameter(Mandatory)]$Resource,
         [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.HashSet[string]]$KnownGroups,
         [string[]]$BreakGlassUsers = @(),
-        [string[]]$BreakGlassGroups = @()
+        [string[]]$BreakGlassGroups = @(),
+        # @{ ProdIdToName = <id -> name>; DevNameToId = <name -> id>; Planned = HashSet of filter names created by the plan }
+        $FilterMap
     )
 
     $reasons = [System.Collections.Generic.List[string]]::new()
@@ -49,14 +53,26 @@ function ConvertTo-ApplyProperties {
             elseif ($dataType -match 'configurationmanagercollection') { $reasons.Add('a ConfigMgr collection assignment cannot be mapped') }
             $filterId = [string]$assignment['deviceAndAppManagementAssignmentFilterId']
             $filterType = [string]$assignment['deviceAndAppManagementAssignmentFilterType']
+            $devFilterId = ''
             if (-not [string]::IsNullOrWhiteSpace($filterId) -and $filterType -ne 'none') {
-                $reasons.Add('an assignment filter cannot be matched by name (create the filter in Dev and assign it by hand)')
+                # Assignments name a filter by ID only (schema: deviceAndAppManagementAssignmentFilterId). The ID is
+                # matched to the filter's name through the Prod snapshot and to the Dev filter with that name.
+                $filterName = if ($FilterMap -and $FilterMap.ProdIdToName.ContainsKey($filterId)) { [string]$FilterMap.ProdIdToName[$filterId] } else { '' }
+                if ([string]::IsNullOrWhiteSpace($filterName)) {
+                    $reasons.Add('an assignment filter is not in the Prod snapshot (add microsoft.intune.deviceandappmanagementassignmentfilter to the resources)')
+                }
+                elseif ($FilterMap.DevNameToId.ContainsKey($filterName)) { $devFilterId = [string]$FilterMap.DevNameToId[$filterName] }
+                elseif ($FilterMap.Planned.Contains($filterName)) {
+                    $reasons.Add("needs-filter: assignment filter '$filterName' is created by this plan; its Dev ID is known only afterwards, run the plan again after apply")
+                }
+                else { $reasons.Add("needs-filter: assignment filter '$filterName' does not exist in Dev and is not part of this plan") }
             }
             $copy = [ordered]@{}
             foreach ($key in $assignment.Keys) {
                 if ($key -match '^(groupId|deviceAndAppManagementAssignmentFilterId|collectionId)$') { continue }
                 $copy[$key] = $assignment[$key]
             }
+            if ($devFilterId) { $copy['deviceAndAppManagementAssignmentFilterId'] = $devFilterId }
             $kept.Add($copy)
         }
         $props[$assignmentsKey] = [object[]]@($kept.ToArray())

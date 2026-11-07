@@ -15,7 +15,7 @@ BeforeAll {
     function script:New-Plan {
         $src = script:New-Snap @(
             (script:New-Res 'microsoft.intune.deviceconfigurationpolicywindows10' 'Planned' @{ Len = 8 }),
-            (script:New-Res 'microsoft.intune.deviceconfigurationpolicywindows10' 'Blocked' @{ Assignments = @(@{ dataType = '#microsoft.graph.groupAssignmentTarget'; groupDisplayName = 'Missing' }) }))
+            (script:New-Res 'microsoft.intune.deviceconfigurationpolicywindows10' 'Blocked' @{ Assignments = @(@{ dataType = '#microsoft.graph.exclusionGroupAssignmentTarget'; groupDisplayName = 'Missing' }) }))
         $tgt = script:New-Snap @(script:New-Res 'microsoft.intune.deviceconfigurationpolicywindows10' 'Dev only' @{ X = 1 })
         New-ApplyPlan -Source $src -Target $tgt -Config (script:New-Config)
     }
