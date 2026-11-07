@@ -211,3 +211,17 @@ Read only. Claude never ran it against a tenant (mocks and invented fixtures onl
 | 4 | Capacity | `DevUsers` with test users, Dev with few free units | A yellow `capacity` finding (never red) when free units (enabled - consumed) are fewer than test users. Admin guests are not counted (B2B guests are billed by monthly active users) |
 | 5 | Without access | Run without tokens or with a token that lacks the permission | Grey, exit code 3, `Verified: False`, "Not verified". That is on purpose: a scheduled run must not report green when it saw nothing |
 | 6 | Schedule | Runbook as in `docs/automation.md` | The run writes its report and audit line; the job status follows the exit code |
+
+# Part 12: devices in the reset (issue #46, ADR 0007)
+
+Claude never ran any of this against a tenant (mocks and invented fixtures only). Start with a test device you can re-enrol.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Permissions | Dev app registration has `DeviceManagementManagedDevices.ReadWrite.All` (remove) and `DeviceManagementManagedDevices.PrivilegedOperations.All` (retire, wipe), application | Without them the run fails at the device step only, earlier steps are done |
+| 2 | Default | `scripts/Invoke-DevReset.ps1` (plan) without device options | Every device `Keep / skipped`; the VM test devices (`Dev.ProtectedDevicePrefixes`) and devices of protected users `Keep / protected` |
+| 3 | Retire one device | `-DeviceActionFile` with `@{ '<test device name>' = 'Retire' }`, plan, then `-Apply` with the same file | One `POST .../retire`; at the next check-in apps and profiles are removed; audit line `retired ManagedDevice: <name>` |
+| 4 | Remove | `-DeviceAction Remove` on a Dev with one unprotected test device | The device object is gone from Intune; the device itself is unchanged (re-enrol to bring it back) |
+| 5 | Wipe refused | `-DeviceAction Wipe` with `Dev.AllowDeviceWipe = $false` | The plan refuses: "Wipe refused" |
+| 6 | Wipe (only if you really want it) | `Dev.AllowDeviceWipe = $true`, one test device in the file | One `POST .../wipe`; the device resets at its next check-in. Cannot be undone |
+

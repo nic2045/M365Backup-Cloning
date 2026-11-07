@@ -16,6 +16,10 @@
     config (second confirmation); needs Dev.AllowReset = $true. Devices, guests, licences, domains, app registrations
     and the cross-tenant settings are never deleted. Users, groups and Conditional Access policies stay in the deleted
     items for 30 days.
+    Devices (issue #46): kept by default. -DeviceAction Keep|Remove|Retire|Wipe sets the action for all devices;
+    -DeviceActionFile <.psd1 or .json> maps device names to an action and wins for those devices. Wipe needs
+    Dev.AllowDeviceWipe = $true. Devices with a name from Dev.ProtectedDevicePrefixes and devices of protected users
+    are never touched. Pass the same device options with -Apply as with the preview, or the plan hash differs.
     -RebuildAfter: after a reset without failures, runs base state -> apply -> Dev users, each with its own plan and
     its own confirmation (type the plan hash), and ends with the drift report.
     Offline preview: -InventoryPath <json> (Get-DevResetInventory saved as JSON); Align also needs
@@ -35,7 +39,9 @@ param(
     [switch]$Apply,
     [string]$ConfirmPlanHash,
     [string]$ConfirmTenant,
-    [switch]$RebuildAfter
+    [switch]$RebuildAfter,
+    [ValidateSet('Keep', 'Remove', 'Retire', 'Wipe')][string]$DeviceAction = 'Keep',
+    [string]$DeviceActionFile
 )
 
 Set-StrictMode -Version Latest
@@ -74,7 +80,13 @@ if ($Mode -eq 'Align') {
     $comparison = Compare-TenantSnapshot -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile)
 }
 
-$resetPlan = New-DevResetPlan -Config $config -Inventory $inventory -Mode $Mode -Comparison $comparison
+$deviceActions = $null
+if ($DeviceActionFile) {
+    $deviceActions = if ($DeviceActionFile -match '\.json$') { Get-Content -LiteralPath $DeviceActionFile -Raw | ConvertFrom-Json -AsHashtable }
+    else { Import-PowerShellDataFile -LiteralPath $DeviceActionFile }
+    if ($deviceActions -isnot [System.Collections.IDictionary]) { throw '-DeviceActionFile must hold a map of device name to action (Keep, Remove, Retire, Wipe).' }
+}
+$resetPlan = New-DevResetPlan -Config $config -Inventory $inventory -Mode $Mode -Comparison $comparison -DeviceAction $DeviceAction -DeviceActions $deviceActions
 $hash = Get-ApplyPlanHash -Plan $resetPlan
 
 if (-not $Apply) {
@@ -84,12 +96,12 @@ if (-not $Apply) {
     $resetPlan.Summary | Format-Table | Out-String | Write-Host
     Write-Host "Plan:      $($files.Markdown)"
     Write-Host "Plan hash: $hash"
-    Write-Host "Nothing was changed. To run exactly this plan: scripts/Invoke-DevReset.ps1 -Mode $Mode -Apply -ConfirmPlanHash <hash> -ConfirmTenant <Dev tenant ID>"
+    Write-Host "Nothing was changed. To run exactly this plan: scripts/Invoke-DevReset.ps1 -Mode $Mode -Apply -ConfirmPlanHash <hash> -ConfirmTenant <Dev tenant ID> (same device options)"
     return
 }
 
 $result = Invoke-DevResetPlan -Plan $resetPlan -Config $config -ConfirmPlanHash $ConfirmPlanHash -ConfirmTenant $ConfirmTenant -Token $DevToken -HistoryRoot $HistoryRoot
-Write-Host "Deleted: $($result.Deleted)  Failed: $($result.Failed)  Not run: $($result.NotRun)"
+Write-Host "Deleted: $($result.Deleted)  Retired: $($result.Retired)  Wiped: $($result.Wiped)  Failed: $($result.Failed)  Not run: $($result.NotRun)"
 if ($result.Failed -gt 0) {
     $result.Results | Where-Object { $_.Status -eq 'failed' } | ForEach-Object { [pscustomobject]$_ } | Format-Table Step, ResourceType, Name, Message | Out-String | Write-Host
     Write-Host 'The later steps were not run. Fix the cause and make a new plan.'

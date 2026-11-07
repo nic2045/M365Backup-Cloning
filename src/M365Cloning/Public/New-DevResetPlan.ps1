@@ -14,7 +14,11 @@ function New-DevResetPlan {
         (deviceConfigurations), compliance policies, settings catalog / endpoint security (configurationPolicies,
         intents), assignment filters, custom named locations and custom authentication strengths (issue #33; deleted
         after the policies that use them), groups, and in Full mode the test users of the positive list (DevUsers,
-        Type TestUser). Never deleted: devices (listed only), guests, synced users and groups, other member users,
+        Type TestUser). Devices (issue #46): kept by default; -DeviceAction (all devices) or -DeviceActions (per device
+        name) choose Keep, Remove (delete the Intune object), Retire (remove company data) or Wipe (only when
+        Dev.AllowDeviceWipe = $true). Protected and never touched: devices whose name starts with one of
+        Dev.ProtectedDevicePrefixes (for example the Intune VM test devices) and devices whose primary user is on the
+        protection list. Device actions run last, after every other step succeeded. Never deleted: guests, synced users and groups, other member users,
         Microsoft 365 groups and role-assignable groups (listed as skipped), licences, domains, role definitions,
         app registrations, the cross-tenant access settings and cross-tenant sync.
         Protection list (shown in the preview with its source): ProtectedAccounts, BreakGlass, ServiceAccounts and
@@ -33,7 +37,9 @@ function New-DevResetPlan {
         [Parameter(Mandatory)][System.Collections.IDictionary]$Config,
         [Parameter(Mandatory)]$Inventory,
         [ValidateSet('Align', 'Full')][string]$Mode = 'Align',
-        $Comparison
+        $Comparison,
+        [ValidateSet('Keep', 'Remove', 'Retire', 'Wipe')][string]$DeviceAction = 'Keep',
+        [System.Collections.IDictionary]$DeviceActions
     )
 
     foreach ($side in 'Prod', 'Dev') {
@@ -42,6 +48,19 @@ function New-DevResetPlan {
     }
     if ([string]$Config['Dev']['TenantId'] -eq [string]$Config['Prod']['TenantId']) {
         throw 'The target tenant ID equals the Prod tenant ID. Refused: the reset runs in the Dev tenant only.'
+    }
+    $allowedDeviceActions = 'Keep', 'Remove', 'Retire', 'Wipe'
+    $perDevice = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    if ($DeviceActions) {
+        foreach ($k in $DeviceActions.Keys) {
+            $v = [string]$DeviceActions[$k]
+            $match = $allowedDeviceActions | Where-Object { $_ -ieq $v } | Select-Object -First 1
+            if (-not $match) { throw "Device action '$v' for '$k' is not one of: $($allowedDeviceActions -join ', ')." }
+            $perDevice[[string]$k] = $match
+        }
+    }
+    if (($DeviceAction -eq 'Wipe' -or $perDevice.Values -contains 'Wipe') -and $Config['Dev']['AllowDeviceWipe'] -ne $true) {
+        throw 'Wipe refused: set Dev.AllowDeviceWipe = $true in the config to allow wiping devices (off by default).'
     }
     if ($Mode -eq 'Align' -and $null -eq $Comparison) { throw 'Mode Align needs the drift report (-Comparison, Compare-TenantSnapshot of Prod and Dev).' }
 
@@ -235,8 +254,37 @@ function New-DevResetPlan {
         & $add 'User' $upn 'Delete' 'planned' 'test user of the positive list (Full); goes to the deleted items (restorable for 30 days), created again by scripts/Invoke-DevUsers.ps1' ([string](& $get $u 'id'))
     }
 
+    # Devices (issue #46): kept unless an action is chosen; protected devices are never touched.
+    $prefixes = @(@(& $get $Config['Dev'] 'ProtectedDevicePrefixes') | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
+    $seenDevices = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $deviceOp = @{ Keep = 'Keep'; Remove = 'Delete'; Retire = 'Retire'; Wipe = 'Wipe' }
+    $deviceWhy = @{
+        Remove = 'chosen: remove the device object from Intune (the device itself is not changed)'
+        Retire = 'chosen: retire, company apps, profiles and data are removed at the next check-in, personal data stays'
+        Wipe   = 'chosen: wipe, the device is reset to factory settings at the next check-in (Dev.AllowDeviceWipe)'
+    }
     foreach ($d in (& $devList 'ManagedDevices')) {
-        & $add 'ManagedDevice' ([string](& $get $d 'deviceName')) 'None' 'skipped' 'devices are never deleted by the reset; retire or wipe by hand if needed' $null
+        $name = [string](& $get $d 'deviceName'); if (-not $name) { $name = [string](& $get $d 'id') }
+        $null = $seenDevices.Add($name)
+        $owner = [string](& $get $d 'userPrincipalName')
+        $prefix = $prefixes | Where-Object { $name.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+        $why = $null
+        if ($prefix) { $why = "config: ProtectedDevicePrefixes ('$prefix')" }
+        elseif ($owner -and $ids.Contains($owner)) { $why = "primary user on the protection list ($owner)" }
+        if ($why) {
+            $protected.Add([ordered]@{ Kind = 'Device'; Name = $name; Source = $why })
+            & $add 'ManagedDevice' $name 'Keep' 'protected' "protected device, never touched: $why" $null
+            continue
+        }
+        $choice = if ($perDevice.ContainsKey($name)) { $perDevice[$name] } else { $DeviceAction }
+        if ($choice -eq 'Keep') {
+            & $add 'ManagedDevice' $name 'Keep' 'skipped' 'kept (default); choose -DeviceAction or -DeviceActionFile to remove, retire or wipe' $null
+            continue
+        }
+        & $add 'ManagedDevice' $name $deviceOp[$choice] 'planned' $deviceWhy[$choice] ([string](& $get $d 'id'))
+    }
+    foreach ($k in $perDevice.Keys) {
+        if (-not $seenDevices.Contains($k)) { $notes.Add("Device action for '$k' has no matching device in Dev; ignored.") }
     }
     foreach ($name in $invites) {
         & $add 'Invite' $name 'Invite' 'info' 'Global Administrator of Prod without a guest in Dev: add it to DevUsers as AdminGuest and run scripts/Invoke-DevUsers.ps1 (the reset never invites)' $null
@@ -245,7 +293,8 @@ function New-DevResetPlan {
     # Delete order: CA, Intune policies, filters, groups, users; then the listed entries. Within that by name (ordinal).
     $keyed = [System.Collections.Generic.List[object]]::new()
     foreach ($a in $actions) {
-        $r = if ($a['Operation'] -eq 'Delete') { $rank[[string]$a['ResourceType']] } else { 9 }
+        $r = if ($a['ResourceType'] -eq 'ManagedDevice' -and $a['Status'] -eq 'planned') { 5 }
+        elseif ($a['Operation'] -eq 'Delete') { $rank[[string]$a['ResourceType']] } else { 9 }
         $keyed.Add([pscustomobject]@{ Key = ('{0}|{1}|{2}' -f $r, [string]$a['ResourceType'], [string]$a['Name']); Action = $a })
     }
     $keyed.Sort([System.Comparison[object]] { param($x, $y) [string]::CompareOrdinal($x.Key, $y.Key) })
@@ -256,6 +305,7 @@ function New-DevResetPlan {
 
     $notes.Add('Deleted users, groups and Conditional Access policies stay in the deleted items for 30 days and can be restored; the reset never empties them.')
     $notes.Add('Conditional Access policies, then named locations and authentication strengths, then Intune policies, filters, groups and users are deleted in this order; a failure stops the later steps.')
+    $notes.Add('Device actions (remove, retire, wipe) run last and only when every earlier step succeeded: retire and wipe cannot be undone. Retire and wipe take effect at the next check-in of the device.')
     if ($Mode -eq 'Align') { $notes.Add('Align: after the reset run scripts/Invoke-ApplyDev.ps1 to align what differs (or -RebuildAfter).') }
     else { $notes.Add('Full: rebuild with -RebuildAfter (baseline -> apply -> users, each with its own plan and confirmation).') }
     $count = { param($status) @($sorted | Where-Object { $_['Status'] -eq $status }).Count }
@@ -274,6 +324,13 @@ function New-DevResetPlan {
             Skipped   = [int](& $count 'skipped')
             Invite    = [int](& $count 'info')
             Protected = [int]$protected.Count
+            Devices   = [ordered]@{
+                Keep      = [int]@($sorted | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Status'] -eq 'skipped' }).Count
+                Protected = [int]@($sorted | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Status'] -eq 'protected' }).Count
+                Remove    = [int]@($sorted | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Status'] -eq 'planned' -and $_['Operation'] -eq 'Delete' }).Count
+                Retire    = [int]@($sorted | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Status'] -eq 'planned' -and $_['Operation'] -eq 'Retire' }).Count
+                Wipe      = [int]@($sorted | Where-Object { $_['ResourceType'] -eq 'ManagedDevice' -and $_['Status'] -eq 'planned' -and $_['Operation'] -eq 'Wipe' }).Count
+            }
         }
     }
 }

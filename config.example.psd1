@@ -14,6 +14,12 @@
         AllowReset     = $false
         # Apply (scripts/Invoke-ApplyDev.ps1 -Apply) only runs against the Dev tenant ID above, and only when this is $true.
         ApplyAllowed   = $false
+        # Devices in the reset (scripts/Invoke-DevReset.ps1 -DeviceAction, issue #46): kept unless chosen.
+        # Wipe (factory reset of the device) is refused unless this is $true.
+        AllowDeviceWipe = $false
+        # Devices whose name starts with one of these prefixes are never touched by the reset
+        # (for example the Intune VM test devices of your packaging tool).
+        ProtectedDevicePrefixes = @('<vm-test-device-prefix>')
     }
     # Break-glass accounts: always excluded from every Conditional Access policy that is applied to Dev.
     # Users (UPN) and groups (display name). Without them no Conditional Access policy is applied.

@@ -50,6 +50,16 @@ function Import-M365CloningConfig {
     if ($config.Dev.ContainsKey('AllowReset') -and $config.Dev.AllowReset -isnot [bool]) {
         throw 'Dev.AllowReset must be $true or $false.'
     }
+    # Devices in the reset (issue #46): wipe is off unless Dev.AllowDeviceWipe is $true; protected device prefixes.
+    if ($config.Dev.ContainsKey('AllowDeviceWipe') -and $config.Dev.AllowDeviceWipe -isnot [bool]) {
+        throw 'Dev.AllowDeviceWipe must be $true or $false.'
+    }
+    if ($config.Dev.ContainsKey('ProtectedDevicePrefixes') -and $null -ne $config.Dev.ProtectedDevicePrefixes) {
+        foreach ($entry in @($config.Dev.ProtectedDevicePrefixes)) {
+            if ($entry -isnot [string] -or [string]::IsNullOrWhiteSpace($entry)) { throw 'Dev.ProtectedDevicePrefixes must be a list of non-empty strings.' }
+            if (-not $AllowPlaceholders -and $entry -match '^\s*<.*>\s*$') { throw 'Dev.ProtectedDevicePrefixes still contains a placeholder.' }
+        }
+    }
     foreach ($listName in 'BreakGlass', 'BreakGlassGroups', 'ServiceAccounts', 'ProtectedAccounts') {
         if ($config.ContainsKey($listName) -and $null -ne $config[$listName]) {
             foreach ($entry in @($config[$listName])) {
