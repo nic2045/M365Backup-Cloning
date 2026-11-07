@@ -84,7 +84,8 @@ Describe 'New-DevBaselinePlan: empty Dev tenant' {
         $p.Contains('B2BCollaborationOutbound') | Should -BeFalse
     }
     It 'targets the Dev tenant and is not in the base state yet' {
-        $script:Plan['TargetTenantId'] | Should -Be 'tenant-dev-0001'
+        $script:Plan['TargetTenant'] | Should -Be 'tenant-d...'
+        $script:Plan['TargetTenantHash'] | Should -Be (Get-TenantIdHash -TenantId 'tenant-dev-0001')
         $script:Plan['Summary']['InBaseline'] | Should -BeFalse
         $script:Plan['Summary']['Planned'] | Should -Be 7
     }
@@ -141,7 +142,7 @@ Describe 'New-DevBaselinePlan: differences' {
         }
         $a = script:Get-PartnerAction (New-DevBaselinePlan -Config (script:New-Config) -Target $snap)
         $a['Status'] | Should -Be 'blocked'
-        $a['Properties'] | Should -BeNullOrEmpty
+        @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
     }
     It 'creates an exclusion group with a persona and blocks one without' {
         $config = script:New-Config "Baseline=@{ExclusionGroups=@('CA-Persona-Admins-BaseProtection-Exclusions','Random exclusions')}"

@@ -37,6 +37,7 @@ The `id` is the file base name below `History/reports` (for example `apply-plan-
 
 - New or changed route, or a changed core file format: schema, OpenAPI entry, mock example and contract test in the same pull request.
 - Adding an optional field keeps `schemaVersion`; removing, renaming or changing the meaning of a field raises it.
+- `Operation`, `Status` and the audit counters are closed lists: a new value goes into the schema in the same pull request.
 - Write routes (apply, reset with confirmation) come with #14 and use the same plan hash confirmation as the scripts.
 - No field for passwords, tokens, client secrets, certificates or client IDs.
 
@@ -45,3 +46,11 @@ The `id` is the file base name below `History/reports` (for example `apply-plan-
 ```powershell
 Invoke-Pester tests/WebContract.Tests.ps1
 ```
+
+## Versions and changes
+
+| Version | Issue | Change |
+|---|---|---|
+| `1` | #44 | First contract: the core files as they were; the envelope adds `schemaVersion`, `id`, `kind`, `createdUtc`. |
+| `2` | #51 (ADR 0009) | Every core file has `SchemaVersion`, `Kind` and `CreatedUtc`; plans also carry `SchemaVersion` and `Kind` inside. One plan shape for all kinds: same fields, same summary counters (0 when unused), `Licences` in every plan (reset: `Checked = false`), `Properties` always an object. Plans carry `TargetTenant` (shortened) and `TargetTenantHash` instead of the full `TargetTenantId`. Licence views share `Checked`, `Readable`, `Error`, `Available`. The suitability check uses `SchemaVersion`/`Kind` instead of `Schema`. `Operation`, `Status` and the audit counters are closed lists; every audit line has the same counters. Plan files of version 1 are refused with "make a new plan" (`Read-ApplyPlanFile`, apply gate). |
+

@@ -58,7 +58,10 @@ function Add-PlanLicenceCheck {
     $s['Blocked'] = [int](& $count 'blocked')
     if ($s.Contains('InBaseline')) { $s['InBaseline'] = ($s['Planned'] -eq 0 -and $s['Blocked'] -eq 0) }
 
+    # Same core fields as the licence view of the suitability check (Checked, Readable, Error, Available; issue #51).
+    # No SKU list here: seat counts change all the time and must not change the plan hash.
     $Plan['Licences'] = [ordered]@{
+        Checked   = $true
         Readable  = $readable
         Error     = [string]$Licences['Error']
         Available = [string[]]@($available | Sort-Object)

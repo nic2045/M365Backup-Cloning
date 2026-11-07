@@ -204,7 +204,7 @@ Describe 'Duplicate device names in the action file (issue #49)' {
         foreach ($a in $both) {
             $a['Status'] | Should -Be 'blocked'
             $a['Reason'] | Should -BeLike 'ambiguous device name*'
-            $a['Properties'] | Should -BeNullOrEmpty
+            @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
         }
         @($plan['Notes'] | Where-Object { $_ -like "*'SHARED-PC' belongs to 2 devices*" }).Count | Should -Be 1
         $plan['Summary']['Blocked'] | Should -BeGreaterThan 1

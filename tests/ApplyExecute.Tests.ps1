@@ -65,7 +65,7 @@ Describe 'Invoke-ApplyPlan: refusals (nothing is started)' {
         $config = script:New-Config
         $config['Dev']['TenantId'] = $config['Prod']['TenantId']
         $plan = script:New-Plan
-        $plan['TargetTenantId'] = $config['Prod']['TenantId']
+        $plan['TargetTenantHash'] = Get-TenantIdHash -TenantId $config['Prod']['TenantId']
         { Invoke-ApplyPlan -Plan $plan -Config $config -ConfirmPlanHash (Get-ApplyPlanHash -Plan $plan) -ProcessStarter $script:Starter -HistoryRoot $script:Root } | Should -Throw '*Prod*'
         $script:Calls.Count | Should -Be 0
     }

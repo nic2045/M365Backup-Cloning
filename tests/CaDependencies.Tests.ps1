@@ -65,7 +65,7 @@ Describe 'Apply plan: named locations' {
         $a = script:Get-Action (script:Plan @((& $script:Policy @{ ExcludeLocations = @('Branch Office') })) @()) 'CA200-Internals-BaseProtection'
         $a['Status'] | Should -Be 'blocked'
         $a['Reason'] | Should -Match 'needs-location'
-        $a['Properties'] | Should -BeNullOrEmpty
+        @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
     }
     It 'keeps the keywords All and AllTrusted' {
         $a = script:Get-Action (script:Plan @((& $script:Policy @{ IncludeLocations = @('All'); ExcludeLocations = @('AllTrusted') })) @()) 'CA200-Internals-BaseProtection'
@@ -113,7 +113,7 @@ Describe 'Apply plan: authentication methods are report-only' {
         $a['Operation'] | Should -Be 'Update'
         $a['Status'] | Should -Be 'skipped'
         $a['Reason'] | Should -Match '^report-only:'
-        $a['Properties'] | Should -BeNullOrEmpty
+        @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
     }
 }
 

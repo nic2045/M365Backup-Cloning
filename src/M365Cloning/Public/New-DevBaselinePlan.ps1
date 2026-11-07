@@ -190,7 +190,7 @@ function New-DevBaselinePlan {
     $sorted = [object[]]@($keyed | ForEach-Object { $_.Action })
     $count = { param($status) @($sorted | Where-Object { $_['Status'] -eq $status }).Count }
     $planned = [int](& $count 'planned'); $blocked = [int](& $count 'blocked')
-    [ordered]@{
+    Complete-PlanShape -Kind 'baseline' -Plan ([ordered]@{
         Direction      = 'Dev base state'
         Title          = 'Dev baseline plan: difference to the base state (preview, nothing was changed)'
         ApplyHint      = 'scripts/Invoke-DevBaseline.ps1 -Apply -ConfirmPlanHash <hash above>'
@@ -204,5 +204,5 @@ function New-DevBaselinePlan {
             Exists     = [int](& $count 'exists')
             InBaseline = ($planned -eq 0 -and $blocked -eq 0)
         }
-    }
+    })
 }

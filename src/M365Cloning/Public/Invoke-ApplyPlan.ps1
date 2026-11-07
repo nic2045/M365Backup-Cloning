@@ -5,7 +5,7 @@ function Invoke-ApplyPlan {
     .DESCRIPTION
         Nothing starts unless ALL of this holds (each refusal is written to the audit log):
         - Dev.ApplyAllowed is $true in the local config;
-        - Dev.TenantId is set, differs from Prod.TenantId and equals the plan's TargetTenantId;
+        - Dev.TenantId is set, differs from Prod.TenantId and matches the plan's TargetTenantHash;
         - -ConfirmPlanHash equals the SHA-256 of the plan that is passed in (-Confirm:$false is not enough).
         Only actions with Status 'planned' are written to the plan file the child process reads. The child gets
         the Dev app registration (client ID, certificate thumbprint) from the config; no secret is passed.
@@ -22,7 +22,7 @@ function Invoke-ApplyPlan {
     )
 
     $hash = Assert-DevApplyGate -Plan $Plan -Config $Config -ConfirmPlanHash $ConfirmPlanHash -HistoryRoot $HistoryRoot
-    $target = [string]$Plan['TargetTenantId']
+    $target = [string]$Plan['TargetTenant']
     $dev = $Config['Dev']
 
     $planned = @($Plan['Actions'] | Where-Object { $_['Status'] -eq 'planned' })

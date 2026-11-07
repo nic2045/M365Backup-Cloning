@@ -1,3 +1,6 @@
+# Counters of an audit line (issue #51): one fixed set for every mode.
+$script:AuditCounterNames = @('Planned', 'Blocked', 'Skipped', 'Excluded', 'Exists', 'Invite', 'Protected', 'Applied', 'Failed', 'Deleted', 'Retired', 'Wiped', 'NotRun', 'Red', 'Yellow', 'Info')
+
 function Write-ApplyAudit {
     <#
     .SYNOPSIS
@@ -14,9 +17,14 @@ function Write-ApplyAudit {
         [string]$Reason = ''
     )
     $null = New-Item -ItemType Directory -Path $HistoryRoot -Force
-    $short = if ($TargetTenantId.Length -gt 8) { $TargetTenantId.Substring(0, 8) + '...' } else { $TargetTenantId }
+    $short = Get-TenantIdShort -TenantId $TargetTenantId
+    # The same counters in every line, whatever the mode (issue #51): unknown keys and non-numbers are dropped,
+    # missing counters are 0.
     $safeCounts = [ordered]@{}
-    foreach ($key in ($Counts.Keys | Sort-Object)) { if ($Counts[$key] -is [int] -or $Counts[$key] -is [long]) { $safeCounts[[string]$key] = $Counts[$key] } }
+    foreach ($key in $script:AuditCounterNames) {
+        $v = if ($Counts.Contains($key)) { $Counts[$key] } else { 0 }
+        $safeCounts[$key] = if ($v -is [int] -or $v -is [long]) { [int]$v } else { 0 }
+    }
     $entry = [ordered]@{
         Timestamp    = (Get-Date).ToUniversalTime().ToString('o')
         User         = "$([Environment]::UserDomainName)\$([Environment]::UserName)"

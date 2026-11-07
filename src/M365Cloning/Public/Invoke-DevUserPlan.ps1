@@ -30,7 +30,7 @@ function Invoke-DevUserPlan {
     )
 
     $hash = Assert-DevApplyGate -Plan $Plan -Config $Config -ConfirmPlanHash $ConfirmPlanHash -HistoryRoot $HistoryRoot
-    $target = [string]$Plan['TargetTenantId']
+    $target = [string]$Plan['TargetTenant']
     $devId = [string]$Config['Dev']['TenantId']
     if (-not $GraphWriter -and -not $Token) { throw 'Pass -Token (Dev app registration, app-only).' }
     $writer = if ($GraphWriter) { $GraphWriter } else {

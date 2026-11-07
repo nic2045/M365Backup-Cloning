@@ -28,7 +28,8 @@ Describe 'New-ApplyPlan: operations' {
         $a['Properties'].Contains('Id') | Should -BeFalse
         $a['Properties']['Len'] | Should -Be 8
         $plan['Direction'] | Should -Be 'Prod -> Dev'
-        $plan['TargetTenantId'] | Should -Be 'tenant-dev-0001'
+        $plan['TargetTenant'] | Should -Be 'tenant-d...'
+        $plan['TargetTenantHash'] | Should -Be (Get-TenantIdHash -TenantId 'tenant-dev-0001')
     }
     It 'plans an Update with the differences for a changed resource' {
         $src = script:New-Snap @(script:New-Res $script:Policy 'P' @{ Len = 8 })
@@ -44,7 +45,7 @@ Describe 'New-ApplyPlan: operations' {
         $a = script:Get-Action $plan 'Only in Dev'
         $a['Operation'] | Should -Be 'SkipDelete'
         $a['Status'] | Should -Be 'skipped'
-        $a['Properties'] | Should -BeNullOrEmpty
+        @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
         ($plan | ConvertTo-Json -Depth 30) | Should -Not -Match 'Absent'
     }
     It 'plans nothing for identical tenants' {
@@ -97,7 +98,7 @@ Describe 'New-ApplyPlan: groups and assignments (fail-closed)' {
         $a = script:Get-Action $plan 'P'
         $a['Status'] | Should -Be 'blocked'
         $a['Reason'] | Should -Match "'SW-Excl' does not exist in Dev"
-        $a['Properties'] | Should -BeNullOrEmpty
+        @($a['Properties'].Keys).Count | Should -Be 0   # empty object: nothing is written (issue #51)
         @($plan['Actions'] | Where-Object { $_['Name'] -eq 'SW-Excl' }).Count | Should -Be 0
     }
     It 'blocks an unresolved exclusion group instead of widening the scope' {

@@ -315,7 +315,7 @@ function New-ApplyPlan {
         [ordered]@{ ResourceType = [string]$e.Type; Reason = [string]$e.ExcludeReason }
     }
 
-    [ordered]@{
+    Complete-PlanShape -Kind 'apply' -Plan ([ordered]@{
         Direction      = 'Prod -> Dev'
         TargetTenantId = [string]$Config['Dev']['TenantId']
         Actions        = $actions
@@ -328,5 +328,5 @@ function New-ApplyPlan {
             Skipped  = [int](& $count 'skipped')
             Excluded = [int]@($actions | Where-Object { & $isExcluded $_ }).Count
         }
-    }
+    })
 }

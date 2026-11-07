@@ -4,7 +4,9 @@ function Assert-DevApplyGate {
         Shared gate of every write to the Dev tenant (DSC apply and Dev users). Throws and writes the refusal to the
         audit log unless ALL of this holds:
         - a plan hash is given and equals the SHA-256 of the plan (-Confirm:$false is not enough);
-        - Dev.TenantId is set, differs from Prod.TenantId and equals the plan's TargetTenantId;
+        - the plan has the current format (Kind and SchemaVersion, issue #51), otherwise: make a new plan;
+        - Dev.TenantId is set, differs from Prod.TenantId, and its hash equals the plan's TargetTenantHash (the plan
+          carries no full tenant ID; the full ID always comes from the local config);
         - Dev.ApplyAllowed is $true in the local config.
         With -Purpose Reset (the factory reset, ADR 0005) the switch is Dev.AllowReset instead of Dev.ApplyAllowed,
         and a second confirmation is needed: -ConfirmTenant must equal the Dev tenant ID of the config.
@@ -21,7 +23,7 @@ function Assert-DevApplyGate {
     )
 
     $hash = Get-ApplyPlanHash -Plan $Plan
-    $target = [string]$Plan['TargetTenantId']
+    $target = if ($Plan.Contains('TargetTenant')) { [string]$Plan['TargetTenant'] } else { Get-TenantIdShort -TenantId ([string]$Plan['TargetTenantId']) }
     $refuse = {
         param($why)
         Write-ApplyAudit -HistoryRoot $HistoryRoot -Mode refused -PlanHash $hash -TargetTenantId $target -Reason $why
@@ -29,11 +31,16 @@ function Assert-DevApplyGate {
     }
 
     if ([string]::IsNullOrWhiteSpace($ConfirmPlanHash)) { & $refuse 'no plan hash given (-ConfirmPlanHash)' }
+    $version = if ($Plan.Contains('SchemaVersion')) { [string]$Plan['SchemaVersion'] } else { '' }
+    if (-not $Plan.Contains('Kind') -or -not [string]$Plan['Kind'] -or $version -ne $script:M365CloningSchemaVersion) {
+        & $refuse "the plan has an older format (schema version '$version', expected '$($script:M365CloningSchemaVersion)'): make a new plan (run the script again without -Apply)"
+    }
     $dev = if ($Config.Contains('Dev') -and $Config['Dev'] -is [System.Collections.IDictionary]) { $Config['Dev'] } else { @{} }
     $prod = if ($Config.Contains('Prod') -and $Config['Prod'] -is [System.Collections.IDictionary]) { $Config['Prod'] } else { @{} }
     if ([string]::IsNullOrWhiteSpace([string]$dev['TenantId'])) { & $refuse 'the config has no Dev tenant ID' }
     if ([string]$dev['TenantId'] -eq [string]$prod['TenantId']) { & $refuse 'the Dev tenant ID equals the Prod tenant ID' }
-    if ($target -ne [string]$dev['TenantId']) { & $refuse 'the plan was made for a different tenant than Dev in the config' }
+    $planTenant = if ($Plan.Contains('TargetTenantHash')) { [string]$Plan['TargetTenantHash'] } else { '' }
+    if (-not $planTenant -or $planTenant -ne (Get-TenantIdHash -TenantId ([string]$dev['TenantId']))) { & $refuse 'the plan was made for a different tenant than Dev in the config' }
     if ($Purpose -eq 'Reset') {
         if ($dev['AllowReset'] -ne $true) { & $refuse 'Dev.AllowReset is not $true in the config' }
     }
