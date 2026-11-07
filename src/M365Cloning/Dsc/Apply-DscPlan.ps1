@@ -45,14 +45,24 @@ catch {
     exit 1
 }
 
+# The Microsoft365DSC resource names are inferred (see Get-DscResourceMap). Check each name against the installed
+# module once; an action whose resource is missing fails on its own instead of stopping the run.
+$available = @{}
+foreach ($name in @($actions | ForEach-Object { [string]$_.DscResource } | Sort-Object -Unique)) {
+    $available[$name] = [bool](Get-DscResource -Module Microsoft365DSC -Name $name -ErrorAction SilentlyContinue)
+}
+
 foreach ($action in $actions) {
     try {
+        if (-not $available[[string]$action.DscResource]) { throw "Microsoft365DSC has no resource '$($action.DscResource)' in this version; nothing was changed for it." }
         $props = ConvertTo-PlainHash $action.Properties
         if ($props.ContainsKey('Ensure') -and $props['Ensure'] -ne 'Present') { throw 'Ensure must be Present; the toolkit never deletes.' }
         if ($props.ContainsKey('Assignments')) {
+            # CIM class per resource type from the TCM schema (Assignments items 'title'), default for most types.
+            $class = if ([string]::IsNullOrWhiteSpace([string]$action.AssignmentClass)) { 'MSFT_DeviceManagementConfigurationPolicyAssignments' } else { [string]$action.AssignmentClass }
             $cim = @()
             foreach ($assignment in @($props['Assignments'])) {
-                $cim += New-CimInstance -ClassName MSFT_DeviceManagementConfigurationPolicyAssignments `
+                $cim += New-CimInstance -ClassName $class `
                     -Namespace root/microsoft/Windows/DesiredStateConfiguration -Property $assignment -ClientOnly
             }
             $props['Assignments'] = $cim

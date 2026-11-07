@@ -81,12 +81,24 @@ Describe 'New-ApplyPlan: groups and assignments (fail-closed)' {
         $names = @($plan['Actions'] | ForEach-Object { $_['Name'] })
         [array]::IndexOf($names, 'SW-New') | Should -BeLessThan ([array]::IndexOf($names, 'P'))
     }
-    It 'blocks an assignment to a group that does not exist in Dev' {
+    It 'plans an empty static copy for an inclusion group that Dev lacks, before the policy' {
         $src = script:New-Snap @(script:New-Res $script:Policy 'P' @{ Assignments = @((& $script:Assign 'SW-Missing')) })
-        $a = script:Get-Action (New-ApplyPlan -Source $src -Target (script:New-Snap @()) -Config (script:New-Config)) 'P'
+        $plan = New-ApplyPlan -Source $src -Target (script:New-Snap @()) -Config (script:New-Config)
+        (script:Get-Action $plan 'P')['Status'] | Should -Be 'planned'
+        $g = script:Get-Action $plan 'SW-Missing'
+        $g['Operation'] | Should -Be 'Create'
+        $g['Properties'].Contains('Members') | Should -BeFalse
+        $names = @($plan['Actions'] | ForEach-Object { $_['Name'] })
+        [array]::IndexOf($names, 'SW-Missing') | Should -BeLessThan ([array]::IndexOf($names, 'P'))
+    }
+    It 'blocks an exclusion group that Dev lacks (an empty exclusion would widen the scope)' {
+        $src = script:New-Snap @(script:New-Res $script:Policy 'P' @{ Assignments = @((& $script:Assign 'SW-Excl' '#microsoft.graph.exclusionGroupAssignmentTarget')) })
+        $plan = New-ApplyPlan -Source $src -Target (script:New-Snap @()) -Config (script:New-Config)
+        $a = script:Get-Action $plan 'P'
         $a['Status'] | Should -Be 'blocked'
-        $a['Reason'] | Should -Match "'SW-Missing' does not exist in Dev"
+        $a['Reason'] | Should -Match "'SW-Excl' does not exist in Dev"
         $a['Properties'] | Should -BeNullOrEmpty
+        @($plan['Actions'] | Where-Object { $_['Name'] -eq 'SW-Excl' }).Count | Should -Be 0
     }
     It 'blocks an unresolved exclusion group instead of widening the scope' {
         $assignments = @((& $script:Assign 'SW-Ring1'), (& $script:Assign 'SW-Excluded' '#microsoft.graph.exclusionGroupAssignmentTarget'))
