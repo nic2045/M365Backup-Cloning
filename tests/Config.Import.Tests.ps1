@@ -41,4 +41,18 @@ Describe 'Import-M365CloningConfig' {
         $p = script:New-ConfigFile "@{ Customers = @( @{ Prod=@{}; Dev=@{} } ) }"
         { Import-M365CloningConfig -Path $p } | Should -Throw '*Customers*'
     }
+    It 'loads ApplyAllowed and the break-glass lists, apply is off by default' {
+        $c = Import-M365CloningConfig -Path $script:Valid
+        $c.Dev.ApplyAllowed | Should -BeFalse
+        $c.BreakGlass | Should -Contain 'bg-user-0001'
+        $c.BreakGlassGroups | Should -Contain 'BG-Group'
+    }
+    It 'rejects ApplyAllowed that is not a boolean' {
+        $p = script:New-ConfigFile "@{ Prod=@{TenantId='a';ClientId='b';CertThumbprint='c'}; Dev=@{TenantId='d';ClientId='b';CertThumbprint='c';ApplyAllowed='yes'} }"
+        { Import-M365CloningConfig -Path $p } | Should -Throw '*ApplyAllowed*'
+    }
+    It 'rejects a BreakGlass entry that is still a placeholder' {
+        $p = script:New-ConfigFile "@{ Prod=@{TenantId='a';ClientId='b';CertThumbprint='c'}; Dev=@{TenantId='d';ClientId='b';CertThumbprint='c'}; BreakGlass=@('<break-glass-upn>') }"
+        { Import-M365CloningConfig -Path $p } | Should -Throw '*placeholder*'
+    }
 }

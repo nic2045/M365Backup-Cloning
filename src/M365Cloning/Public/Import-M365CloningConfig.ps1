@@ -3,6 +3,7 @@ function Import-M365CloningConfig {
     .SYNOPSIS
         Loads and validates config.psd1 (see config.example.psd1): exactly one Prod/Dev pair.
     .DESCRIPTION
+        Optional: Dev.ApplyAllowed (bool, default false), BreakGlass (users) and BreakGlassGroups (group names).
         Rejects a config without a Prod or Dev tenant, with placeholders such as '<prod-tenant-guid>'
         still in it, with identical Prod and Dev tenant IDs, or with the old 'Customers' list.
         -AllowPlaceholders is only for tests with the example file.
@@ -36,6 +37,19 @@ function Import-M365CloningConfig {
     }
     if (-not $AllowPlaceholders -and $config.Prod.TenantId -eq $config.Dev.TenantId) {
         throw 'Prod and Dev have the same TenantId.'
+    }
+
+    # Apply (ADR 0001): off unless Dev.ApplyAllowed is $true; the break-glass accounts are used for Conditional Access.
+    if ($config.Dev.ContainsKey('ApplyAllowed') -and $config.Dev.ApplyAllowed -isnot [bool]) {
+        throw 'Dev.ApplyAllowed must be $true or $false.'
+    }
+    foreach ($listName in 'BreakGlass', 'BreakGlassGroups') {
+        if ($config.ContainsKey($listName) -and $null -ne $config[$listName]) {
+            foreach ($entry in @($config[$listName])) {
+                if ($entry -isnot [string]) { throw "$listName must be a list of strings." }
+                if (-not $AllowPlaceholders -and $entry -match '^\s*<.*>\s*$') { throw "$listName still contains a placeholder." }
+            }
+        }
     }
     $config
 }
