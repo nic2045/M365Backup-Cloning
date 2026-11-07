@@ -499,6 +499,12 @@
         },
         "Licences": {
           "$ref": "#/$defs/PlanLicences"
+        },
+        "Area": {
+          "enum": [
+            "Intune"
+          ],
+          "description": "Optional (issue #66): the plan covers one area only. Entries outside it are 'skipped' with a reason starting with 'area:'. Missing: all areas."
         }
       },
       "description": "One plan of any kind (apply, baseline, reset, users) in one shape (schema version 2, issue #51). The plan hash is the SHA-256 of this object; it has no time, so the same tenants give the same hash.",
@@ -1109,6 +1115,12 @@
         },
         "state": {
           "$ref": "#/$defs/ListItemState"
+        },
+        "area": {
+          "enum": [
+            "Intune"
+          ],
+          "description": "Optional (issue #66): the area of the plan; missing means all areas."
         }
       },
       "if": {
@@ -1356,6 +1368,437 @@
         "current",
         "outdated"
       ]
+    },
+    "JobAction": {
+      "enum": [
+        "drift",
+        "fitcheck",
+        "plan-apply",
+        "plan-baseline",
+        "plan-users",
+        "plan-reset",
+        "apply"
+      ],
+      "description": "What a job does (issue #14). drift: drift report; fitcheck: suitability check; plan-*: a preview plan of that kind (changes nothing); apply: applies one plan after the confirmation (reset plans need the role Resetter and a second confirmation)."
+    },
+    "JobStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "JobStepStatus": {
+      "enum": [
+        "pending",
+        "running",
+        "done",
+        "failed",
+        "skipped"
+      ]
+    },
+    "JobStep": {
+      "type": "object",
+      "required": [
+        "key",
+        "title",
+        "status"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "status": {
+          "$ref": "#/$defs/JobStepStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "JobOptions": {
+      "type": "object",
+      "properties": {
+        "area": {
+          "enum": [
+            "All",
+            "Intune"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "Align",
+            "Full"
+          ]
+        },
+        "deviceAction": {
+          "enum": [
+            "Keep",
+            "Remove",
+            "Retire"
+          ],
+          "description": "Reset plans: one action for all devices. Wipe is not offered in the web interface (script only, ADR 0012)."
+        },
+        "planId": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "planKind": {
+          "$ref": "#/$defs/PlanKind"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "JobState": {
+      "type": "object",
+      "required": [
+        "id",
+        "action",
+        "status",
+        "role",
+        "actor",
+        "createdUtc",
+        "updatedUtc",
+        "startedUtc",
+        "finishedUtc",
+        "options",
+        "steps",
+        "message",
+        "result"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$"
+        },
+        "action": {
+          "$ref": "#/$defs/JobAction"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "role": {
+          "enum": [
+            "Applier",
+            "Resetter"
+          ],
+          "description": "The role the job needs; also needed to cancel it."
+        },
+        "actor": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The person signed in to the web interface who started the job (display name, ADR 0010)."
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedUtc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "finishedUtc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "options": {
+          "$ref": "#/$defs/JobOptions"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JobStep"
+          }
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "planId": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            "planHash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "reportId": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            "exitCode": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "description": "The state of one job as the core keeps it in History/jobs/<id>.json (issue #14). Written by the web API when the job is queued and by the job runner (scripts/Invoke-WebJob.ps1) from then on."
+    },
+    "JobFile": {
+      "type": "object",
+      "required": [
+        "SchemaVersion",
+        "Kind",
+        "Job",
+        "Confirm"
+      ],
+      "properties": {
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "const": "job"
+        },
+        "Job": {
+          "$ref": "#/$defs/JobState"
+        },
+        "Confirm": {
+          "type": "object",
+          "properties": {
+            "PlanHash": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{64})?$",
+              "description": "apply: the plan hash the person confirmed."
+            },
+            "TenantHash": {
+              "type": "string",
+              "pattern": "^([0-9a-f]{64})?$",
+              "description": "apply of a reset plan: SHA-256 of the Dev tenant ID the person typed (second confirmation). The typed value itself is never stored."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "description": "File History/jobs/<id>.json. Confirm is never sent by the API."
+    },
+    "Job": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "action",
+        "status",
+        "role",
+        "actor",
+        "createdUtc",
+        "updatedUtc",
+        "startedUtc",
+        "finishedUtc",
+        "options",
+        "steps",
+        "message",
+        "result",
+        "cancelRequested",
+        "progress"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$"
+        },
+        "action": {
+          "$ref": "#/$defs/JobAction"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "role": {
+          "enum": [
+            "Applier",
+            "Resetter"
+          ],
+          "description": "The role the job needs; also needed to cancel it."
+        },
+        "actor": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The person signed in to the web interface who started the job (display name, ADR 0010)."
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedUtc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "finishedUtc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "options": {
+          "$ref": "#/$defs/JobOptions"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JobStep"
+          }
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "planId": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            "planHash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "reportId": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            "exitCode": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "progress": {
+          "type": "object",
+          "required": [
+            "done",
+            "total"
+          ],
+          "properties": {
+            "done": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "log": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "maxItems": 200,
+          "description": "Detail only: the last lines of the job log (GUIDs masked)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "A job as the API returns it (issue #14): the job state plus progress (steps done of all steps) and, in the detail, the last log lines."
+    },
+    "JobList": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "items"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Job"
+          }
+        }
+      }
+    },
+    "JobRequest": {
+      "type": "object",
+      "required": [
+        "action"
+      ],
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/JobAction"
+        },
+        "area": {
+          "enum": [
+            "All",
+            "Intune"
+          ],
+          "description": "plan-apply only; default All."
+        },
+        "mode": {
+          "enum": [
+            "Align",
+            "Full"
+          ],
+          "description": "plan-reset only; default Align."
+        },
+        "deviceAction": {
+          "enum": [
+            "Keep",
+            "Remove",
+            "Retire"
+          ],
+          "description": "plan-reset only; default Keep."
+        },
+        "planId": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,100}$",
+          "description": "apply only: the plan to apply."
+        },
+        "confirmPlanHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "apply only: the hash of the plan the person looked at (first confirmation)."
+        },
+        "confirmTenant": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "apply of a reset plan only: the Dev tenant ID typed by the person (second confirmation). Never stored, only its hash."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Body of POST /api/jobs (issue #14)."
     }
   }
 }

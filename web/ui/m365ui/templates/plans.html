@@ -4,7 +4,7 @@
 {% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Plans"), "/plans")]) }}{% endblock %}
 {% block content %}
 <h1>{{ _("Plans") }}</h1>
-<p>{{ _("A plan is a preview: nothing was changed. Apply it with the script and the plan hash.") }}</p>
+<p>{{ _("A plan is a preview: nothing was changed. Open a plan to check it and apply it after your confirmation.") }}</p>
 {% call filter_form("/plans", []) %}
   {{ select("kind", _("Kind"), kinds, kind, _("All kinds")) }}
 {% endcall %}
@@ -18,7 +18,7 @@
   {% for p in items %}
     <tr>
       <td data-label="{{ _('Plan') }}"><a href="/plans/{{ p.id }}">{{ p.id }}</a></td>
-      <td data-label="{{ _('Kind') }}">{{ p.kind }}{% if p.mode %} ({{ p.mode }}){% endif %}</td>
+      <td data-label="{{ _('Kind') }}">{{ p.kind }}{% if p.mode %} ({{ p.mode }}){% endif %}{% if p.area %} <span class="tag">{{ icon("intune") }}<span>{{ p.area }}</span></span>{% endif %}</td>
       <td data-label="{{ _('Created') }}">{{ p.createdUtc|when }}</td>
       {% if p.state == "outdated" %}
       <td data-label="{{ _('State') }}" colspan="3">{{ badge("outdated") }} <span class="meta">{{ _("Older format: regenerate the plan with the script.") }}</span></td>
@@ -30,6 +30,6 @@
   </tbody>
 </table></div>
 {% elif kind %}{{ empty(_("No plan of this kind"), _("Clear the filter to see all plans."), "filter") }}
-{% else %}{{ empty(_("No plans yet"), _("Create a preview plan with the script after a drift report; nothing is changed until you apply it."), "plans", "scripts/Invoke-ApplyDev.ps1") }}{% endif %}
+{% else %}{{ empty(_("No plans yet"), _("Create a preview plan under Bring Dev in line after a drift report; nothing is changed until you apply it."), "plans") }}{% endif %}
 </div>
 {% endblock %}

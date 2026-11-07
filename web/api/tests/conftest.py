@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,21 @@ def write_history(root: Path) -> Path:
                 "Plan": body["plan"],
             }
             (reports / f"{body['id']}.json").write_text(json.dumps(plan_file), encoding="utf-8")
+    # Jobs (issue #14): the job file is the job state without what the API adds (progress, cancel marker, log).
+    jobs = root / "jobs"
+    jobs.mkdir()
+    for key, example in MOCK.items():
+        method, url = key.split(" ", 1)
+        if method != "GET" or example["status"] != 200 or not url.startswith("/api/jobs/"):
+            continue
+        body = dict(example["body"])
+        log = body.pop("log", [])
+        for extra in ("schemaVersion", "cancelRequested", "progress"):
+            body.pop(extra)
+        (jobs / f"{body['id']}.json").write_text(
+            json.dumps({"SchemaVersion": "2", "Kind": "job", "Job": body, "Confirm": {}}), encoding="utf-8")
+        if log:
+            (jobs / f"{body['id']}.log").write_text("\n".join(log) + "\n", encoding="utf-8")
     # The audit log is append only and the API lists newest first: write the example lines oldest first.
     lines = [json.dumps(item) for item in reversed(MOCK["GET /api/audit"]["body"]["items"])]
     (root / "audit.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -47,9 +63,31 @@ def history(tmp_path: Path) -> Path:
     return write_history(tmp_path / "History")
 
 
+# The examples were made at this time; a running job of the examples is not yet stale then.
+CLOCK = datetime(2026, 11, 7, 12, 20, tzinfo=timezone.utc)
+
+
+class FakeLauncher:
+    """Stands in for the job runner process: records the job files it was asked to start."""
+
+    def __init__(self, fail: bool = False):
+        self.started: list[Path] = []
+        self.fail = fail
+
+    def __call__(self, job_path: Path, out_path: Path) -> None:
+        if self.fail:
+            raise FileNotFoundError("pwsh")
+        self.started.append(job_path)
+
+
 @pytest.fixture()
-def app(history: Path):
-    return create_app(history, authkit.config())
+def launcher() -> FakeLauncher:
+    return FakeLauncher()
+
+
+@pytest.fixture()
+def app(history: Path, launcher: FakeLauncher):
+    return create_app(history, authkit.config(), launcher=launcher, clock=lambda: CLOCK)
 
 
 @pytest.fixture()

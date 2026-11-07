@@ -7,6 +7,9 @@
     PowerShellVersion = '7.0'
     FunctionsToExport = @(
         'Import-M365CloningConfig'
+        'Get-AppOnlyGraphToken'
+        'Get-WebJobDefinition'
+        'Invoke-WebJob'
         'Get-TenantIdHash'
         'Read-ApplyPlanFile'
         'Get-M365CloningDefaultResources'

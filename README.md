@@ -128,15 +128,15 @@ never touched; device actions run last. Pass the same device options with `-Appl
 
 ## Web contract (issue #44, ADR 0008)
 
-The web server and interface (ADR 0002) are not built yet. Their contract is: `schema/m365cloning.schema.json` (formats the core writes and the API envelopes), `web/openapi.json` (read routes only) and `web/mock/responses.json` (example responses). `tests/WebContract.Tests.ps1` checks the core's files, the OpenAPI description and the mock against it. See [`docs/web-contract.md`](docs/web-contract.md).
+The contract of the web server and interface (ADR 0002) is: `schema/m365cloning.schema.json` (formats the core writes and the API envelopes), `web/openapi.json` (read routes and the job routes) and `web/mock/responses.json` (example responses). `tests/WebContract.Tests.ps1` checks the core's files, the OpenAPI description and the mock against it. See [`docs/web-contract.md`](docs/web-contract.md).
 
-## Web API (read only, issue #55)
+## Web API (issues #55, #14)
 
-`web/api` is the read-only API server (FastAPI) for the routes of `web/openapi.json`: reports, plans, audit, suitability check and status from `History/`. Tenant IDs and GUIDs are masked in every answer; there are no write routes. Start and test: see `docs/web-contract.md`, section "Start the backend".
+`web/api` is the API server (FastAPI) for the routes of `web/openapi.json`: reports, plans, audit, suitability check, status and jobs from `History/`. Tenant IDs and GUIDs are masked in every answer. Its only write routes queue a job, which runs the scripts in its own process after the role and the confirmation are checked (ADR 0012). Start and test: see `docs/web-contract.md`, section "Start the backend".
 
-## Web interface (read only, issue #12)
+## Web interface (issues #12, #14, #66)
 
-`web/ui` is the read-only interface (FastAPI, Jinja2, HTMX): overview, reports, plans and audit. It talks only to `/api/...` of `web/api`; without `M365_UI_API_BASE` it shows the example data of `web/mock/responses.json`. Applying and resetting stay with the scripts. Start and test: see `docs/web-contract.md`, section "Start the frontend".
+`web/ui` is the interface (FastAPI, Jinja2, HTMX), organised by goals (Bring Dev in line, Start Dev fresh, Fill Dev), areas (Intune now, more later) and history (jobs, plans, reports, audit). Reports, plans, apply and reset start as jobs with steps and progress; nothing changes in Dev without a preview plan and your confirmation, a reset also needs the Dev tenant ID typed. It talks only to `/api/...` of `web/api`; without `M365_UI_API_BASE` it shows the example data of `web/mock/responses.json`. Start and test: see `docs/web-contract.md`, section "Start the frontend".
 
 ## Web sign-in (issue #60, ADR 0010)
 

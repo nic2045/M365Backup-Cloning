@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty, crumbs, plan_line %}
+{% from "_macros.html" import start_form, busy with context %}
+{% block title %}{{ _("Fill Dev") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Goals"), ""), (_("Fill Dev"), "")]) }}{% endblock %}
+{% block content %}
+<h1>{{ _("Fill Dev") }}</h1>
+<p class="lead">{{ _("Give Dev what tests need: the base state and the Dev users from your config. Nothing is ever removed.") }}</p>
+{{ busy(running) }}
+<section class="cards">
+  <article class="card" aria-labelledby="base">
+    <h2 class="card-title" id="base">{{ icon("protected") }} {{ _("Base state") }}</h2>
+    <p class="meta">{{ _("Empty persona and break-glass groups and the Prod tenant as cross-tenant partner.") }}</p>
+    {% if baseline %}<p>{{ _("Latest plan") }}: {{ plan_line(baseline) }}</p>{% else %}{{ empty(_("No base state plan yet"), _("Create one; it changes nothing until you apply it."), "protected") }}{% endif %}
+    {{ start_form("plan-baseline", _("Create the base state plan"), "plans", "Applier", running=running) }}
+  </article>
+  <article class="card" aria-labelledby="users">
+    <h2 class="card-title" id="users">{{ icon("fill") }} {{ _("Dev users") }}</h2>
+    <p class="meta">{{ _("Test users and admins of Prod invited as guests (break-glass accounts never), each in the group of their persona.") }}</p>
+    {% if users %}<p>{{ _("Latest plan") }}: {{ plan_line(users) }}</p>{% else %}{{ empty(_("No users plan yet"), _("Create one; it changes nothing until you apply it."), "fill") }}{% endif %}
+    {{ start_form("plan-users", _("Create the users plan"), "plans", "Applier", running=running) }}
+  </article>
+</section>
+<p class="meta">{{ icon("info") }} {{ _("Apps are not copied by this toolkit; upload them to Dev with your packaging tool.") }}</p>
+{% endblock %}

@@ -1,4 +1,5 @@
-"""Pure view helpers of the interface (issues #61, #63): time format, next step, order of lists, icons.
+"""Pure view helpers of the interface (issues #61, #63, #14, #66): time format, next step, order of lists, icons,
+the menu by goals and areas, and the forms that start a job.
 
 No FastAPI here: every function takes plain data and is tested on its own. The next step is
 derived only from what the read routes of the API already return; nothing is guessed.
@@ -29,6 +30,8 @@ ICON_FILES = {
     "next-page": "chevron_right", "signout": "sign_out", "signin": "door_arrow_left", "back": "arrow_left",
     "entra": "people", "intune": "phone_laptop", "ca": "shield_lock", "step": "lightbulb", "compare": "branch_compare",
     "time": "clock", "todo": "circle",
+    "align": "target_arrow", "fresh": "arrow_reset", "fill": "people_add", "jobs": "task_list_ltr", "start": "play",
+    "stop": "stop", "running": "arrow_clockwise", "licences": "key", "later": "lock_closed", "delete": "delete",
 }
 
 
@@ -180,26 +183,31 @@ class Rule:
     command: str = ""
     link: str = ""  # a page of this interface, filled from the facts
     link_text: str = ""
+    goal: str = ""  # the goal page where the step is started (issue #66)
+    goal_text: str = ""
 
 
 # The rules as data, first match is the next step; the order is the order of the work.
 RULES: tuple[Rule, ...] = (
     Rule("no-report", lambda f: not f.has_report,
          "Run the drift report with the script",
-         "There is no comparison of Prod and Dev yet. The script reads both tenants and changes nothing.",
-         command="scripts/Get-DriftReport.ps1"),
+         "There is no comparison of Prod and Dev yet. The report reads both tenants and changes nothing.",
+         command="scripts/Get-DriftReport.ps1", goal="/goals/align", goal_text="Compare Prod and Dev"),
     Rule("fit-check", lambda f: f.fit_status in ("red", "grey", ""),
          "Check the suitability report",
          "The suitability check is red, not verified or missing. Find out what Dev cannot mirror before you plan.",
-         command="scripts/Invoke-TenantFitCheck.ps1", link="/reports/{fit_id}", link_text="Show the suitability report"),
+         command="scripts/Invoke-TenantFitCheck.ps1", link="/reports/{fit_id}", link_text="Show the suitability report",
+         goal="/goals/align", goal_text="Check the suitability"),
     Rule("stale-report", lambda f: f.report_age_days is not None and f.report_age_days > STALE_DAYS,
          "Compare again",
          "The last comparison is older than {days} days. Run the drift report again so the plan uses the current state.",
-         command="scripts/Get-DriftReport.ps1", link="/reports/{report_id}", link_text="Show the last drift report"),
+         command="scripts/Get-DriftReport.ps1", link="/reports/{report_id}", link_text="Show the last drift report",
+         goal="/goals/align", goal_text="Compare again"),
     Rule("differences", lambda f: f.differences > 0,
          "Create a plan",
-         "Prod and Dev differ. Create a preview plan with the script; it changes nothing until you apply it with its hash.",
-         command="scripts/Invoke-ApplyDev.ps1", link="/reports/{report_id}", link_text="Show the differences"),
+         "Prod and Dev differ. Create a preview plan; it changes nothing until you confirm it and apply it.",
+         command="scripts/Invoke-ApplyDev.ps1", link="/reports/{report_id}", link_text="Show the differences",
+         goal="/goals/align", goal_text="Create a plan"),
     Rule("done", lambda f: True,
          "Nothing to do",
          "Prod and Dev match and the last comparison is current.",
@@ -215,6 +223,8 @@ class Step:
     command: str
     link: str
     link_text: str
+    goal: str = ""
+    goal_text: str = ""
 
 
 def facts(status: dict[str, Any] | None, fit: dict[str, Any] | None, plans: list[dict[str, Any]],
@@ -251,7 +261,7 @@ def next_steps(f: Facts) -> list[Step]:
         if link.endswith("/"):  # no id to link to
             link = ""
         out.append(Step(r.id, _(r.title), _(r.detail).format(days=STALE_DAYS), r.command, link,
-                        _(r.link_text) if link else ""))
+                        _(r.link_text) if link else "", r.goal, _(r.goal_text) if r.goal else ""))
     return out
 
 
@@ -268,3 +278,97 @@ def type_family(resource_type: Any) -> str:
     if "entra" in t or t.startswith(("microsoft.graph.", "aad")) or t in ("group", "user", "invitation"):
         return "entra"
     return "other"
+
+
+# ---------------------------------------------------------------- menu by goals and areas (#66, ADR 0012)
+
+# (key, href, label, icon). Goals start a job; areas configure Dev per product family; history shows what happened.
+GOALS = (
+    ("align", "/goals/align", "Bring Dev in line", "align"),
+    ("fresh", "/goals/fresh", "Start Dev fresh", "fresh"),
+    ("fill", "/goals/fill", "Fill Dev", "fill"),
+)
+# Areas: only Intune is there now (the Intune QA goal); the others are shown greyed out with "later".
+AREAS = (
+    ("intune", "/areas/intune", "Intune", "intune", True),
+    ("entra", "", "Entra ID", "entra", False),
+    ("ca", "", "Conditional Access", "ca", False),
+    ("licences", "", "Licences", "licences", False),
+)
+HISTORY = (
+    ("jobs", "/jobs", "Jobs", "jobs"),
+    ("plans", "/plans", "Plans", "plans"),
+    ("reports", "/reports", "Reports", "reports"),
+    ("audit", "/audit", "Audit log", "audit"),
+)
+
+
+# ---------------------------------------------------------------- jobs (#14)
+
+JOB_ACTIONS = {
+    "drift": "Drift report", "fitcheck": "Suitability check", "plan-apply": "Plan Prod → Dev",
+    "plan-baseline": "Base state plan", "plan-users": "Dev users plan", "plan-reset": "Reset plan", "apply": "Apply a plan",
+}
+ACTIVE_JOB = ("queued", "running")
+# The role each goal needs to start its jobs, as the API names it; the API decides, the page only hides buttons
+# a person could not use anyway.
+APPLY_ROLE = {"apply": "Applier", "baseline": "Applier", "users": "Applier", "reset": "Resetter"}
+JOB_ID_RE = re.compile(r"^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$")
+FORM_FIELDS = {
+    "drift": (), "fitcheck": (), "plan-apply": ("area",), "plan-baseline": (), "plan-users": (),
+    "plan-reset": ("mode", "deviceAction"), "apply": ("planId", "confirmPlanHash", "confirmTenant"),
+}
+CHOICES = {"area": ("All", "Intune"), "mode": ("Align", "Full"), "deviceAction": ("Keep", "Remove", "Retire")}
+
+
+class FormError(ValueError):
+    """The form cannot be sent to the API; the message says what is missing."""
+
+
+def job_request(form: dict[str, str]) -> dict[str, str]:
+    """The body of POST /api/jobs from a form of this interface. Checks only what the form itself must carry (the
+    choices offered and the confirmation box of an apply); roles and hashes are checked by the API."""
+    action = form.get("action", "")
+    if action not in FORM_FIELDS:
+        raise FormError(_("Unknown action."))
+    body: dict[str, str] = {"action": action}
+    for name in FORM_FIELDS[action]:
+        value = (form.get(name) or "").strip()
+        if not value:
+            continue
+        if name in CHOICES and value not in CHOICES[name]:
+            raise FormError(_("This choice is not offered."))
+        body[name] = value
+    if action == "apply":
+        if form.get("confirmed") != "yes":
+            raise FormError(_("Tick the box to confirm that you checked the plan."))
+        if not (body.get("planId") and body.get("confirmPlanHash")):
+            raise FormError(_("The plan to apply is missing. Open the plan again."))
+        if form.get("kind") == "reset" and not body.get("confirmTenant"):
+            raise FormError(_("Type the ID of the Dev tenant to confirm the reset."))
+    return body
+
+
+def job_progress(job: dict[str, Any]) -> int:
+    """Progress in per cent from the counts the API sends."""
+    p = job.get("progress") or {}
+    total = int(p.get("total") or 0)
+    return 0 if total <= 0 else round(100 * int(p.get("done") or 0) / total)
+
+
+def latest_plan(items: Iterable[dict[str, Any]], kind: str, area: str | None = None, mode: str | None = None) -> dict[str, Any] | None:
+    """The newest current plan of a kind (and area: None = all areas only, or a named area)."""
+    for p in newest_first(items, "createdUtc"):
+        if p.get("kind") != kind or p.get("state") == "outdated":
+            continue
+        if (p.get("area") or None) != area:
+            continue
+        if mode and p.get("mode") != mode:
+            continue
+        return p
+    return None
+
+
+def area_types(report: dict[str, Any] | None, family: str) -> list[dict[str, Any]]:
+    """Per-type rows of a drift report that belong to one area (same families as the badges)."""
+    return [t for t in (report or {}).get("Types", []) if type_family(t.get("ResourceType")) == family]

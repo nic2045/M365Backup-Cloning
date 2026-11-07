@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, empty, crumbs, plan_line, short_type %}
+{% from "_macros.html" import start_form, busy with context %}
+{% block title %}{{ _("Intune") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Areas"), ""), (_("Intune"), "")]) }}{% endblock %}
+{% block content %}
+<h1>{{ icon("intune") }} {{ _("Intune") }}</h1>
+<p class="lead">{{ _("Configure Dev for the Intune QA: only the Intune entries and the empty groups their assignments need.") }}</p>
+{{ busy(running) }}
+
+<h2>{{ _("Differences in Intune") }}</h2>
+{% if report %}
+  <p class="meta">{{ _("From the drift report of") }} {{ report.createdUtc|when }} · <a href="/reports/{{ report.id }}">{{ _("Show the full report") }}</a></p>
+  {% if rows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">{{ _("Resource type") }}</th><th scope="col" class="num">{{ _("Only in Prod") }}</th><th scope="col" class="num">{{ _("Only in Dev") }}</th><th scope="col" class="num">{{ _("Changed") }}</th><th scope="col" class="num">{{ _("Unchanged") }}</th></tr></thead>
+    <tbody>{% for t in rows %}<tr>
+      <td data-label="{{ _('Resource type') }}"><a href="/reports/{{ report.id }}?type={{ t.ResourceType|urlencode }}">{{ short_type(t.ResourceType) }}</a></td>
+      <td data-label="{{ _('Only in Prod') }}" class="num">{{ t.Added|length }}</td>
+      <td data-label="{{ _('Only in Dev') }}" class="num">{{ t.Removed|length }}</td>
+      <td data-label="{{ _('Changed') }}" class="num">{{ t.Changed|length }}</td>
+      <td data-label="{{ _('Unchanged') }}" class="num">{{ t.Unchanged }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ empty(_("No Intune entries in the report"), _("The last drift report has no Intune resource type."), "intune") }}{% endif %}
+{% else %}
+  {{ empty(_("Not compared yet"), _("Run the drift report under Bring Dev in line."), "compare") }}
+{% endif %}
+
+<h2>{{ _("Intune plan") }}</h2>
+<section class="card">
+  {% if plan %}<p>{{ _("Latest Intune plan") }}: {{ plan_line(plan) }}</p>
+  <p class="button-row"><a class="button" href="/plans/{{ plan.id }}#apply">{{ icon("next") }} {{ _("Open the plan to check and apply it") }}</a></p>
+  {% else %}{{ empty(_("No Intune plan yet"), _("Create one; it changes nothing until you confirm it."), "plans") }}{% endif %}
+  {{ start_form("plan-apply", _("Create an Intune plan"), "plans", "Applier", fields={"area": "Intune"}, running=running, secondary=plan is not none) }}
+</section>
+{% endblock %}

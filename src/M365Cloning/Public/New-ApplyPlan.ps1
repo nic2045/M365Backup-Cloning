@@ -34,12 +34,16 @@ function New-ApplyPlan {
         Plan.TypeSummary counts per resource type: planned, blocked, skipped and excluded; Plan.ExcludedTypes lists
         the excluded types of the workloads that are on (they are not in the snapshot by default).
         The plan holds the properties to apply (from Prod, ids removed). The plan file is local and git-ignored.
+        Area (issue #66): -Area Intune keeps only the Intune entries (resource type microsoft.intune.*) and the empty
+        group copies an Intune assignment needs; every other planned or blocked entry becomes 'skipped' with a reason
+        starting with 'area:'. The plan carries Area = 'Intune', so its hash differs from the plan of all areas.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.Collections.IDictionary]$Source,
         [Parameter(Mandatory)][System.Collections.IDictionary]$Target,
-        [Parameter(Mandatory)][System.Collections.IDictionary]$Config
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Config,
+        [ValidateSet('All', 'Intune')][string]$Area = 'All'
     )
 
     foreach ($side in 'Prod', 'Dev') {
@@ -296,6 +300,17 @@ function New-ApplyPlan {
     # Ordinal order (same on every machine): apply order, then type, then name. Keys are unique.
     $built.Sort([System.Comparison[object]] { param($a, $b) [string]::CompareOrdinal($a.Key, $b.Key) })
     $actions = [object[]]@($built | ForEach-Object { $_.Action })
+    if ($Area -eq 'Intune') {
+        foreach ($a in $actions) {
+            if ($a.Status -notin 'planned', 'blocked') { continue }
+            $inArea = ([string]$a.ResourceType).StartsWith('microsoft.intune.') -or ([string]$a.Reason).StartsWith('empty static copy: Intune policy')
+            if (-not $inArea) {
+                $a.Status = 'skipped'
+                $a.Reason = 'area: outside Intune; make a plan of all areas to apply it'
+            }
+        }
+        $notes.Add('Area Intune: only Intune entries and the empty group copies their assignments need; the rest is skipped.')
+    }
 
     $isExcluded = { param($a) $a.Status -eq 'skipped' -and ([string]$a.Reason).StartsWith('excluded:') }
     $count = { param($status) @($actions | Where-Object { $_.Status -eq $status -and -not (& $isExcluded $_) }).Count }
@@ -315,7 +330,7 @@ function New-ApplyPlan {
         [ordered]@{ ResourceType = [string]$e.Type; Reason = [string]$e.ExcludeReason }
     }
 
-    Complete-PlanShape -Kind 'apply' -Plan ([ordered]@{
+    $shape = [ordered]@{
         Direction      = 'Prod -> Dev'
         TargetTenantId = [string]$Config['Dev']['TenantId']
         Actions        = $actions
@@ -328,5 +343,7 @@ function New-ApplyPlan {
             Skipped  = [int](& $count 'skipped')
             Excluded = [int]@($actions | Where-Object { & $isExcluded $_ }).Count
         }
-    })
+    }
+    if ($Area -ne 'All') { $shape['Area'] = $Area }
+    Complete-PlanShape -Kind 'apply' -Plan $shape
 }

@@ -13,7 +13,10 @@
   "exists": ("ok", "ok", _("Exists")), "protected": ("ok", "protected", _("Protected")),
   "applied": ("ok", "ok", _("Applied")), "failed": ("bad", "bad", _("Failed")),
   "identical": ("ok", "ok", _("Identical")), "different": ("warn", "warn", _("Different")),
-  "outdated": ("warn", "outdated", _("Outdated"))
+  "outdated": ("warn", "outdated", _("Outdated")),
+  "queued": ("info", "time", _("Queued")), "running": ("info", "running", _("Running")),
+  "succeeded": ("ok", "ok", _("Succeeded")), "cancelled": ("muted", "stop", _("Cancelled")),
+  "pending": ("muted", "todo", _("Waiting")), "done": ("ok", "ok", _("Done"))
 } -%}
 {%- set m = map.get(v, ("muted", "info", value or _("unknown"))) -%}
 <span class="badge badge-{{ m[0] }}">{{ icon(m[1]) }}<span class="badge-text">{{ m[2] }}</span></span>
@@ -86,4 +89,37 @@
 {%- for key, text, pic in modes if key == mode %}{% set found.text = _(text) %}{% set found.pic = pic %}{% endfor -%}
 {%- if mode == "refused" -%}<span class="badge badge-bad">{{ icon("bad") }}<span class="badge-text">{{ found.text }}</span></span>
 {%- else -%}<span class="tag">{{ icon(found.pic) }}<span>{{ found.text }}</span></span>{%- endif -%}
+{%- endmacro %}
+
+
+{#- Starts a job (issue #14): a POST form to this interface with the CSRF token. Shown only to a person with the role;
+    the API checks the role again. A running job disables the button (one job at a time). -#}
+{% macro start_form(action, label, pic, role, fields={}, running=None, secondary=False) -%}
+{%- if user and user.has(role) -%}
+<form method="post" action="/jobs" class="start">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="action" value="{{ action }}">
+  {%- for k, v in fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  {{ caller() if caller else "" }}
+  <div class="button-row">
+    <button type="submit" class="button{% if secondary %} button-secondary{% endif %}"{% if running %} disabled aria-describedby="busy-note"{% endif %}>{{ icon(pic) }} {{ label }}</button>
+  </div>
+</form>
+{%- else -%}
+<p class="meta role-note">{{ icon("later") }} {{ _("Starting this needs the role {role}.").format(role=role) }}</p>
+{%- endif -%}
+{%- endmacro %}
+
+{#- A job is running: say so once at the top of a goal page and link to it. -#}
+{% macro busy(running) -%}
+{%- if running -%}
+<p class="notice-inline busy" id="busy-note">{{ icon("running") }} {{ _("A job is running") }}: <a href="/jobs/{{ running.id }}">{{ _(job_actions.get(running.action, running.action)) }}</a>. {{ _("Wait for it before you start the next one.") }}</p>
+{%- endif -%}
+{%- endmacro %}
+
+{#- A short link to a plan with its summary. -#}
+{% macro plan_line(p) -%}
+<a href="/plans/{{ p.id }}">{{ p.id }}</a>
+{%- if p.summary %} <span class="meta">· {{ p.summary.Planned }} {{ _("planned") }}{% if p.summary.Blocked %} · {{ p.summary.Blocked }} {{ _("blocked") }}{% endif %}</span>{% endif %}
+<br><span class="meta">{{ p.createdUtc|when }}</span>
 {%- endmacro %}

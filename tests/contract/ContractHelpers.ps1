@@ -5,6 +5,8 @@ $script:ContractRoot = Join-Path $PSScriptRoot '..' '..'
 $script:SchemaPath = Join-Path $script:ContractRoot 'schema' 'm365cloning.schema.json'
 $script:OpenApiPath = Join-Path $script:ContractRoot 'web' 'openapi.json'
 $script:MockPath = Join-Path $script:ContractRoot 'web' 'mock' 'responses.json'
+# The only write routes (issue #14, ADR 0012): they queue a job; the job runner does the work in its own process.
+$script:WriteRoutes = @('post /api/jobs', 'post /api/jobs/{id}/cancel')
 
 function Get-ContractSchemaFile {
     <# Writes a schema whose root is one definition of schema/m365cloning.schema.json and returns its path. #>
@@ -43,8 +45,8 @@ function Get-OpenApiResponseSchema {
 }
 
 function Get-OpenApiProblem {
-    <# Structural checks of web/openapi.json: version, read-only, sign-in required (ADR 0010),
-       schemas for 200/400/401/403/500, all references resolve. #>
+    <# Structural checks of web/openapi.json: version, read routes plus only the job routes as write routes (issue #14,
+       ADR 0012), sign-in required (ADR 0010), schemas for 200 (202 for writes)/400/401/403/500, all references resolve. #>
     param([Parameter(Mandatory)]$OpenApi, [Parameter(Mandatory)]$Schema)
     $problems = [System.Collections.Generic.List[string]]::new()
     if ($OpenApi['openapi'] -notmatch '^3\.1\.\d+$') { $problems.Add("openapi version '$($OpenApi['openapi'])' is not 3.1.x") }
@@ -54,11 +56,13 @@ function Get-OpenApiProblem {
     foreach ($p in $OpenApi['paths'].Keys) {
         if ($p -notlike '/api/*') { $problems.Add("$p is not below /api/") }
         foreach ($m in $OpenApi['paths'][$p].Keys) {
-            if ($m -ne 'get') { $problems.Add("$m $p is not a read route (write routes come with #14)") ; continue }
-            foreach ($code in '200', '400', '401', '403', '500') {
+            if ($m -ne 'get' -and "$m $p" -notin $script:WriteRoutes) { $problems.Add("$m $p is not a read route and not a job route (issue #14)") ; continue }
+            $success = if ($m -eq 'get') { '200' } else { '202' }
+            if ($m -ne 'get' -and $OpenApi['paths'][$p][$m]['x-required-role'] -ne 'Applier|Resetter') { $problems.Add("$m $p does not name the write roles") }
+            foreach ($code in $success, '400', '401', '403', '500') {
                 $name = Get-OpenApiResponseSchema -OpenApi $OpenApi -Method $m -Path $p -Status $code
                 if (-not $name) { $problems.Add("$m $p has no schema for $code") }
-                elseif ($code -ne '200' -and $name -ne 'Error') { $problems.Add("$m $p uses '$name' for $code instead of Error") }
+                elseif ($code -ne $success -and $name -ne 'Error') { $problems.Add("$m $p uses '$name' for $code instead of Error") }
             }
         }
     }

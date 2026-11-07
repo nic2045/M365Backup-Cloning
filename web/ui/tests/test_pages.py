@@ -1,4 +1,4 @@
-"""Pages of the read-only interface against the mock (issue #12)."""
+"""Pages of the interface against the mock (issues #12, #14, #66)."""
 
 import json
 import re
@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from m365ui.api_client import (
-    ApiResponse, BaseClient, ForbiddenPath, HttpClient, MockClient, check_path,
+    ApiResponse, BaseClient, ForbiddenPath, HttpClient, MockClient, check_path, check_post,
 )
 from m365ui.main import create_app
 
@@ -33,6 +33,10 @@ class RecordingClient(BaseClient):
         self.paths.append(path)
         return self.inner._get(path, params, token)
 
+    def _post(self, path, body, token=None):
+        self.paths.append("POST " + path)
+        return self.inner._post(path, body, token)
+
 
 def signed_in(client: BaseClient) -> TestClient:
     """A real (non-mock) client needs a session: sign in through the fake Entra ID."""
@@ -46,12 +50,14 @@ def mock_ids():
     responses = json.loads(MOCK_FILE.read_text(encoding="utf-8"))["responses"]
     reports = [k.split("/")[-1] for k, v in responses.items() if k.startswith("GET /api/reports/") and v["status"] == 200]
     plans = [k.split("/")[-1] for k, v in responses.items() if k.startswith("GET /api/plans/") and v["status"] == 200]
-    return reports, plans
+    jobs = [k.split("/")[-1] for k, v in responses.items() if k.startswith("GET /api/jobs/") and v["status"] == 200]
+    return reports, plans, jobs
 
 
-REPORTS, PLANS = mock_ids()
+REPORTS, PLANS, JOBS = mock_ids()
+GOAL_PAGES = ["/goals/align", "/goals/fresh", "/goals/fill", "/areas/intune", "/jobs"]
 PAGES = ["/", "/reports", "/reports?kind=drift", "/plans", "/plans?kind=reset", "/audit", "/audit?mode=plan"] \
-    + [f"/reports/{r}" for r in REPORTS] + [f"/plans/{p}" for p in PLANS]
+    + [f"/reports/{r}" for r in REPORTS] + [f"/plans/{p}" for p in PLANS] + GOAL_PAGES + [f"/jobs/{j}" for j in JOBS]
 
 
 @pytest.fixture()
@@ -88,9 +94,18 @@ def test_pages_call_only_api_read_routes(web, recorder, page):
 def test_allowed_paths_match_openapi():
     spec = json.loads(OPENAPI_FILE.read_text(encoding="utf-8"))
     for path, ops in spec["paths"].items():
-        assert set(ops) == {"get"}, path
-        sample = re.sub(r"\{[^}]+\}", "example-1", path)
-        check_path(sample)
+        sample = re.sub(r"\{[^}]+\}", "job-20261107-121500-k3m9qa" if path.startswith("/api/jobs") else "example-1", path)
+        assert set(ops) <= {"get", "post"}, path
+        if "get" in ops:
+            check_path(sample)
+        if "post" in ops:
+            check_post(sample)
+
+
+@pytest.mark.parametrize("bad", ["/api/plans", "/api/reports", "/api/jobs/x/cancel", "/api/jobs/job-20261107-121500-k3m9qa", "/api/status"])
+def test_client_posts_only_to_the_job_routes(bad):
+    with pytest.raises(ForbiddenPath):
+        MockClient(MOCK_FILE).post(bad, {})
 
 
 @pytest.mark.parametrize("bad", ["/", "/api", "/api/apply", "/api/plans/../x", "/admin", "/api/reports/ABC", "http://x/api/status"])
@@ -155,10 +170,20 @@ def test_invalid_id_is_400_and_calls_nothing(web, recorder):
     assert r.status_code == 400 and recorder.paths == []
 
 
-def test_no_write_controls(web):
+FORM = re.compile(r'<form method="post" action="([^"]+)"[^>]*>(.*?)</form>', re.S)
+
+
+def test_write_controls_post_only_to_jobs_with_csrf(web):
+    """The only forms that change something start or cancel a job (or sign out); each carries the CSRF token."""
+    seen = 0
     for page in PAGES:
-        html = web.get(page).text.lower()
-        assert 'method="post"' not in html and "hx-post" not in html
+        html = web.get(page).text
+        assert "hx-post" not in html.lower()
+        for action, inner in FORM.findall(html):
+            assert action == "/jobs" or re.fullmatch(r"/jobs/job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}/cancel", action) or action == "/logout", action
+            assert re.search(r'name="csrf" value="[^"]{20,}"', inner), (page, action)
+            seen += 1
+    assert seen > 0
 
 
 def test_unreachable_backend_shows_error():

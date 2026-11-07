@@ -10,6 +10,7 @@
   <dt>{{ _("Created") }}</dt><dd>{{ env.createdUtc|when }}</dd>
   <dt>{{ _("Direction") }}</dt><dd>{{ plan.Direction }}</dd>
   <dt>{{ _("Target tenant") }}</dt><dd>{{ plan.TargetTenant }}</dd>
+  {% if plan.Area %}<dt>{{ _("Area") }}</dt><dd><span class="tag">{{ icon("intune") }}<span>{{ plan.Area }}</span></span> <span class="meta">{{ _("only this area; the rest is skipped") }}</span></dd>{% endif %}
   <dt>{{ _("Plan hash") }}</dt><dd><code class="hash">{{ env.planHash }}</code>
     <br><a href="/audit?plan={{ env.planHash }}">{{ icon("audit") }} {{ _("Audit entries of this plan") }}</a></dd>
 </dl>
@@ -25,6 +26,37 @@
   {% if s.Invite %}<li><strong>{{ s.Invite }}</strong> {{ _("to invite") }}</li>{% endif %}
   {% if s.Exists %}<li><strong>{{ s.Exists }}</strong> {{ _("exist already") }}</li>{% endif %}
 </ul>
+
+{% set role = apply_role.get(env.kind, "Applier") %}
+{% set is_reset = env.kind == "reset" %}
+<section class="card card-accent apply-box" id="apply" aria-labelledby="apply-title">
+  <h2 class="card-title" id="apply-title">{{ icon("delete" if is_reset else "start") }} {{ _("Reset Dev with this plan") if is_reset else _("Apply this plan to Dev") }}</h2>
+  {% if s.Planned == 0 %}
+    <p>{{ badge("identical") }} {{ _("Nothing is planned; there is nothing to apply.") }}</p>
+  {% elif user and user.has(role) %}
+  <p>{{ _("Check the actions below first. When you confirm, the job reads the tenants again and builds the same plan; if anything changed since this preview, it refuses and you make a new plan.") }}</p>
+  <form method="post" action="/jobs" class="form apply-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="apply">
+    <input type="hidden" name="kind" value="{{ env.kind }}">
+    <input type="hidden" name="planId" value="{{ env.id }}">
+    <input type="hidden" name="confirmPlanHash" value="{{ env.planHash }}">
+    <label class="choice"><input type="checkbox" name="confirmed" value="yes" required>
+      <span>{{ _("I checked this plan (hash {hash}). It writes to the Dev tenant {tenant} only.").format(hash=short_hash(env.planHash), tenant=plan.TargetTenant) }}</span></label>
+    {% if is_reset %}
+    <label class="field"><span>{{ _("Second confirmation: type the ID of the Dev tenant") }}</span>
+      <input type="text" name="confirmTenant" required autocomplete="off" spellcheck="false" inputmode="text" aria-describedby="tenant-hint"></label>
+    <p class="meta" id="tenant-hint">{{ _("The full ID, as in your config. It starts with {start}. It is not stored, only compared.").format(start=plan.TargetTenant) }}</p>
+    {% endif %}
+    <div class="button-row">
+      <button type="submit" class="button{% if is_reset %} button-danger{% endif %}">{{ icon("delete" if is_reset else "start") }} {{ _("Reset Dev") if is_reset else _("Apply to Dev") }}</button>
+    </div>
+  </form>
+  {% else %}
+    <p class="meta role-note">{{ icon("later") }} {{ _("Applying this plan needs the role {role}.").format(role=role) }}</p>
+  {% endif %}
+  <details><summary>{{ _("With the script instead") }}</summary>{% if plan.ApplyHint %}<p><code class="hash">{{ plan.ApplyHint }}</code></p>{% endif %}<p class="meta">{{ _("Plan hash") }}: <code class="hash">{{ env.planHash }}</code></p></details>
+</section>
 
 <h2>{{ _("Licences") }}</h2>
 {% set l = plan.Licences %}
@@ -78,5 +110,4 @@
 {% endif %}
 
 {% if plan.Notes %}<h2>{{ _("Notes") }}</h2><ul>{% for n in plan.Notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
-{% if plan.ApplyHint %}<h2>{{ _("How to apply") }}</h2><p><code class="hash">{{ plan.ApplyHint }}</code></p>{% endif %}
 {% endblock %}

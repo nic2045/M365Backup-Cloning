@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, crumbs %}
+{% block title %}{{ _(job_actions.get(job.action, job.action)) }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Jobs"), "/jobs"), (job.id, "")]) }}{% endblock %}
+{% block content %}
+<div id="job"{% if active %} hx-get="/jobs/{{ job.id }}" hx-trigger="every {{ poll }}s" hx-select="#job" hx-target="#job" hx-swap="outerHTML"{% endif %}>
+<h1>{{ _(job_actions.get(job.action, job.action)) }}</h1>
+<p class="job-state">{{ badge(job.status) }}{% if job.cancelRequested and active %} <span class="tag">{{ icon("stop") }}<span>{{ _("Cancel requested") }}</span></span>{% endif %}
+  {% if job.message %}<span>{{ job.message }}</span>{% endif %}</p>
+
+<section class="card job-card" aria-labelledby="steps-title">
+  <h2 class="card-title" id="steps-title">{{ icon("jobs") }} {{ _("Steps") }}</h2>
+  <p><progress max="100" value="{{ job_progress(job) }}" aria-labelledby="steps-title">{{ job_progress(job) }} %</progress>
+     <span class="meta">{{ job.progress.done }} {{ _("of") }} {{ job.progress.total }} {{ _("steps") }}</span></p>
+  {% if job.steps %}
+  <ol class="job-steps">
+    {% for s in job.steps %}<li class="job-step job-step-{{ s.status }}">{{ badge(s.status) }} <span>{{ _(s.title) }}</span></li>{% endfor %}
+  </ol>
+  {% else %}
+  <p class="meta">{{ _("The job runner has not picked the job up yet.") }}</p>
+  {% endif %}
+  {% if active %}<p class="meta" aria-live="polite">{{ _("This page updates itself every {n} seconds.").format(n=poll) }}</p>{% endif %}
+</section>
+
+{% if job.result.planId or job.result.reportId %}
+<section class="card job-card" aria-labelledby="result-title">
+  <h2 class="card-title" id="result-title">{{ icon("next") }} {{ _("Result") }}</h2>
+  {% if job.result.planId %}<p class="button-row"><a class="button" href="/plans/{{ job.result.planId }}#apply">{{ icon("plans") }} {{ _("Open the plan") }}</a></p>{% endif %}
+  {% if job.result.reportId %}<p class="button-row"><a class="button" href="/reports/{{ job.result.reportId }}">{{ icon("reports") }} {{ _("Open the report") }}</a></p>{% endif %}
+</section>
+{% elif job.action == "apply" and job.status == "succeeded" %}
+<p class="button-row"><a class="button" href="/goals/align">{{ icon("compare") }} {{ _("Compare again") }}</a></p>
+{% endif %}
+
+<dl class="pairs">
+  <dt>{{ _("Started by") }}</dt><dd>{{ job.actor or _("unknown") }}</dd>
+  <dt>{{ _("Needs the role") }}</dt><dd>{{ job.role }}</dd>
+  <dt>{{ _("Queued") }}</dt><dd>{{ job.createdUtc|when }}</dd>
+  {% if job.startedUtc %}<dt>{{ _("Started") }}</dt><dd>{{ job.startedUtc|when }}</dd>{% endif %}
+  {% if job.finishedUtc %}<dt>{{ _("Finished") }}</dt><dd>{{ job.finishedUtc|when }}</dd>{% endif %}
+  {% if job.options.planId %}<dt>{{ _("Plan") }}</dt><dd><a href="/plans/{{ job.options.planId }}">{{ job.options.planId }}</a></dd>{% endif %}
+  {% if job.options.area %}<dt>{{ _("Area") }}</dt><dd>{{ job.options.area }}</dd>{% endif %}
+  {% if job.options.mode %}<dt>{{ _("Mode") }}</dt><dd>{{ job.options.mode }}</dd>{% endif %}
+  {% if job.options.deviceAction %}<dt>{{ _("Devices") }}</dt><dd>{{ job.options.deviceAction }}</dd>{% endif %}
+  {% if job.result.exitCode is defined %}<dt>{{ _("Exit code") }}</dt><dd>{{ job.result.exitCode }}</dd>{% endif %}
+</dl>
+
+{% if active and not job.cancelRequested and user and user.has(job.role) %}
+<form method="post" action="/jobs/{{ job.id }}/cancel">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <button type="submit" class="button button-secondary">{{ icon("stop") }} {{ _("Cancel the job") }}</button>
+  <p class="meta">{{ _("The job stops before its next step. A running script is not interrupted.") }}</p>
+</form>
+{% endif %}
+
+<details{% if job.status == "failed" %} open{% endif %}><summary>{{ _("Log") }} ({{ (job.log or [])|length }})</summary>
+{% if job.log %}<pre class="log">{% for line in job.log %}{{ line }}
+{% endfor %}</pre>{% else %}<p class="meta">{{ _("No log lines yet.") }}</p>{% endif %}
+</details>
+</div>
+{% endblock %}

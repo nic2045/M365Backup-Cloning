@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, empty, crumbs, plan_line %}
+{% from "_macros.html" import start_form, busy with context %}
+{% block title %}{{ _("Bring Dev in line") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Goals"), ""), (_("Bring Dev in line"), "")]) }}{% endblock %}
+{% block content %}
+<h1>{{ _("Bring Dev in line") }}</h1>
+<p class="lead">{{ _("Make Dev match Prod: compare, check, plan, confirm. Every step before the last one only reads.") }}</p>
+{{ busy(running) }}
+
+<ol class="steps-flow">
+  <li class="card flow-step">
+    <h2 class="card-title"><span class="nav-step" aria-hidden="true">1</span> {{ _("Compare Prod and Dev") }}</h2>
+    {% if status.reportId %}
+      <p>{% if status.differences == 0 %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}
+         <span class="meta">{{ status.differences }} {{ _("differences") }} · {{ status.lastComparisonUtc|when }}</span></p>
+      <p><a href="/reports/{{ status.reportId }}">{{ icon("reports") }} {{ _("Show the drift report") }}</a></p>
+    {% else %}
+      <p class="meta">{{ _("Not compared yet. The report reads both tenants and changes nothing.") }}</p>
+    {% endif %}
+    {{ start_form("drift", _("Run the drift report"), "compare", "Applier", running=running, secondary=status.reportId and first.id != "stale-report" and first.id != "no-report") }}
+  </li>
+  <li class="card flow-step">
+    <h2 class="card-title"><span class="nav-step" aria-hidden="true">2</span> {{ _("Check the suitability") }}</h2>
+    {% if fit %}
+      <p>{{ badge(fit.report.Status) }} <span class="meta">{{ fit.createdUtc|when }}</span></p>
+      <p>{{ fit.report.Verdict }}</p>
+      <p><a href="/reports/{{ fit.id }}">{{ icon("reports") }} {{ _("Show the suitability report") }}</a></p>
+    {% else %}
+      <p>{{ badge("grey") }} <span class="meta">{{ _("Can Dev mirror Prod with its licences? Not checked yet.") }}</span></p>
+    {% endif %}
+    {{ start_form("fitcheck", _("Run the suitability check"), "ok", "Applier", running=running, secondary=first.id != "fit-check") }}
+  </li>
+  <li class="card flow-step">
+    <h2 class="card-title"><span class="nav-step" aria-hidden="true">3</span> {{ _("Create a plan") }}</h2>
+    <p class="meta">{{ _("The plan is a preview of everything that would be copied to Dev. It changes nothing.") }}</p>
+    {% if plan %}<p>{{ _("Latest plan") }}: {{ plan_line(plan) }}</p>{% elif plans_ok %}<p class="meta">{{ _("No plan of all areas yet.") }}</p>{% endif %}
+    {{ start_form("plan-apply", _("Create a plan"), "plans", "Applier", fields={"area": "All"}, running=running, secondary=first.id != "differences") }}
+  </li>
+  <li class="card flow-step">
+    <h2 class="card-title"><span class="nav-step" aria-hidden="true">4</span> {{ _("Check and apply") }}</h2>
+    {% if plan %}
+      <p>{{ _("Open the plan, check what it does and confirm it there. Apply writes to Dev only.") }}</p>
+      <p class="button-row"><a class="button" href="/plans/{{ plan.id }}#apply">{{ icon("next") }} {{ _("Open the plan") }}</a></p>
+    {% else %}
+      {{ empty(_("No plan to apply"), _("Create a plan first; it shows up here."), "plans") }}
+    {% endif %}
+  </li>
+</ol>
+<p class="meta">{{ _("Only Intune?") }} <a href="/areas/intune">{{ _("Plan the Intune area on its own") }}</a></p>
+{% endblock %}

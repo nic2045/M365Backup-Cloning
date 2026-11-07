@@ -22,7 +22,25 @@ ROUTE_SCHEMA = {
     "/api/audit": "AuditPage",
     "/api/fitcheck/latest": "FitCheckResponse",
     "/api/status": "Status",
+    "/api/jobs": {"get": "JobList", "post": "Job"},
+    "/api/jobs/{id}": "Job",
+    "/api/jobs/{id}/cancel": "Job",
 }
+WRITE_ROUTES = {("post", "/api/jobs"), ("post", "/api/jobs/{id}/cancel")}
+
+
+def schema_of(path: str, method: str) -> str:
+    entry = ROUTE_SCHEMA[path]
+    return entry[method] if isinstance(entry, dict) else entry
+
+
+def template_of(url: str) -> str:
+    path = url.split("?")[0]
+    if path in ROUTE_SCHEMA:
+        return path
+    if path.endswith("/cancel"):
+        return path.rsplit("/", 2)[0] + "/{id}/cancel"
+    return path.rsplit("/", 1)[0] + "/{id}"
 
 
 def app_routes(app) -> set[tuple[str, str]]:
@@ -44,9 +62,10 @@ def test_app_serves_exactly_the_openapi_routes(tmp_path):
 
 def test_every_openapi_route_names_its_schema_and_the_error_schema():
     for path, ops in OPENAPI["paths"].items():
-        for op in ops.values():
-            ok = op["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
-            assert ok.endswith("/" + ROUTE_SCHEMA[path])
+        for method, op in ops.items():
+            success = "202" if (method, path) in WRITE_ROUTES else "200"
+            ok = op["responses"][success]["content"]["application/json"]["schema"]["$ref"]
+            assert ok.endswith("/" + schema_of(path, method))
             for status in ("400", "401", "403", "500"):
                 assert status in op["responses"], f"{path} has no {status}"
                 ref = op["responses"][status]["$ref"].rsplit("/", 1)[-1]
@@ -57,29 +76,33 @@ def test_every_openapi_route_names_its_schema_and_the_error_schema():
 def test_every_route_needs_sign_in():
     assert OPENAPI["security"] == [{"bearerAuth": []}]
     assert OPENAPI["components"]["securitySchemes"]["bearerAuth"]["scheme"] == "bearer"
-    for ops in OPENAPI["paths"].values():
-        for op in ops.values():
+    for path, ops in OPENAPI["paths"].items():
+        for method, op in ops.items():
             assert op.get("security", OPENAPI["security"]) == OPENAPI["security"]
-            assert op["x-required-role"] == "Reader"
+            expected = "Applier|Resetter" if (method, path) in WRITE_ROUTES else "Reader"
+            assert op["x-required-role"] == expected
 
 
-def test_only_read_routes():
-    assert {method for method, _ in openapi_routes()} == {"get"}
-    assert {method for method, _ in app_routes(create_app("."))} == {"get"}
+def test_write_routes_are_only_the_job_routes():
+    writes = {(m, p) for m, p in openapi_routes() if m != "get"}
+    assert writes == WRITE_ROUTES
+    assert {(m, p) for m, p in app_routes(create_app(".")) if m != "get"} == WRITE_ROUTES
 
 
 @pytest.mark.parametrize("key", sorted(MOCK))
 def test_answer_matches_the_contract_example(client, key):
     method, url = key.split(" ", 1)
-    assert method == "GET"
     example = MOCK[key]
+    if method == "POST":
+        # Write examples are for the interface in mock mode; the API side is tested in test_jobs.py.
+        assert errors(schema_of(template_of(url), "post"), example["body"]) == []
+        return
+    assert method == "GET"
     response = client.get(url)
     assert response.status_code == example["status"], response.text
     body = response.json()
     if example["status"] == 200:
-        path = url.split("?")[0]
-        template = path if path in ROUTE_SCHEMA else path.rsplit("/", 1)[0] + "/{id}"
-        assert errors(ROUTE_SCHEMA[template], body) == []
+        assert errors(schema_of(template_of(url), "get"), body) == []
         # Same content as the example, except that the API masks tenant IDs (ADR 0009).
         assert body == mask_response(example["body"])
     else:

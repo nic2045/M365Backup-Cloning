@@ -212,6 +212,8 @@ class Store:
             item["planHash"] = content["PlanHash"]
             if entry.mode:
                 item["mode"] = entry.mode
+            if content["Plan"].get("Area"):
+                item["area"] = content["Plan"]["Area"]
             item["summary"] = content["Plan"]["Summary"]
             items.append(item)
         return {"schemaVersion": contract.schema_version(), "items": items}

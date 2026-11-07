@@ -1,4 +1,4 @@
-"""Requests can only read the files below History/reports; only GET; no CORS; local bind by default."""
+"""Requests can only read the files below History/reports; only GET except the job routes; no CORS; local bind by default."""
 
 from __future__ import annotations
 
