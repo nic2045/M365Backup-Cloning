@@ -65,7 +65,7 @@ Describe 'No secrets in the contract or in what it describes' {
 }
 
 Describe 'web/openapi.json' {
-    It 'is OpenAPI 3.1, read-only, with a 200 schema and the Error schema for 400 and 500 on every route' {
+    It 'is OpenAPI 3.1, read-only, needs sign-in, with a 200 schema and the Error schema for 400, 401, 403 and 500 on every route' {
         Get-OpenApiProblem -OpenApi $script:OpenApi -Schema $script:Schema | Should -BeNullOrEmpty
     }
     It 'has the read routes of issue #44' {
@@ -82,6 +82,16 @@ Describe 'web/openapi.json' {
         $copy = $script:OpenApi | ConvertTo-Json -Depth 50 | ConvertFrom-Json -AsHashtable
         $copy['paths']['/api/status']['get']['responses'].Remove('500')
         (Get-OpenApiProblem -OpenApi $copy -Schema $script:Schema) -join ';' | Should -Match 'no schema for 500'
+    }
+    It 'reports a route without 401 or 403 as a problem' {
+        $copy = $script:OpenApi | ConvertTo-Json -Depth 50 | ConvertFrom-Json -AsHashtable
+        $copy['paths']['/api/status']['get']['responses'].Remove('403')
+        (Get-OpenApiProblem -OpenApi $copy -Schema $script:Schema) -join ';' | Should -Match 'no schema for 403'
+    }
+    It 'reports an API without sign-in as a problem' {
+        $copy = $script:OpenApi | ConvertTo-Json -Depth 50 | ConvertFrom-Json -AsHashtable
+        $copy.Remove('security')
+        (Get-OpenApiProblem -OpenApi $copy -Schema $script:Schema) -join ';' | Should -Match 'does not require bearerAuth'
     }
 }
 

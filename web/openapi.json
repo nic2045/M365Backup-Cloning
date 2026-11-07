@@ -3,12 +3,17 @@
   "info": {
     "title": "M365Backup-Cloning API",
     "version": "2",
-    "description": "Read-only API of one toolkit instance (ADR 0002, ADR 0008). Write actions (apply, reset) follow with issue #14. Every route has a schema for 200 and the Error schema for 400 and 500."
+    "description": "Read-only API of one toolkit instance (ADR 0002, ADR 0008). Write actions (apply, reset) follow with issue #14. Every route has a schema for 200 and the Error schema for 400, 401, 403 and 500. Every route needs a bearer token of a signed-in person with the app role Reader; Applier and Resetter include Reader (ADR 0010)."
   },
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "servers": [
     {
       "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
     }
   ],
   "paths": {
@@ -33,6 +38,12 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
@@ -46,7 +57,8 @@
               "$ref": "#/components/schemas/ReportKind"
             }
           }
-        ]
+        ],
+        "x-required-role": "Reader"
       }
     },
     "/api/reports/{id}": {
@@ -70,6 +82,12 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           },
@@ -91,7 +109,8 @@
               "pattern": "^[a-z0-9-]+$"
             }
           }
-        ]
+        ],
+        "x-required-role": "Reader"
       }
     },
     "/api/plans": {
@@ -115,6 +134,12 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
@@ -128,7 +153,8 @@
               "$ref": "#/components/schemas/PlanKind"
             }
           }
-        ]
+        ],
+        "x-required-role": "Reader"
       }
     },
     "/api/plans/{id}": {
@@ -152,6 +178,12 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           },
@@ -173,7 +205,8 @@
               "pattern": "^[a-z0-9-]+$"
             }
           }
-        ]
+        ],
+        "x-required-role": "Reader"
       }
     },
     "/api/audit": {
@@ -196,6 +229,12 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -246,7 +285,8 @@
               "default": 50
             }
           }
-        ]
+        ],
+        "x-required-role": "Reader"
       }
     },
     "/api/fitcheck/latest": {
@@ -270,13 +310,20 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
-        }
+        },
+        "x-required-role": "Reader"
       }
     },
     "/api/status": {
@@ -300,10 +347,17 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "x-required-role": "Reader"
       }
     }
   },
@@ -392,6 +446,34 @@
             }
           }
         }
+      },
+      "Unauthorized": {
+        "description": "No token, or the token is not valid or has expired (codes 'unauthorized', 'invalid-token', 'token-expired', 'sign-in-not-configured').",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Signed in, but without the role this route needs (code 'forbidden').",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Entra ID access token for the API app registration (app roles in the 'roles' claim), or a short-lived token of the local account, accepted only from the loopback address (ADR 0010)."
       }
     }
   }

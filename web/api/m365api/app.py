@@ -4,6 +4,7 @@ Routes are thin: check the parameters (params.py), read the files (store.py), th
 the same exit: mask tenant IDs and GUIDs (masking.py) and validate against the schema (contract.py). A body
 that does not match the schema is never sent; the client gets the Error schema with status 500 instead.
 No write routes, no CORS, no generated docs (the contract is web/openapi.json).
+Every route needs a signed-in person with the role Reader (auth.py, ADR 0010); 401 and 403 use the Error schema.
 """
 
 from __future__ import annotations
@@ -13,12 +14,13 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import contract, params
+from .auth import AuthConfig, AuthError, Principal, Verifier, require
 from .masking import mask_response
 from .store import Store, StoreError
 
@@ -52,15 +54,31 @@ def respond(definition: str, produce: Callable[[], dict[str, Any]]) -> JSONRespo
     return JSONResponse(status_code=200, content=body)
 
 
-def create_app(history_dir: Path | str | None = None) -> FastAPI:
+def create_app(history_dir: Path | str | None = None, auth: AuthConfig | None = None) -> FastAPI:
+    """``auth`` None: read from the environment (auth.AuthConfig.from_env). Nothing configured: every route 401."""
     store = Store(Path(history_dir) if history_dir else default_history_dir())
+    verifier = Verifier(auth if auth is not None else AuthConfig.from_env())
+
+    def reader(request: Request) -> Principal:
+        headers = {k.lower(): v for k, v in request.headers.items()}
+        return require(verifier, "Reader", request.headers.get("authorization"),
+                       request.client.host if request.client else None, headers)
+
     app = FastAPI(
         title="M365Backup-Cloning API",
         version=contract.schema_version(),
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
+        dependencies=[Depends(reader)],
     )
+
+    @app.exception_handler(AuthError)
+    async def auth_error(_: Request, exc: AuthError) -> JSONResponse:
+        res = error_response(exc.status, exc.code, exc.message)
+        if exc.status == 401:
+            res.headers["WWW-Authenticate"] = 'Bearer realm="m365cloning"'
+        return res
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:

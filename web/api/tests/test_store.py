@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 from m365api import create_app
 from m365api.contract import errors
 
+from . import authkit
+
 
 def test_older_format_is_listed_as_outdated_and_refused_with_409(client, history):
     old = {"Kind": "apply", "PlanHash": "0" * 64, "Plan": {}}  # schema version 1 had no SchemaVersion
@@ -90,7 +92,7 @@ def test_broken_audit_lines_are_skipped(client, history):
 
 
 def test_empty_history(tmp_path):
-    client = TestClient(create_app(tmp_path / "History"))
+    client = TestClient(create_app(tmp_path / "History", authkit.config()), headers=authkit.bearer(authkit.entra_token()))
     assert client.get("/api/plans").json()["items"] == []
     assert client.get("/api/reports").json()["items"] == []
     assert client.get("/api/audit").json()["total"] == 0

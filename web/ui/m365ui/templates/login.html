@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ _("Sign in") }}{% endblock %}
+{% block content %}
+<h1>{{ _("Sign in") }}</h1>
+{% if expired %}<p class="notice-inline" role="status">{{ _("Your sign-in has ended. Sign in again.") }}</p>{% endif %}
+{% if message %}<p class="error" role="alert">{{ message }}</p>{% endif %}
+{% if not configured %}
+<p>{{ _("Sign-in is not configured on this server. Set up the app registration as described in validation/README.md (part 'Web sign-in').") }}</p>
+{% if mock %}<p><a class="button button-secondary" href="/">{{ icon("back") }} {{ _("Back to the example data") }}</a></p>{% endif %}
+{% endif %}
+<div class="signin">
+  {% if oidc %}
+  <section class="card">
+    <h2>{{ _("Microsoft account") }}</h2>
+    <p>{{ _("Sign in with your work account. Your roles come from the app registration.") }}</p>
+    <p><a class="button" href="/auth/start">{{ icon("signin") }} {{ _("Sign in with Microsoft") }}</a></p>
+  </section>
+  {% endif %}
+  {% if local %}
+  <section class="card">
+    <h2>{{ _("Local account") }}</h2>
+    <p class="meta">{{ _("Fallback on this machine only.") }}</p>
+    <form method="post" action="/login/local" class="form">
+      <input type="hidden" name="csrf" value="{{ login_csrf }}">
+      <label class="field"><span>{{ _("User name") }}</span><input name="username" autocomplete="username" required></label>
+      <label class="field"><span>{{ _("Password") }}</span><input name="password" type="password" autocomplete="current-password" required></label>
+      <div class="form-buttons"><button type="submit" class="button">{{ icon("signin") }} {{ _("Sign in") }}</button></div>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

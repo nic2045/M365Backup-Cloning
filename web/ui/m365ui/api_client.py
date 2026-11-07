@@ -2,7 +2,8 @@
 
 The interface may only call ``GET /api/...``. ``HttpClient`` talks to the real
 server, ``MockClient`` answers from web/mock/responses.json for development and
-tests. Both refuse any other path.
+tests. Both refuse any other path. The bearer token of the signed-in person is
+passed per call and only ever sent in the Authorization header (ADR 0010).
 """
 
 from __future__ import annotations
@@ -58,10 +59,10 @@ def _clean(params: Mapping[str, Any] | None) -> dict[str, str]:
 class BaseClient:
     mock = False
 
-    def get(self, path: str, params: Mapping[str, Any] | None = None) -> ApiResponse:
-        return self._get(check_path(path), _clean(params))
+    def get(self, path: str, params: Mapping[str, Any] | None = None, token: str | None = None) -> ApiResponse:
+        return self._get(check_path(path), _clean(params), token)
 
-    def _get(self, path: str, params: dict[str, str]) -> ApiResponse:  # pragma: no cover
+    def _get(self, path: str, params: dict[str, str], token: str | None = None) -> ApiResponse:  # pragma: no cover
         raise NotImplementedError
 
 
@@ -71,9 +72,10 @@ class HttpClient(BaseClient):
         # ``http`` lets tests hand in a ready client (e.g. a TestClient of the API app).
         self._client = http or httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout, transport=transport)
 
-    def _get(self, path: str, params: dict[str, str]) -> ApiResponse:
+    def _get(self, path: str, params: dict[str, str], token: str | None = None) -> ApiResponse:
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
         try:
-            r = self._client.get(path, params=params)
+            r = self._client.get(path, params=params, headers=headers)
         except httpx.HTTPError as exc:
             return ApiResponse(503, {"code": "backend-unreachable", "message": f"The server did not answer ({type(exc).__name__})."})
         try:
@@ -90,7 +92,7 @@ class MockClient(BaseClient):
         data = json.loads(Path(file).read_text(encoding="utf-8"))
         self._responses: dict[str, dict[str, Any]] = data["responses"]
 
-    def _get(self, path: str, params: dict[str, str]) -> ApiResponse:
+    def _get(self, path: str, params: dict[str, str], token: str | None = None) -> ApiResponse:
         keys = []
         if params:
             keys.append(f"GET {path}?{urlencode(params)}")

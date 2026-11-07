@@ -16,6 +16,8 @@ from m365api import create_app as create_api
 from m365ui.api_client import HttpClient
 from m365ui.main import create_app as create_ui
 
+import uikit
+
 MOCK = json.loads((Path(__file__).resolve().parents[2] / "mock" / "responses.json").read_text(encoding="utf-8"))["responses"]
 GUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
@@ -41,8 +43,16 @@ def write_history(root: Path) -> Path:
 
 @pytest.fixture()
 def web(tmp_path):
-    api = TestClient(create_api(write_history(tmp_path / "History")))
-    return TestClient(create_ui(HttpClient(http=api)))
+    return signed_in(write_history(tmp_path / "History"))
+
+
+def signed_in(history, roles=("Reader",)):
+    """Interface and real API in process, signed in through the fake Entra ID (the API checks the token)."""
+    api = TestClient(create_api(history, uikit.api_auth()))
+    auth = uikit.ui_auth(uikit.FakeEntra(roles=roles))
+    web = TestClient(create_ui(HttpClient(http=api), auth))
+    assert uikit.sign_in(web, auth).status_code == 303
+    return web
 
 
 def plan_and_report_ids():
@@ -74,7 +84,7 @@ def test_outdated_files_are_shown_and_explained(tmp_path):
     history = write_history(tmp_path / "History")
     (history / "reports" / "apply-plan-20200101-000000.json").write_text(json.dumps({"Kind": "apply", "Plan": {}}), encoding="utf-8")
     (history / "reports" / "drift-20200101-000000.json").write_text("{not json", encoding="utf-8")
-    web = TestClient(create_ui(HttpClient(http=TestClient(create_api(history)))))
+    web = signed_in(history)
 
     plans = web.get("/plans")
     assert plans.status_code == 200

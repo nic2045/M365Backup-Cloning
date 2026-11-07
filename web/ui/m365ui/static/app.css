@@ -91,3 +91,14 @@ summary { cursor: pointer; min-height: 44px; display: flex; align-items: center;
   .pairs { grid-template-columns: 1fr; }
   .pairs dd { margin-bottom: 0.25rem; }
 }
+
+/* Sign-in (issue #60) */
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-row) var(--gap-block); margin-left: auto; }
+.who-name { font-weight: 600; }
+.logout { margin: 0; }
+.signin { display: grid; gap: var(--gap-block); grid-template-columns: repeat(auto-fit, minmax(16rem, 24rem)); align-items: start; }
+.form { display: flex; flex-direction: column; gap: var(--gap-row); }
+.form .field { flex: none; }
+.form-buttons { margin-top: var(--gap-block); }
+input { min-height: 44px; max-width: 100%; font: inherit; padding: 0 0.5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.notice-inline { padding: 0.75rem; border-radius: 8px; background: var(--info-bg); color: var(--info-fg); }

@@ -43,15 +43,19 @@ function Get-OpenApiResponseSchema {
 }
 
 function Get-OpenApiProblem {
-    <# Structural checks of web/openapi.json: version, read-only, schemas for 200/400/500, all references resolve. #>
+    <# Structural checks of web/openapi.json: version, read-only, sign-in required (ADR 0010),
+       schemas for 200/400/401/403/500, all references resolve. #>
     param([Parameter(Mandatory)]$OpenApi, [Parameter(Mandatory)]$Schema)
     $problems = [System.Collections.Generic.List[string]]::new()
     if ($OpenApi['openapi'] -notmatch '^3\.1\.\d+$') { $problems.Add("openapi version '$($OpenApi['openapi'])' is not 3.1.x") }
+    $schemes = if ($OpenApi['components'].ContainsKey('securitySchemes')) { $OpenApi['components']['securitySchemes'] } else { @{} }
+    if (-not $schemes.ContainsKey('bearerAuth') -or $schemes['bearerAuth']['scheme'] -ne 'bearer') { $problems.Add('components.securitySchemes has no bearerAuth') }
+    if (-not (@($OpenApi['security']) | Where-Object { $_ -is [System.Collections.IDictionary] -and $_.ContainsKey('bearerAuth') })) { $problems.Add('the API does not require bearerAuth (security)') }
     foreach ($p in $OpenApi['paths'].Keys) {
         if ($p -notlike '/api/*') { $problems.Add("$p is not below /api/") }
         foreach ($m in $OpenApi['paths'][$p].Keys) {
             if ($m -ne 'get') { $problems.Add("$m $p is not a read route (write routes come with #14)") ; continue }
-            foreach ($code in '200', '400', '500') {
+            foreach ($code in '200', '400', '401', '403', '500') {
                 $name = Get-OpenApiResponseSchema -OpenApi $OpenApi -Method $m -Path $p -Status $code
                 if (-not $name) { $problems.Add("$m $p has no schema for $code") }
                 elseif ($code -ne '200' -and $name -ne 'Error') { $problems.Add("$m $p uses '$name' for $code instead of Error") }

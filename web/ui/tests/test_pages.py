@@ -13,6 +13,8 @@ from m365ui.api_client import (
 )
 from m365ui.main import create_app
 
+import uikit
+
 MOCK_FILE = Path(__file__).resolve().parents[2] / "mock" / "responses.json"
 OPENAPI_FILE = Path(__file__).resolve().parents[2] / "openapi.json"
 GUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
@@ -27,9 +29,17 @@ class RecordingClient(BaseClient):
         self.paths: list[str] = []
         self.mock = True
 
-    def _get(self, path, params):
+    def _get(self, path, params, token=None):
         self.paths.append(path)
-        return self.inner._get(path, params)
+        return self.inner._get(path, params, token)
+
+
+def signed_in(client: BaseClient) -> TestClient:
+    """A real (non-mock) client needs a session: sign in through the fake Entra ID."""
+    auth = uikit.ui_auth()
+    web = TestClient(create_app(client, auth))
+    assert uikit.sign_in(web, auth).status_code == 303
+    return web
 
 
 def mock_ids():
@@ -100,13 +110,13 @@ def test_guid_from_the_server_is_masked():
     class GuidClient(BaseClient):
         mock = False
 
-        def _get(self, path, params):
+        def _get(self, path, params, token=None):
             if path == "/api/status":
                 return ApiResponse(200, {"schemaVersion": "2", "lastComparisonUtc": guid, "differences": 1,
                                          "fitStatus": "red", "reportId": "drift-1"})
             return ApiResponse(404, {"code": "not-found", "message": guid})
 
-    html = TestClient(create_app(GuidClient())).get("/").text
+    html = signed_in(GuidClient()).get("/").text
     assert guid not in html and "1a2b3c4d" in html
 
 
@@ -156,7 +166,7 @@ def test_unreachable_backend_shows_error():
         raise httpx.ConnectError("down")
 
     client = HttpClient("http://backend.invalid", transport=httpx.MockTransport(boom))
-    r = TestClient(create_app(client)).get("/")
+    r = signed_in(client).get("/")
     assert r.status_code == 502 and "backend-unreachable" in r.text and "Example data" not in r.text
 
 
@@ -177,7 +187,7 @@ class OutdatedClient(BaseClient):
 
     mock = False
 
-    def _get(self, path, params):
+    def _get(self, path, params, token=None):
         if path == "/api/plans":
             return ApiResponse(200, {"schemaVersion": "2", "items": [
                 {"id": "apply-plan-20200101-000000", "kind": "apply", "createdUtc": "2020-01-01T00:00:00Z", "state": "outdated"}]})
@@ -188,7 +198,7 @@ class OutdatedClient(BaseClient):
 
 
 def test_outdated_entries_and_409_page():
-    web = TestClient(create_app(OutdatedClient()))
+    web = signed_in(OutdatedClient())
     plans = web.get("/plans")
     assert plans.status_code == 200
     assert "badge-warn" in plans.text and "Outdated" in plans.text and "⟳" in plans.text

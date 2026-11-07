@@ -47,8 +47,20 @@ def test_every_openapi_route_names_its_schema_and_the_error_schema():
         for op in ops.values():
             ok = op["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
             assert ok.endswith("/" + ROUTE_SCHEMA[path])
-            for status in ("400", "500"):
+            for status in ("400", "401", "403", "500"):
                 assert status in op["responses"], f"{path} has no {status}"
+                ref = op["responses"][status]["$ref"].rsplit("/", 1)[-1]
+                schema = OPENAPI["components"]["responses"][ref]["content"]["application/json"]["schema"]["$ref"]
+                assert schema == "#/components/schemas/Error"
+
+
+def test_every_route_needs_sign_in():
+    assert OPENAPI["security"] == [{"bearerAuth": []}]
+    assert OPENAPI["components"]["securitySchemes"]["bearerAuth"]["scheme"] == "bearer"
+    for ops in OPENAPI["paths"].values():
+        for op in ops.values():
+            assert op.get("security", OPENAPI["security"]) == OPENAPI["security"]
+            assert op["x-required-role"] == "Reader"
 
 
 def test_only_read_routes():
