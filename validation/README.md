@@ -123,3 +123,19 @@ The UTCM type names are checked against the TCM schema that Learn links (`utcm-m
 | 8 | Unverified: nested settings | Settings Catalog and endpoint security policies have nested settings (`Settings`, `TemplateReference`, ...) that the runner passes as hash tables; only `Assignments` become CIM instances | One test policy of each kind; if `Invoke-DscResource` rejects the nested settings, tell me the message (then they need CIM instances too) |
 | 9 | Unverified: account protection assignments | `IntuneAccountProtectionPolicy` uses `MSFT_IntuneAccountProtectionPolicyAssignments` (schema) | The assignment is created |
 | 10 | Not handled | Role scope tags (no TCM resource, not in the policy schemas); apps (SW-Depoyment uploads them) | Scope tags: set them in Dev by hand if you use them |
+
+# Part 6: Dev base state (writes to the Dev tenant)
+
+The UTCM type `microsoft.entra.crosstenantaccesspolicyconfigurationpartner` and its parameters (`PartnerTenantId`, `B2BCollaborationInbound`, `AutomaticUserConsentSettings`) are on Learn (`utcm-entra-resources`). The Microsoft365DSC name `AADCrossTenantAccessPolicyConfigurationPartner` and the CIM class names of the nested settings follow the naming rule; only `MSFT_AADCrossTenantAccessPolicyTarget` is named in the TCM schema.
+
+| # | Check | How | Expected |
+|---|---|---|---|
+| 1 | DSC resource and classes | `powershell.exe -NoProfile -Command "Get-DscResource -Module Microsoft365DSC -Name AADGroup,AADCrossTenantAccessPolicyConfigurationPartner \| Select-Object Name, Properties"` | Both found; the partner's properties show `AutomaticUserConsentSettings` and `B2BCollaborationInbound` with classes `MSFT_AADCrossTenantAccessPolicyAutomaticUserConsentSettings` and `MSFT_AADCrossTenantAccessPolicyB2BSetting`. Another class name: tell me |
+| 2 | UTCM read permission | Learn `utcm-entra-resources`, Read permissions for `group` and `crossTenantAccessPolicyConfigurationPartner` on the UTCM service principal of Dev | The Dev snapshot ends `succeeded` with both types |
+| 3 | Dev registration write permissions | Learn: `Group.ReadWrite.All` (groups) and `Policy.ReadWrite.CrossTenantAccess` (partner) on the Dev registration | Apply works in Dev only. The setup wizard (#18) will set these; the toolkit does not check them |
+| 4 | Plan on a fresh Dev tenant | `pwsh scripts/Invoke-DevBaseline.ps1 -DevToken $d` | Break-glass group, persona groups and the partner are `planned` |
+| 5 | Apply | Same with `-Apply -ConfirmPlanHash <hash>` | Groups exist, static, security, not mail-enabled, without members. Entra admin center > External Identities > Cross-tenant access settings: the Prod tenant is listed, B2B collaboration inbound allowed, trust setting "Automatically redeem invitations" on (inbound) |
+| 6 | Base state reached | Plan again right after the apply | `Base state reached: no difference.` |
+| 7 | Unverified: nested CIM settings | The runner turns entries with `__CimClass` into CIM instances (`New-CimInstance -ClientOnly`) before `Invoke-DscResource` | The partner is created. If `Invoke-DscResource` rejects the nested settings, tell me the message |
+| 8 | Unverified: update of an existing partner | A partner with automatic redemption off | Only `AutomaticUserConsentSettings` (and an unset B2B inbound rule) change; B2B direct connect, outbound and inbound trust stay as they were |
+| 9 | Not changed on purpose | A dynamic persona group; a B2B inbound rule for the Prod tenant limited to some groups | Both `blocked` with a reason; change them by hand if the base state should hold |

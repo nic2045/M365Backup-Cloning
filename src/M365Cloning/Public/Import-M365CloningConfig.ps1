@@ -6,7 +6,7 @@ function Import-M365CloningConfig {
         Optional: Dev.ApplyAllowed (bool, default false), BreakGlass (users) and BreakGlassGroups (group names),
         PersonaPrefix (string), Personas (list of persona names) and PersonaMap (persona -> exact group name(s)),
         see Get-PersonaSettings and ADR 0003. DevUsers (positive list for issue #22) and InviteRedirectUrl, see
-        config.example.psd1.
+        config.example.psd1. Baseline (Dev base state, issue #8), see Get-DevBaselineDefinition.
         Rejects a config without a Prod or Dev tenant, with placeholders such as '<prod-tenant-guid>'
         still in it, with identical Prod and Dev tenant IDs, or with the old 'Customers' list.
         -AllowPlaceholders is only for tests with the example file.
@@ -99,6 +99,22 @@ function Import-M365CloningConfig {
     }
     if ($config.ContainsKey('InviteRedirectUrl') -and $null -ne $config.InviteRedirectUrl -and [string]$config.InviteRedirectUrl -notmatch '^https://') {
         throw 'InviteRedirectUrl must be an https URL.'
+    }
+    # Dev base state (issue #8, Get-DevBaselineDefinition): all keys optional.
+    if ($config.ContainsKey('Baseline') -and $null -ne $config.Baseline) {
+        if ($config.Baseline -isnot [hashtable]) { throw 'Baseline must be a table: @{ PersonaGroups = ...; ExclusionGroups = ...; CrossTenantPartner = ... }.' }
+        foreach ($key in $config.Baseline.Keys) {
+            if ([string]$key -notin 'PersonaGroups', 'ExclusionGroups', 'CrossTenantPartner') { throw "Baseline: unknown key '$key' (PersonaGroups, ExclusionGroups, CrossTenantPartner)." }
+        }
+        foreach ($key in 'PersonaGroups', 'CrossTenantPartner') {
+            if ($config.Baseline.ContainsKey($key) -and $config.Baseline[$key] -isnot [bool]) { throw "Baseline.$key must be `$true or `$false." }
+        }
+        if ($config.Baseline.ContainsKey('ExclusionGroups') -and $null -ne $config.Baseline.ExclusionGroups) {
+            foreach ($name in @($config.Baseline.ExclusionGroups)) {
+                if ($name -isnot [string] -or [string]::IsNullOrWhiteSpace($name)) { throw 'Baseline.ExclusionGroups must be a list of group names.' }
+                if (-not $AllowPlaceholders -and $name -match '^\s*<.*>\s*$') { throw 'Baseline.ExclusionGroups still contains a placeholder.' }
+            }
+        }
     }
     $config
 }
