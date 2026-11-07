@@ -42,3 +42,19 @@ pwsh scripts/Invoke-ApplyDev.ps1 -SourceSnapshotPath prod.json -TargetSnapshotPa
 - Conditional Access is always planned as Report-only, the break-glass accounts from `config.psd1` are always excluded; without them no policy is applied.
 - Conditional Access copy (ADR 0003): your real Prod policies are copied to Dev with their names. The groups they refer to are created in Dev as **static, empty** groups with the same name (no members, no dynamic rule); the policy then points to them by name. A group is a persona group by prefix and persona name (`CA-Persona-Admins`, `CA-Persona-Admins-...-Exclusions`) or through `PersonaMap` in `config.psd1` for other Prod names. A group without a recognisable persona that does not exist in Dev blocks the policy (`needs-group`); copied groups without a persona are listed under Notes in the plan.
 - Microsoft365DSC runs in its own Windows PowerShell 5.1 process. Refused attempts and applies are logged in `History\audit.jsonl` (no secrets).
+
+## Dev users: test users and invited admins (writes to the Dev tenant only)
+
+```powershell
+# 1. Plan: reads the Dev state (GET only), nothing is changed. Writes History\reports\dev-users-plan-*.md/.json.
+pwsh scripts/Invoke-DevUsers.ps1 -DevToken $d
+# 2. Apply exactly that plan (needs Dev.ApplyAllowed = $true).
+pwsh scripts/Invoke-DevUsers.ps1 -DevToken $d -Apply -ConfirmPlanHash <hash> [-ShowInitialPasswords]
+```
+
+- Positive list `DevUsers` in `config.psd1`: `TestUser` (cloud account in Dev, Id = UPN) or `AdminGuest` (admin from Prod invited as B2B guest, Id = mail address), each with exactly one persona. Break-glass accounts are refused.
+- Each account goes into the empty Dev group of its persona (prefix + persona or `PersonaMap`). A missing persona group blocks the entry (`needs-group`): run `Invoke-ApplyDev.ps1` first.
+- Only add: nothing is removed, disabled or changed on existing accounts; existing accounts and memberships are shown as `exists`.
+- Microsoft Graph with an allow list of three write endpoints (users, invitations, group members), Dev tenant only. No invitation mail is sent.
+- Initial passwords: random, must be changed at first sign-in, never stored or logged. `-ShowInitialPasswords` prints them once to the console; without it an admin resets the password before the first sign-in.
+- Cross-tenant sync as the automatic way is a later step (#21).

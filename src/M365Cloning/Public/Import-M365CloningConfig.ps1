@@ -5,7 +5,8 @@ function Import-M365CloningConfig {
     .DESCRIPTION
         Optional: Dev.ApplyAllowed (bool, default false), BreakGlass (users) and BreakGlassGroups (group names),
         PersonaPrefix (string), Personas (list of persona names) and PersonaMap (persona -> exact group name(s)),
-        see Get-PersonaSettings and ADR 0003.
+        see Get-PersonaSettings and ADR 0003. DevUsers (positive list for issue #22) and InviteRedirectUrl, see
+        config.example.psd1.
         Rejects a config without a Prod or Dev tenant, with placeholders such as '<prod-tenant-guid>'
         still in it, with identical Prod and Dev tenant IDs, or with the old 'Customers' list.
         -AllowPlaceholders is only for tests with the example file.
@@ -72,6 +73,32 @@ function Import-M365CloningConfig {
                 if (-not $AllowPlaceholders -and $name -match '^\s*<.*>\s*$') { throw "PersonaMap '$persona' still contains a placeholder." }
             }
         }
+    }
+    # Dev users (issue #22): positive list of test users and admins invited as guests, each with exactly one persona.
+    if ($config.ContainsKey('DevUsers') -and $null -ne $config.DevUsers) {
+        $settings = Get-PersonaSettings -Config $config
+        $known = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($p in $settings.Personas) { $null = $known.Add($p) }
+        foreach ($p in $settings.Map.Keys) { $null = $known.Add([string]$p) }
+        $breakGlass = @(if ($config.ContainsKey('BreakGlass') -and $null -ne $config.BreakGlass) { @($config.BreakGlass) })
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($u in @($config.DevUsers)) {
+            if ($u -isnot [hashtable]) { throw 'DevUsers must be a list of tables: @{ Type = ...; Id = ...; Persona = ... }.' }
+            if ([string]$u.Type -notin 'TestUser', 'AdminGuest') { throw "DevUsers: Type must be 'TestUser' or 'AdminGuest' (got '$($u.Type)')." }
+            $id = [string]$u.Id
+            if ([string]::IsNullOrWhiteSpace($id)) { throw 'DevUsers: every entry needs an Id (UPN for TestUser, mail address for AdminGuest).' }
+            if (-not $AllowPlaceholders -and (& $isPlaceholder $id)) { throw "DevUsers: '$id' is still a placeholder." }
+            if (-not ($id -match '^\s*<.*>\s*$') -and $id -notmatch '^[^@\s]+@[^@\s]+$') { throw "DevUsers: '$id' is not a UPN or mail address." }
+            if (-not $seen.Add($id)) { throw "DevUsers: '$id' is listed more than once." }
+            if ($breakGlass | Where-Object { [string]$_ -ieq $id }) { throw "DevUsers: '$id' is a break-glass account; break-glass accounts are never created or changed." }
+            if (@($u.Persona).Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]@($u.Persona)[0])) { throw "DevUsers: '$id' needs exactly one Persona." }
+            $persona = [string]@($u.Persona)[0]
+            if ($persona -ieq 'BreakGlass') { throw "DevUsers: '$id' cannot get the persona BreakGlass." }
+            if (-not $known.Contains($persona)) { throw "DevUsers: the persona '$persona' of '$id' is unknown (Personas or PersonaMap)." }
+        }
+    }
+    if ($config.ContainsKey('InviteRedirectUrl') -and $null -ne $config.InviteRedirectUrl -and [string]$config.InviteRedirectUrl -notmatch '^https://') {
+        throw 'InviteRedirectUrl must be an https URL.'
     }
     $config
 }

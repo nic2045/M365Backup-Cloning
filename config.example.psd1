@@ -27,6 +27,16 @@
     # PersonaMap maps a persona to the exact names of your Prod groups when they do not follow the prefix:
     # PersonaMap = @{ Admins = @('<your-admin-group-name>') }
     PersonaMap    = @{}
+    # Dev users (scripts/Invoke-DevUsers.ps1): positive list. TestUser = cloud account created in Dev (Id = UPN with a
+    # verified domain of the Dev tenant); AdminGuest = admin from Prod invited as B2B guest (Id = mail address).
+    # Persona = exactly one active persona (Personas or PersonaMap). Break-glass accounts must not be listed.
+    # Each account is put into the empty Dev group of its persona. Nothing is ever removed.
+    DevUsers = @(
+        @{ Type = 'TestUser';   Id = '<test-user-upn>';       Persona = 'Internals'; DisplayName = 'Test Internals 01' }
+        @{ Type = 'AdminGuest'; Id = '<prod-admin-mail>';     Persona = 'Admins' }
+    )
+    # Where an invited guest lands after redeeming (https). Default: https://myapps.microsoft.com
+    # InviteRedirectUrl = 'https://myapps.microsoft.com'
     # Accounts that are never touched (admins, service accounts, break-glass).
     ProtectedAccounts = @('<upn-or-object-id>')
     # Optional: override the resource types of the snapshot (see Get-M365CloningDefaultResources).
