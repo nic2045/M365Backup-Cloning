@@ -23,6 +23,11 @@ function ConvertTo-ApplyPlanMarkdown {
         $name = ([string]$a['Name']).Replace('|', '\|')
         $null = $sb.AppendLine("| $($a['Status']) | $($a['Operation']) | $($a['ResourceType']) | $name | $reason |")
     }
+    if ($Plan.Contains('Notes') -and @($Plan['Notes']).Count -gt 0) {
+        $null = $sb.AppendLine()
+        $null = $sb.AppendLine('Notes:')
+        foreach ($note in $Plan['Notes']) { $null = $sb.AppendLine("- $note") }
+    }
     $null = $sb.AppendLine()
     $null = $sb.AppendLine('Apply only this plan: `scripts/Invoke-ApplyDev.ps1 -Apply -ConfirmPlanHash <hash above>`. Blocked and skipped entries are never applied.')
     $sb.ToString()

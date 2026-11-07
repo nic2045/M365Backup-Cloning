@@ -116,7 +116,7 @@ Describe 'New-ApplyPlan: groups and assignments (fail-closed)' {
         $a = script:Get-Action (New-ApplyPlan -Source $src -Target (script:New-Snap @()) -Config (script:New-Config)) 'G'
         $a['Properties'].Contains('Members') | Should -BeFalse
         $a['Properties'].Contains('Owners') | Should -BeFalse
-        $a['Properties']['GroupAsMembers'] | Should -Contain 'G2'
+        $a['Properties'].Contains('GroupAsMembers') | Should -BeFalse   # a group in a group would bring its members
     }
 }
 
@@ -162,7 +162,8 @@ Describe 'New-ApplyPlan: Conditional Access' {
         $src = script:New-Snap @((script:New-Res $script:CA 'CA' @{ IncludeUsers = @('All') }), (script:New-Res $script:Policy 'P' @{ X = 1 }), (script:New-Res $script:Group 'G' @{}))
         $plan = New-ApplyPlan -Source $src -Target (script:New-Snap @()) -Config (script:New-Config)
         $plan['Actions'][-1]['Name'] | Should -Be 'CA'
-        $plan['Actions'][0]['Name'] | Should -Be 'G'
+        $plan['Actions'][0]['ResourceType'] | Should -Be $script:Group   # groups first (the break-glass group copy and 'G')
+        @($plan['Actions'] | Where-Object { $_['Name'] -eq 'G' }).Count | Should -Be 1
     }
 }
 
