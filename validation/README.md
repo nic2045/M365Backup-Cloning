@@ -91,3 +91,18 @@ Claude never ran any of this against a tenant (mocks and invented fixtures only)
 | 8 | Unverified: the group names in `IncludeGroups` / `ExcludeGroups` of `AADConditionalAccessPolicy` are display names | One test policy | The policy resolves the groups by name in Dev |
 | 9 | Not done here: placing synchronised test users and admins into the persona groups (cross-tenant sync, nic2045/M365Backup-Cloning#7) | - | Follows with the reset/base configuration |
 
+
+# Part 4: Dev users, test users and invited admins (writes to the Dev tenant)
+
+Claude never ran any of this against a tenant (mocks and invented fixtures only). Same gate as Part 2 (`Dev.ApplyAllowed`, plan hash, Dev tenant only); start with one test user and one admin.
+
+| # | Check | How | Expected |
+|---|---|---|---|
+| 1 | Permissions of the Dev registration | Application permissions as on Learn: `User.Create` (or `User.ReadWrite.All`) for *Create user*, `User.Invite.All` for *Create invitation*, `GroupMember.ReadWrite.All` for *Add members*; `User.Read.All` and `GroupMember.Read.All` (or `Group.Read.All`) for the reads | The plan reads users and groups; the apply writes. **Dev tenant only.** App-only invitations do not work if B2B invitations are switched off in Dev |
+| 2 | Positive list | `DevUsers` in `config.psd1`: one `TestUser` with a UPN on a verified domain of the Dev tenant, one `AdminGuest` with the mail of an admin from Prod, each with a persona | `Import-M365CloningConfig` accepts it; an unknown persona, two personas, a break-glass account or a duplicate are refused |
+| 3 | Plan | `pwsh scripts/Invoke-DevUsers.ps1 -DevToken $d` | `CreateUser`, `InviteGuest` and two `AddMember` rows planned; a persona whose group does not exist in Dev is `blocked` with `needs-group` |
+| 4 | Apply | Same with `-Apply -ConfirmPlanHash <hash>`; once with `-ShowInitialPasswords`, once without | Test user exists, must change the password at first sign-in; the guest exists (no invitation mail was sent); both are members of their persona group. Without the switch no password is shown: reset it in the Entra admin center |
+| 5 | Nothing else changed | A second plan right after the apply | Everything `exists`, nothing planned; no account was removed or disabled, no other group touched |
+| 6 | No password on disk | Search `History\` for the password shown in step 4 | Not found (result file, report and audit log hold none) |
+| 7 | Redemption without consent prompt | Cross-tenant access settings in Dev: inbound for the Prod tenant, trust setting **automatically redeem invitations** (and outbound in Prod) | The admin from Prod signs in to Dev without a consent prompt. The toolkit does **not** change this setting; it stays in place on a reset (#7) |
+| 8 | Unverified: replication delay | An `AddMember` right after `CreateUser` | Works after the built-in retry (3 tries); if it fails with "objects being referenced don't exist", run the apply again (the membership is then planned for the existing account) |

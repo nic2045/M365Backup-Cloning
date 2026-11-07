@@ -9,12 +9,15 @@ function ConvertTo-ApplyPlanMarkdown {
         [Parameter(Mandatory)][string]$PlanHash
     )
     $sb = [System.Text.StringBuilder]::new()
-    $null = $sb.AppendLine('# Apply plan Prod -> Dev (preview, nothing was changed)')
+    $title = if ($Plan.Contains('Title') -and $Plan['Title']) { [string]$Plan['Title'] } else { 'Apply plan Prod -> Dev (preview, nothing was changed)' }
+    $null = $sb.AppendLine("# $title")
     $null = $sb.AppendLine()
     $null = $sb.AppendLine("Plan hash: ``$PlanHash``")
     $null = $sb.AppendLine()
     $s = $Plan['Summary']
-    $null = $sb.AppendLine("Planned: $($s['Planned']) | Blocked: $($s['Blocked']) | Skipped: $($s['Skipped'])")
+    $line = "Planned: $($s['Planned']) | Blocked: $($s['Blocked']) | Skipped: $($s['Skipped'])"
+    if ($s.Contains('Exists')) { $line += " | Exists: $($s['Exists'])" }
+    $null = $sb.AppendLine($line)
     $null = $sb.AppendLine()
     $null = $sb.AppendLine('| Status | Operation | Resource type | Name | Reason |')
     $null = $sb.AppendLine('|---|---|---|---|---|')
@@ -29,6 +32,7 @@ function ConvertTo-ApplyPlanMarkdown {
         foreach ($note in $Plan['Notes']) { $null = $sb.AppendLine("- $note") }
     }
     $null = $sb.AppendLine()
-    $null = $sb.AppendLine('Apply only this plan: `scripts/Invoke-ApplyDev.ps1 -Apply -ConfirmPlanHash <hash above>`. Blocked and skipped entries are never applied.')
+    $hint = if ($Plan.Contains('ApplyHint') -and $Plan['ApplyHint']) { [string]$Plan['ApplyHint'] } else { 'scripts/Invoke-ApplyDev.ps1 -Apply -ConfirmPlanHash <hash above>' }
+    $null = $sb.AppendLine("Apply only this plan: ``$hint``. Blocked, skipped and existing entries are never applied.")
     $sb.ToString()
 }
