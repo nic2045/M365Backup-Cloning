@@ -124,7 +124,7 @@ Both apps need sign-in. Nothing is configured: the API answers 401 to every requ
 | `M365CLONING_PWSH` | Path of PowerShell 7 (default `pwsh`) |
 | `M365CLONING_CONFIG` | Path of `config.psd1` if it is not the one next to `scripts/` |
 
-The account that runs the API needs the certificate of each app registration (thumbprints in the config) in its personal certificate store; the runner signs in with it (`Get-AppOnlyGraphToken`). An apply runs Microsoft365DSC, so it needs Windows. Check on a real system: `validation/README.md`, part 14.
+The account that runs the API needs the module Az.Accounts and the certificate of each app registration (thumbprints in the config) in its personal certificate store; the runner signs in with it through `Connect-AzAccount` and `Get-AzAccessToken` (ADR 0013). An apply runs Microsoft365DSC, so it needs Windows. Check on a real system: `validation/README.md`, part 14.
 
 ## Dependencies and lock files (issue #59)
 
