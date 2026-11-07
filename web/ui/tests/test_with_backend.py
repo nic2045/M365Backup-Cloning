@@ -67,3 +67,25 @@ def test_pages_work_with_the_real_api(web, page):
 def test_unknown_plan_is_404_from_the_real_api(web):
     r = web.get("/plans/apply-plan-19990101-000000")
     assert r.status_code == 404
+
+
+def test_outdated_files_are_shown_and_explained(tmp_path):
+    """Issue #59: a file in an older format is listed as 'Outdated' and its page says how to regenerate it."""
+    history = write_history(tmp_path / "History")
+    (history / "reports" / "apply-plan-20200101-000000.json").write_text(json.dumps({"Kind": "apply", "Plan": {}}), encoding="utf-8")
+    (history / "reports" / "drift-20200101-000000.json").write_text("{not json", encoding="utf-8")
+    web = TestClient(create_ui(HttpClient(http=TestClient(create_api(history)))))
+
+    plans = web.get("/plans")
+    assert plans.status_code == 200
+    assert "apply-plan-20200101-000000" in plans.text and "Outdated" in plans.text
+    assert "regenerate the plan with the script" in plans.text
+
+    reports = web.get("/reports")
+    assert reports.status_code == 200 and "Outdated" in reports.text
+
+    detail = web.get("/plans/apply-plan-20200101-000000")
+    assert detail.status_code == 409
+    assert "older or unknown format" in detail.text and "Regenerate the plan or report" in detail.text
+    assert "unsupported-format" in detail.text
+    assert web.get("/reports/drift-20200101-000000").status_code == 409

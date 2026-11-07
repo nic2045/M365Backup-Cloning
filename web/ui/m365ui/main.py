@@ -58,7 +58,8 @@ def create_app(client: BaseClient | None = None) -> FastAPI:
         return templates.TemplateResponse(request, name, ctx, status_code=http_status)
 
     def failed(request: Request, res: ApiResponse) -> HTMLResponse:
-        status = res.status if res.status in (400, 404) else 502
+        # 409: the stored file has an older format (issue #59); the page says how to regenerate it.
+        status = res.status if res.status in (400, 404, 409) else 502
         body = res.body if isinstance(res.body, dict) else {}
         return render(
             request, "error.html", http_status=status,

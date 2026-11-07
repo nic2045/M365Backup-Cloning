@@ -1,0 +1,4 @@
+-r requirements.in
+# The API server, for the in-process test against the real backend (tests/test_with_backend.py).
+-r ../api/requirements.in
+pytest==9.1.1

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import filter_form, select %}
+{% from "_macros.html" import badge, filter_form, select %}
 {% block title %}{{ _("Plans") }}{% endblock %}
 {% block content %}
 <h1>{{ _("Plans") }}</h1>
@@ -19,7 +19,11 @@
       <td data-label="{{ _('Plan') }}"><a href="/plans/{{ p.id }}">{{ p.id }}</a></td>
       <td data-label="{{ _('Kind') }}">{{ p.kind }}{% if p.mode %} ({{ p.mode }}){% endif %}</td>
       <td data-label="{{ _('Created (UTC)') }}"><time>{{ p.createdUtc }}</time></td>
+      {% if p.state == "outdated" %}
+      <td data-label="{{ _('State') }}" colspan="3">{{ badge("outdated") }} <span class="meta">{{ _("Older format: regenerate the plan with the script.") }}</span></td>
+      {% else %}
       <td data-label="{{ _('Planned') }}" class="num">{{ p.summary.Planned }}</td><td data-label="{{ _('Blocked') }}" class="num">{{ p.summary.Blocked }}</td><td data-label="{{ _('Skipped') }}" class="num">{{ p.summary.Skipped }}</td>
+      {% endif %}
     </tr>
   {% endfor %}
   </tbody>

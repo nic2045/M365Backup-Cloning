@@ -8,7 +8,8 @@
   "skipped": ("muted", "–", _("Skipped")), "excluded": ("muted", "–", _("Excluded")),
   "exists": ("ok", "✓", _("Exists")), "protected": ("ok", "⛨", _("Protected")),
   "applied": ("ok", "✓", _("Applied")), "failed": ("bad", "✕", _("Failed")),
-  "identical": ("ok", "✓", _("Identical")), "different": ("warn", "!", _("Different"))
+  "identical": ("ok", "✓", _("Identical")), "different": ("warn", "!", _("Different")),
+  "outdated": ("warn", "⟳", _("Outdated"))
 } -%}
 {%- set m = map.get(v, ("muted", "•", value or _("unknown"))) -%}
 <span class="badge badge-{{ m[0] }}"><span aria-hidden="true">{{ m[1] }}</span> {{ m[2] }}</span>

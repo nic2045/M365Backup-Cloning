@@ -982,6 +982,9 @@
         },
         "status": {
           "$ref": "#/$defs/FitStatus"
+        },
+        "state": {
+          "$ref": "#/$defs/ListItemState"
         }
       }
     },
@@ -1071,9 +1074,7 @@
       "required": [
         "id",
         "kind",
-        "createdUtc",
-        "planHash",
-        "summary"
+        "createdUtc"
       ],
       "properties": {
         "id": {
@@ -1099,7 +1100,26 @@
         },
         "summary": {
           "$ref": "#/$defs/PlanSummary"
+        },
+        "state": {
+          "$ref": "#/$defs/ListItemState"
         }
+      },
+      "if": {
+        "properties": {
+          "state": {
+            "const": "outdated"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "else": {
+        "required": [
+          "planHash",
+          "summary"
+        ]
       }
     },
     "PlanList": {
@@ -1323,6 +1343,13 @@
         }
       },
       "description": "Common core of every licence section (issue #51): the plan check (PlanLicences) and the suitability check (TenantLicences) both start with these fields."
+    },
+    "ListItemState": {
+      "description": "State of a list entry (issue #59). Missing means 'current'. 'outdated': the file has an older or unknown format; only id, kind, mode and the file time are known, and the detail route answers 409 'unsupported-format' (regenerate it with the scripts).",
+      "enum": [
+        "current",
+        "outdated"
+      ]
     }
   }
 }

@@ -1,8 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import badge, icon %}
 {% block title %}{{ _("Error") }}{% endblock %}
 {% block content %}
+{% if code == "unsupported-format" %}
+<h1>{{ _("This file has an older or unknown format") }}</h1>
+<p role="alert">{{ badge("outdated") }} {{ message }} <span class="meta">({{ code }})</span></p>
+<p>{{ _("Regenerate the plan or report: run the script that wrote it again, then open the new entry in the list.") }}</p>
+{% else %}
 <h1>{{ _("This page could not be shown") }}</h1>
 <p class="error" role="alert">{{ message }} <span class="meta">({{ code }})</span></p>
+{% endif %}
 <p><a class="button button-secondary" href="/">{{ icon("back") }} {{ _("Back to the overview") }}</a></p>
 {% endblock %}

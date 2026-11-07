@@ -20,6 +20,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: pip install -r web/api/requirements-dev.txt
+        run: pip install --require-hashes -r web/api/requirements-dev.txt
       - name: Pytest
         run: pytest web/api
