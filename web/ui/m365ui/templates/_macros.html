@@ -1,29 +1,41 @@
-{#- Status shown as symbol + text + colour, never colour alone. -#}
+{#- Central building blocks (ADR 0011). Icons: Fluent UI System Icons, see view.ICON_FILES. -#}
+{% macro icon(name, label="") -%}{{ icon_svg(name, label) }}{%- endmacro %}
+
+{#- Status shown as icon + text + colour, never by colour or icon alone. -#}
 {% macro badge(value) -%}
 {%- set v = (value or "")|string|lower -%}
 {%- set map = {
-  "green": ("ok", "✓", _("Green")), "yellow": ("warn", "!", _("Yellow")), "red": ("bad", "✕", _("Red")),
-  "grey": ("muted", "?", _("Grey: not verified")),
-  "planned": ("info", "→", _("Planned")), "blocked": ("bad", "✕", _("Blocked")),
-  "skipped": ("muted", "–", _("Skipped")), "excluded": ("muted", "–", _("Excluded")),
-  "exists": ("ok", "✓", _("Exists")), "protected": ("ok", "⛨", _("Protected")),
-  "applied": ("ok", "✓", _("Applied")), "failed": ("bad", "✕", _("Failed")),
-  "identical": ("ok", "✓", _("Identical")), "different": ("warn", "!", _("Different")),
-  "outdated": ("warn", "⟳", _("Outdated"))
+  "green": ("ok", "ok", _("Green")), "yellow": ("warn", "warn", _("Yellow")), "red": ("bad", "bad", _("Red")),
+  "grey": ("muted", "unknown", _("Grey: not verified")), "notverified": ("muted", "unknown", _("Not verified")),
+  "ok": ("ok", "ok", _("OK")),
+  "planned": ("info", "next", _("Planned")), "blocked": ("bad", "bad", _("Blocked")),
+  "skipped": ("muted", "todo", _("Skipped")), "excluded": ("muted", "todo", _("Excluded")),
+  "exists": ("ok", "ok", _("Exists")), "protected": ("ok", "protected", _("Protected")),
+  "applied": ("ok", "ok", _("Applied")), "failed": ("bad", "bad", _("Failed")),
+  "identical": ("ok", "ok", _("Identical")), "different": ("warn", "warn", _("Different")),
+  "outdated": ("warn", "outdated", _("Outdated"))
 } -%}
-{%- set m = map.get(v, ("muted", "•", value or _("unknown"))) -%}
-<span class="badge badge-{{ m[0] }}"><span aria-hidden="true">{{ m[1] }}</span> {{ m[2] }}</span>
+{%- set m = map.get(v, ("muted", "info", value or _("unknown"))) -%}
+<span class="badge badge-{{ m[0] }}">{{ icon(m[1]) }}<span class="badge-text">{{ m[2] }}</span></span>
 {%- endmacro %}
 
-{% macro icon(name) -%}
-{%- if name == "filter" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>
-{%- elif name == "clear" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-{%- elif name == "prev" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
-{%- elif name == "next" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
-{%- elif name == "signout" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>
-{%- elif name == "signin" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 4H5v16h4M14 8l4 4-4 4M18 12H8"/></svg>
-{%- elif name == "back" -%}<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M11 5l-7 7 7 7M4 12h16"/></svg>
-{%- endif -%}
+{#- Neutral badge for the family of a resource type (Intune, Entra, Conditional Access). -#}
+{% macro type_badge(resource_type) -%}
+{%- set f = type_family(resource_type) -%}
+{%- set names = {"ca": _("Conditional Access"), "intune": _("Intune"), "entra": _("Entra ID")} -%}
+{%- if f in names -%}<span class="tag">{{ icon(f) }}<span>{{ names[f] }}</span></span>{%- endif -%}
+{%- endmacro %}
+
+{#- An explained empty state: picture, what it means, how to fill it. -#}
+{% macro empty(title, text, picture="info", command="") -%}
+<div class="empty">
+  <div class="empty-pic" aria-hidden="true">{{ icon(picture) }}</div>
+  <div>
+    <p class="empty-title">{{ title }}</p>
+    <p class="meta">{{ text }}</p>
+    {% if command %}<p><code class="cmd">{{ command }}</code></p>{% endif %}
+  </div>
+</div>
 {%- endmacro %}
 
 {#- A filter form: works as a plain GET form; HTMX swaps only the results. -#}
@@ -48,3 +60,12 @@
 {%- endmacro %}
 
 {% macro short_type(t) -%}{{ (t or "")|replace("microsoft.", "") }}{%- endmacro %}
+
+{#- Breadcrumbs: items are (label, href); the last one is the current page. -#}
+{% macro crumbs(items) -%}
+<nav class="crumbs" aria-label="{{ _('Breadcrumb') }}"><ol>
+  {%- for label, href in items %}
+  <li>{% if loop.last %}<span aria-current="page">{{ label }}</span>{% else %}<a href="{{ href }}">{{ label }}</a>{% endif %}</li>
+  {%- endfor %}
+</ol></nav>
+{%- endmacro %}

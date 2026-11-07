@@ -6,6 +6,10 @@
 | intune-tenant-clone-kit (HoussemMak) | MIT | Template for name-based group remap, fail-closed assignments, preview and reconcile report; code taken over only with attribution here |
 | UTCM Graph API (Microsoft) | Microsoft terms | Read, snapshot, drift report |
 | htmx 2.0.4 (bigskysoftware/htmx, npm `htmx.org`) | 0BSD | Shipped unchanged as `web/ui/m365ui/static/htmx-2.0.4.min.js` for the filter forms of the web interface |
+| Fluent UI System Icons 1.1.345 (microsoft/fluentui-system-icons, npm `@fluentui/svg-icons`) | MIT, Copyright (c) 2020 Microsoft Corporation | The used icons (24 px, regular) copied unchanged to `web/ui/m365ui/static/icons/` (ADR 0011) |
+| Fluent 2 design tokens (npm `@fluentui/tokens` 1.0.0-alpha.24) | MIT | Colour, radius, shadow and spacing values taken over as CSS variables in `web/ui/m365ui/static/app.css`; no code copied (ADR 0011) |
+
+Not used: Microsoft product icons (Azure, Entra, Microsoft 365 architecture icons): their terms allow diagrams, training and documentation only, not an app interface (ADR 0011). Test tool only, not shipped: axe-core 4.10.3 (MPL-2.0) for the accessibility check.
 
 Not used: jussiroine/UTCM-tooling (no license file in the repository; reference only).
 

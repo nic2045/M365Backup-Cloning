@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, filter_form, select %}
+{% from "_macros.html" import badge, filter_form, select, crumbs, empty, type_badge, icon %}
 {% block title %}{{ _("Plans") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Plans"), "/plans")]) }}{% endblock %}
 {% block content %}
 <h1>{{ _("Plans") }}</h1>
 <p>{{ _("A plan is a preview: nothing was changed. Apply it with the script and the plan hash.") }}</p>
@@ -11,14 +12,14 @@
 {% if items %}
 <div class="table-wrap"><table>
   <caption class="sr-only">{{ _("Plans") }}</caption>
-  <thead><tr><th scope="col">{{ _("Plan") }}</th><th scope="col">{{ _("Kind") }}</th><th scope="col">{{ _("Created (UTC)") }}</th>
+  <thead><tr><th scope="col">{{ _("Plan") }}</th><th scope="col">{{ _("Kind") }}</th><th scope="col">{{ _("Created") }}</th>
     <th scope="col" class="num">{{ _("Planned") }}</th><th scope="col" class="num">{{ _("Blocked") }}</th><th scope="col" class="num">{{ _("Skipped") }}</th></tr></thead>
   <tbody>
   {% for p in items %}
     <tr>
       <td data-label="{{ _('Plan') }}"><a href="/plans/{{ p.id }}">{{ p.id }}</a></td>
       <td data-label="{{ _('Kind') }}">{{ p.kind }}{% if p.mode %} ({{ p.mode }}){% endif %}</td>
-      <td data-label="{{ _('Created (UTC)') }}"><time>{{ p.createdUtc }}</time></td>
+      <td data-label="{{ _('Created') }}">{{ p.createdUtc|when }}</td>
       {% if p.state == "outdated" %}
       <td data-label="{{ _('State') }}" colspan="3">{{ badge("outdated") }} <span class="meta">{{ _("Older format: regenerate the plan with the script.") }}</span></td>
       {% else %}
@@ -28,6 +29,7 @@
   {% endfor %}
   </tbody>
 </table></div>
-{% else %}<p>{{ _("No plans.") }}</p>{% endif %}
+{% elif kind %}{{ empty(_("No plan of this kind"), _("Clear the filter to see all plans."), "filter") }}
+{% else %}{{ empty(_("No plans yet"), _("Create a preview plan with the script after a drift report; nothing is changed until you apply it."), "plans", "scripts/Invoke-ApplyDev.ps1") }}{% endif %}
 </div>
 {% endblock %}

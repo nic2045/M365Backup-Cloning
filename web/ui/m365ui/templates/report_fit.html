@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, icon, short_type %}
+{% from "_macros.html" import badge, icon, short_type, crumbs, empty, type_badge %}
 {% block title %}{{ _("Suitability report") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Compare and check"), "/reports"), (env.id, "")]) }}{% endblock %}
 {% block content %}
-<p><a class="button button-secondary" href="/reports">{{ icon("back") }} {{ _("All reports") }}</a></p>
 <h1>{{ _("Suitability report") }}</h1>
 <p class="big">{{ badge(fit.Status) }}</p>
 <p>{{ fit.Verdict }}</p>
 <dl class="pairs">
   <dt>{{ _("Report") }}</dt><dd>{{ env.id }}</dd>
-  <dt>{{ _("Created (UTC)") }}</dt><dd><time>{{ env.createdUtc }}</time></dd>
+  <dt>{{ _("Created") }}</dt><dd>{{ env.createdUtc|when }}</dd>
   <dt>{{ _("Verified") }}</dt><dd>{{ _("yes") if fit.Verified else _("no") }}</dd>
   <dt>{{ _("Features used in Prod") }}</dt><dd>{{ fit.Summary.FeaturesUsedInProd }}</dd>
   <dt>{{ _("Missing in Dev") }}</dt><dd>{{ fit.Summary.FeaturesMissingInDev }}</dd>
@@ -24,7 +24,7 @@
   {% endfor %}
   </tbody>
 </table></div>
-{% else %}<p>{{ _("No findings.") }}</p>{% endif %}
+{% else %}{{ empty(_("No findings"), _("Dev can mirror everything Prod uses, as far as the check can tell."), "ok") }}{% endif %}
 <h2>{{ _("Licences") }}</h2>
 <div class="table-wrap"><table>
   <thead><tr><th scope="col">{{ _("Tenant") }}</th><th scope="col">{{ _("Readable") }}</th><th scope="col">{{ _("Available service plans") }}</th></tr></thead>
