@@ -47,9 +47,15 @@ BeforeAll {
         [pscustomobject]@{ Dir = $dir; Repo = $repo; ConfigPath = $cfgPath; History = $hist; Commit = [string](& git -C $repo rev-parse HEAD) }
     }
     # Runs the script in its own process, so its exit code is the one a schedule sees.
+    # The error view of the child wraps long lines at the console width and colours them (ANSI escapes break the
+    # NUnit report of the CI); NO_COLOR gives plain text, and the output is joined into one line without escapes.
     function script:Invoke-Drift([string[]]$Arguments) {
-        $out = & pwsh -NoProfile -NonInteractive -File $script:Script @Arguments 2>&1
-        [pscustomobject]@{ Exit = $LASTEXITCODE; Output = ($out | ForEach-Object { [string]$_ }) -join "`n" }
+        $before = $env:NO_COLOR
+        $env:NO_COLOR = '1'
+        try { $out = & pwsh -NoProfile -NonInteractive -File $script:Script @Arguments 2>&1; $code = $LASTEXITCODE }
+        finally { $env:NO_COLOR = $before }
+        $text = (($out | ForEach-Object { [string]$_ }) -join ' ') -replace "\x1b\[[0-9;]*[A-Za-z]", '' -replace '\s*\|\s*', ' ' -replace '\s+', ' '
+        [pscustomobject]@{ Exit = $code; Output = $text }
     }
     function script:Newest-Report([string]$History) {
         Get-ChildItem -LiteralPath (Join-Path $History 'reports') -Filter 'drift-*.json' -File | Sort-Object LastWriteTimeUtc, Name | Select-Object -Last 1
@@ -124,7 +130,7 @@ Describe 'Get-DriftReport.ps1 -Source Repository' {
         Add-Content -LiteralPath $file.FullName -Value ' '
         $r = script:Invoke-Drift @('-ConfigPath', $s.ConfigPath, '-HistoryRoot', $s.History, '-Source', 'Repository', '-TargetSnapshotPath', $dev, '-ReportExitCode')
         $r.Exit | Should -Be 3
-        $r.Output | Should -BeLike '*Not verified*not committed*'
+        ($r.Output -replace '\s', '') | Should -BeLike '*Notverified*notcommitted*'
         script:Newest-Report $s.History | Should -BeNullOrEmpty
     }
     It 'stops with an error without -ReportExitCode and refuses a Prod snapshot path' {
@@ -132,7 +138,8 @@ Describe 'Get-DriftReport.ps1 -Source Repository' {
         $dev = script:Save-Snapshot (script:Tenant-Resources $script:DevFilter 12) (Join-Path $s.Dir 'dev.json')
         $r = script:Invoke-Drift @('-ConfigPath', $s.ConfigPath, '-HistoryRoot', $s.History, '-Source', 'Repository', '-SourceSnapshotPath', $dev, '-TargetSnapshotPath', $dev)
         $r.Exit | Should -Not -Be 0
-        $r.Output | Should -BeLike '*-SourceSnapshotPath is for -Source Live*'
+        # Compared without blanks: the error view may wrap the message at any blank.
+        ($r.Output -replace '\s', '') | Should -BeLike '*-SourceSnapshotPathisfor-SourceLive*'
     }
     It 'keeps Live as the default: a Prod and a Dev snapshot, no source in the report' {
         $s = script:New-Setup 'sync-live'
