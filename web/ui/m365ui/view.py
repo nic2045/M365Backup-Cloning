@@ -33,7 +33,7 @@ ICON_FILES = {
     "align": "target_arrow", "fresh": "arrow_reset", "fill": "people_add", "jobs": "task_list_ltr", "start": "play",
     "stop": "stop", "running": "arrow_clockwise", "licences": "key", "later": "lock_closed", "delete": "delete",
     "backup": "archive", "changes": "document_bullet_list_clock",
-    "settings": "settings", "setup": "clipboard_checkmark", "certificate": "certificate",
+    "settings": "settings", "setup": "clipboard_checkmark", "certificate": "certificate", "breakglass": "lock_closed",
 }
 
 

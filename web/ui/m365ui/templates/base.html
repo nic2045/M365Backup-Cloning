@@ -71,7 +71,8 @@
         <div class="account-who">
           <span class="avatar" aria-hidden="true">{{ icon("person") }}</span>
           <span><span class="who-name">{{ user.name or _("Signed in") }}</span>
-          <span class="meta">{{ _("Roles") }}: {{ user.roles|sort|join(", ") or _("none") }}</span></span>
+          <span class="meta">{{ _("Roles") }}: {{ user.roles|sort|join(", ") or _("none") }}</span>
+          {% if user.source == "local" %}<span class="meta">{{ _("Break-glass account") }}</span>{% endif %}</span>
         </div>
         {% if user.source != "example" %}
         <form method="post" action="/logout" class="logout">
@@ -84,6 +85,7 @@
     {% endif %}
   </header>
   <div class="page">
+    {% if user and user.source == "local" %}<aside class="notice" aria-label="{{ _('Break-glass account') }}">{{ icon("breakglass") }} <span><strong>{{ _("Break-glass account: management only.") }}</strong> {{ _("You can read everything and check the configuration. Reports, apply and reset need a sign-in with Entra ID.") }}</span></aside>{% endif %}
     {% if mock %}<aside class="notice" aria-label="{{ _('Example data') }}">{{ icon("info") }} <span>{{ _("Example data: this page shows the mock answers, not your tenants.") }}</span></aside>{% endif %}
     <main id="main" tabindex="-1">
       {% block crumbs %}{% endblock %}

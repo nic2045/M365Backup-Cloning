@@ -31,6 +31,7 @@ IMPLIED = {"Reader": {"Reader"}, "Applier": {"Applier", "Reader"}, "Resetter": {
 LOCAL_ISSUER = "m365cloning-local"
 LOCAL_AUDIENCE = "m365cloning-api"
 LOCAL_MAX_LIFETIME = 15 * 60
+LOCAL_ROLES = frozenset({"Reader"})  # the local account is a break-glass account, management only (ADR 0016)
 MIN_SECRET_BYTES = 32
 LOOPBACK = frozenset({"127.0.0.1", "::1"})
 PROXY_HEADERS = ("forwarded", "x-forwarded-for", "x-real-ip", "x-forwarded-host")
@@ -183,7 +184,9 @@ class Verifier:
             raise AuthError(401, "invalid-token", "The sign-in is not valid. Sign in again.") from None
         if int(claims["exp"]) - int(claims["iat"]) > LOCAL_MAX_LIFETIME:
             raise AuthError(401, "invalid-token", "The sign-in is not valid. Sign in again.")
-        return Principal(str(claims["sub"]), effective_roles(claims.get("roles") or []), "local")
+        # Break-glass account (issue #79, ADR 0016): whatever the token says, a local sign-in only reads.
+        roles = effective_roles(claims.get("roles") or []) & LOCAL_ROLES
+        return Principal(str(claims["sub"]), roles, "local")
 
 
 def require(verifier: Verifier, role: str, authorization: str | None, client_host: str | None,

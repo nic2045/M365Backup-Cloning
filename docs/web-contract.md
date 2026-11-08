@@ -62,6 +62,12 @@ Invoke-Pester tests/WebContract.Tests.ps1
 | `2` | #13 | Same version, only additions: audit mode `report` (one line per drift report, counts only); an apply writes one line per result (`applied`, `unchanged` or `failed to apply` with resource type and name; no properties, IDs or error text) before its summary line; `GET /api/audit` takes `planHash` (64 lowercase hex characters) to list the entries of one plan. Before/after values stay in the plan, found by its hash. |
 | `2` | #76 | Same version, only additions: audit `Mode` `setupcheck` and the optional counters `Green` and `Grey`; the audit filter `mode` also takes `backup` and `setupcheck`; a `setup-check` job with `scope` `Config` needs only `Reader`, so `x-required-role` of the job routes is `Reader|Applier|Resetter` and a job's `role` may be `Reader`. |
 
+## Start with one command (issue #79, ADR 0016)
+
+For using the app: `pwsh scripts/Start-M365CloningWeb.ps1` sets up both apps, gives them the values of
+`web.settings.psd1` as the variables below and starts both on `127.0.0.1`; see `docs/getting-started.md`. The sections
+below are for development and tests.
+
 ## Start the backend (issue #55)
 
 The read-only server in `web/api` (FastAPI) serves exactly the routes of `web/openapi.json`. It reads the files below `History/` (set another folder with `M365CLONING_HISTORY`), masks every tenant ID and every GUID in its answers (ADR 0009: the cross-tenant partner and the protected partner entry keep the full Prod ID in the files, never in the API), and validates every answer against the schema before it is sent; a body that does not match goes out as the `Error` schema with status 500. Its only write routes queue a job (see "Jobs" below). It has no CORS and no generated docs, and binds to `127.0.0.1` unless `M365CLONING_API_HOST` says otherwise (port: `M365CLONING_API_PORT`, default 8000).
@@ -110,7 +116,7 @@ Both apps need sign-in. Nothing is configured: the API answers 401 to every requ
 | `M365_UI_LOCAL_LOGIN` | UI | `1` switches the local account on (default off) |
 | `M365_UI_LOCAL_USER` | UI | User name of the local account |
 | `M365_UI_LOCAL_PASSWORD_HASH` | UI | scrypt hash from `python -m m365ui.passwords` (asks for the password, prints the hash) |
-| `M365_UI_LOCAL_ROLE` | UI | `Reader` (default), `Applier` or `Resetter` |
+| `M365_UI_LOCAL_ROLE` | UI | `Reader` only (default). The local account is a break-glass account for management (ADR 0016); `Applier` or `Resetter` is refused and local sign-in stays off. The API gives a local token at most `Reader` |
 | `M365CLONING_LOCAL_TOKEN_SECRET` | both | Shared secret (at least 32 bytes) for the short local tokens UI -> API, e.g. `openssl rand -hex 32` |
 
 - Roles: `Reader` reads; `Applier` and `Resetter` include `Reader`. Starting a job needs the role of its action (`src/M365Cloning/Data/WebJobs.json`): reports and the plans of apply, base state and users `Applier`, reset preview and reset apply `Resetter`. The setup check with `scope` `Config` needs only `Reader` (issue #76, `roleByScope` in the table): it signs in nowhere; the full check needs `Applier`.

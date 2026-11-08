@@ -1,6 +1,6 @@
 # 0010. The web instance signs in with Entra ID app roles and a local fallback
 
-Status: Accepted (2026-11-07, issue #60). Fills in "roles and audit" of ADR 0002 for the web API and interface.
+Status: Accepted (2026-11-07, issue #60). The role of the local account (point 4) is superseded by ADR 0016: Reader only. Fills in "roles and audit" of ADR 0002 for the web API and interface.
 
 ## Context
 The API (`web/api`) and the interface (`web/ui`) of one toolkit instance were open to anyone who could reach them. They only read today, but the data shows the structure of both tenants, and the write routes of #14 (apply, reset) will need to know who acts and what they may do. The operator already runs the toolkit with an app registration in their own Entra ID. Some instances run on a single admin machine where Entra ID sign-in may not be possible (new tenant, broken federation, offline test).

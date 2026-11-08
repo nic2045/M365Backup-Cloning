@@ -35,6 +35,9 @@ from .passwords import is_valid_hash, verify_password
 log = logging.getLogger("m365ui.auth")
 
 ROLES = ("Reader", "Applier", "Resetter")
+# The local account is a break-glass account: management only (issue #79, ADR 0016). It reads and may run
+# the setup check of the configuration (role Reader); reports, apply and reset need an Entra ID sign-in.
+LOCAL_ROLES = ("Reader",)
 IMPLIED = {"Reader": {"Reader"}, "Applier": {"Applier", "Reader"}, "Resetter": {"Resetter", "Reader"}}
 LOOPBACK = frozenset({"127.0.0.1", "::1"})
 PROXY_HEADERS = ("forwarded", "x-forwarded-for", "x-real-ip", "x-forwarded-host")
@@ -109,7 +112,7 @@ class LocalConfig:
 
     @property
     def usable(self) -> bool:
-        return bool(self.user) and is_valid_hash(self.password_hash) and self.role in ROLES \
+        return bool(self.user) and is_valid_hash(self.password_hash) and self.role in LOCAL_ROLES \
             and len(self.token_secret) >= MIN_SECRET_BYTES
 
 
@@ -171,6 +174,11 @@ def local_from_env(env: Mapping[str, str]) -> LocalConfig | None:
         env.get("M365_UI_LOCAL_ROLE", "Reader").strip() or "Reader",
         env.get("M365CLONING_LOCAL_TOKEN_SECRET", "").encode("utf-8"),
     )
+    if cfg.role in ROLES and cfg.role not in LOCAL_ROLES:
+        log.error("M365_UI_LOCAL_ROLE=%s is refused: the local account is a break-glass account for management only "
+                  "and gets at most the role Reader (ADR 0016); sign in with Entra ID for reports, apply and reset. "
+                  "Local sign-in stays off", cfg.role)
+        return None
     if not cfg.usable:
         log.warning("local sign-in is switched on but not complete (user, hash, role, token secret); it stays off")
         return None
@@ -340,7 +348,8 @@ class UiAuth:
                 self._failures.append(self.clock())
             log.info("local sign-in refused")
             raise SignInError("User name or password is wrong.")
-        return self._new_session(self.local.user, effective_roles([self.local.role]), "local", self.clock() + SESSION_MAX_AGE)
+        roles = effective_roles([self.local.role]) & frozenset(LOCAL_ROLES)
+        return self._new_session(self.local.user, roles, "local", self.clock() + SESSION_MAX_AGE)
 
     def example_session(self) -> Session:
         """Mock mode without any sign-in configured: an example person, so the pages can be tried. The person has
