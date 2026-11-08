@@ -15,7 +15,7 @@ interface (Jinja2 + HTMX)  --calls only /api/...   (develops against web/mock/re
 | File | Content |
 |---|---|
 | `schema/m365cloning.schema.json` | JSON Schema 2020-12 with one definition per format (`$defs`): `DriftReport`, `PlanFile`, `Plan`, `PlanAction`, `PlanSummary`, `PlanLicences`, `FitCheck`, `TenantLicences`, `AuditEntry`, `JobFile` (issue #14), `IntuneBackup` (issue #68), and the API envelopes (`ReportList`, `ReportResponse`, `PlanList`, `PlanResponse`, `AuditPage`, `FitCheckResponse`, `Status`, `JobList`, `Job`, `JobRequest`, `IntuneBackupList`, `IntuneBackupResponse`, `Error`). |
-| `web/openapi.json` | OpenAPI 3.1: read routes `GET /api/reports`, `/api/reports/{id}`, `/api/plans`, `/api/plans/{id}`, `/api/audit` (filters `mode`, `since`, `planHash`), `/api/fitcheck/latest`, `/api/status`, `/api/intune-backups`, `/api/intune-backups/{id}` (issue #68), `/api/jobs`, `/api/jobs/{id}`; job routes `POST /api/jobs` and `POST /api/jobs/{id}/cancel` (issue #14, the only write routes). Its component schemas point into the schema file. |
+| `web/openapi.json` | OpenAPI 3.1: read routes `GET /api/reports`, `/api/reports/{id}`, `/api/plans`, `/api/plans/{id}`, `/api/audit` (filters `mode`, `since`, `planHash`), `/api/fitcheck/latest`, `/api/setup-check/latest` (issue #18), `/api/status`, `/api/intune-backups`, `/api/intune-backups/{id}` (issue #68), `/api/jobs`, `/api/jobs/{id}`; job routes `POST /api/jobs` and `POST /api/jobs/{id}/cancel` (issue #14, the only write routes). Its component schemas point into the schema file. |
 | `web/mock/responses.json` | One example per route (and an example of 400 and 404), made offline from the test fixtures with invented values. Key: `<METHOD> <path>`. |
 | `tests/WebContract.Tests.ps1` | Runs the scripts offline against the fixtures and validates every file they write; checks the OpenAPI description and the mock; checks that nothing carries a secret. |
 
@@ -32,6 +32,7 @@ The `id` is the file base name below `History/reports` (for example `apply-plan-
 | `dev-reset-plan-align-`, `dev-reset-plan-full-` | `reset` (with `mode`) | `/api/plans` |
 | `dev-users-plan-` | `users` | `/api/plans` |
 | `intune-backup-` | `intunebackup` | `/api/intune-backups` (issue #68, ADR 0014): what changed in the Intune backup per tenant, paths and counts only |
+| `setup-check-` | `setupcheck` | `/api/setup-check/latest` (issue #18): read-only setup check, the newest current file; no IDs, thumbprints or account names |
 
 `/api/status` is the optional read-only status for consumers (ADR 0002 point 8): time of the latest drift report, number of differences, suitability status.
 
@@ -118,14 +119,14 @@ Both apps need sign-in. Nothing is configured: the API answers 401 to every requ
 
 ## Jobs (issue #14, ADR 0012)
 
-`POST /api/jobs` with a `JobRequest` (`{"action": "drift"}`, `{"action": "intune-backup"}`, `{"action": "plan-apply", "area": "Intune"}`, `{"action": "plan-reset", "mode": "Full", "deviceAction": "Retire"}`, `{"action": "apply", "planId": "...", "confirmPlanHash": "...", "confirmTenant": "<Dev tenant ID, reset only>"}`) writes `History/jobs/<id>.json` and starts the job runner; the answer is 202 with the job. The runner keeps state, steps and result in the same file and writes the script output to `<id>.log` (the process output goes to `<id>.out`). Only one job runs at a time.
+`POST /api/jobs` with a `JobRequest` (`{"action": "drift"}`, `{"action": "intune-backup"}`, `{"action": "setup-check", "scope": "Config"}`, `{"action": "plan-apply", "area": "Intune"}`, `{"action": "plan-reset", "mode": "Full", "deviceAction": "Retire"}`, `{"action": "apply", "planId": "...", "confirmPlanHash": "...", "confirmTenant": "<Dev tenant ID, reset only>"}`) writes `History/jobs/<id>.json` and starts the job runner; the answer is 202 with the job. The runner keeps state, steps and result in the same file and writes the script output to `<id>.log` (the process output goes to `<id>.out`). Only one job runs at a time.
 
 | Variable | Meaning |
 |---|---|
 | `M365CLONING_PWSH` | Path of PowerShell 7 (default `pwsh`) |
 | `M365CLONING_CONFIG` | Path of `config.psd1` if it is not the one next to `scripts/` |
 
-The account that runs the API needs the module Az.Accounts and the certificate of each app registration (thumbprints in the config) in its personal certificate store; the runner signs in with it through `Connect-AzAccount` and `Get-AzAccessToken` (ADR 0013). An apply runs Microsoft365DSC, so it needs Windows. The Intune backup (`intune-backup`, ADR 0014) needs Python 3.12 with `tools/intunecd/requirements.txt`, Git and `ConfigRepository` in the config. Check on a real system: `validation/README.md`, parts 14 and 15.
+The account that runs the API needs the module Az.Accounts and the certificate of each app registration (thumbprints in the config) in its personal certificate store; the runner signs in with it through `Connect-AzAccount` and `Get-AzAccessToken` (ADR 0013). An apply runs Microsoft365DSC, so it needs Windows. The Intune backup (`intune-backup`, ADR 0014) needs Python 3.12 with `tools/intunecd/requirements.txt`, Git and `ConfigRepository` in the config. The setup check (`setup-check`, issue #18) signs in to each tenant itself, so a failing sign-in or an unreadable config is a red check of its result, not a failed job; `scope` `Config` signs in nowhere. Check on a real system: `validation/README.md`, parts 14, 15 and 16.
 
 ## Dependencies and lock files (issue #59)
 

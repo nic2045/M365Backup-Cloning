@@ -73,6 +73,7 @@ class JobRequest:
     plan_id: str | None = None
     confirm_plan_hash: str | None = None
     confirm_tenant: str | None = None
+    scope: str | None = None
 
 
 # Which fields belong to which action; anything else is refused, so a request never carries more than it means.
@@ -80,6 +81,7 @@ FIELDS_OF = {
     "drift": set(),
     "fitcheck": set(),
     "intune-backup": set(),
+    "setup-check": {"scope"},
     "plan-apply": {"area"},
     "plan-baseline": set(),
     "plan-users": set(),
@@ -100,7 +102,7 @@ def parse_request(body: Any) -> JobRequest:
     if action == "apply" and not (body.get("planId") and body.get("confirmPlanHash")):
         raise StoreError(400, "invalid-parameter", "apply needs planId and confirmPlanHash (the hash of the plan you looked at).")
     return JobRequest(action, body.get("area"), body.get("mode"), body.get("deviceAction"), body.get("planId"),
-                      body.get("confirmPlanHash"), body.get("confirmTenant"))
+                      body.get("confirmPlanHash"), body.get("confirmTenant"), body.get("scope"))
 
 
 def role_for(action: str, plan_kind: str | None = None, table: dict[str, Any] | None = None) -> str:
@@ -261,6 +263,8 @@ class JobStore:
         options: dict[str, Any] = {}
         if request.action == "plan-apply":
             options["area"] = request.area or "All"
+        if request.action == "setup-check":
+            options["scope"] = request.scope or "All"
         if request.action == "plan-reset":
             options["mode"] = request.mode or "Align"
             options["deviceAction"] = request.device_action or "Keep"

@@ -63,8 +63,10 @@ def test_later_areas_are_greyed_out_and_not_links(web, label):
     assert not re.search(rf'<a [^>]*class="nav-link"[^>]*>(?:(?!</a>).)*<span class="nav-text">{label}</span>', html, re.S)
 
 
-def test_no_settings_item_without_a_settings_page(web):
-    assert "/settings" not in web.get("/").text
+def test_settings_has_only_the_setup_check(web):
+    # ADR 0012: a Settings item only once there is a page; the first one is the setup check (issue #18).
+    html = web.get("/").text
+    assert re.findall(r'href="(/settings[^"]*)"', html) == ["/settings/setup"]
 
 
 # ---------------------------------------------------------------- forms -> API

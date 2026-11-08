@@ -60,6 +60,12 @@
           {{ navlink(key, href, _(label), pic) }}
           {%- endfor %}
         </ul>
+        <p class="nav-group" id="nav-settings">{{ _("Settings") }}</p>
+        <ul class="nav-list" aria-labelledby="nav-settings">
+          {%- for key, href, label, pic in nav_settings %}
+          {{ navlink(key, href, _(label), pic) }}
+          {%- endfor %}
+        </ul>
       </nav>
       <div class="account">
         <div class="account-who">

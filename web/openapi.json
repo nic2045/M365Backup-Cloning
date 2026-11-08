@@ -337,6 +337,44 @@
         "x-required-role": "Reader"
       }
     },
+    "/api/setup-check/latest": {
+      "get": {
+        "operationId": "getLatestSetupCheck",
+        "summary": "Read the latest setup check",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The latest setup check",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupCheckResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "x-required-role": "Reader",
+        "description": "The newest read-only setup check of this instance (issue #18). 404 when there is none yet; start one with POST /api/jobs, action setup-check."
+      }
+    },
     "/api/intune-backups": {
       "get": {
         "operationId": "listIntuneBackups",
@@ -704,6 +742,9 @@
       },
       "IntuneBackupResponse": {
         "$ref": "../schema/m365cloning.schema.json#/$defs/IntuneBackupResponse"
+      },
+      "SetupCheckResponse": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/SetupCheckResponse"
       }
     },
     "responses": {

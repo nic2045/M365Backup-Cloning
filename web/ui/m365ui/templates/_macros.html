@@ -18,7 +18,8 @@
   "succeeded": ("ok", "ok", _("Succeeded")), "cancelled": ("muted", "stop", _("Cancelled")),
   "pending": ("muted", "todo", _("Waiting")), "done": ("ok", "ok", _("Done")),
   "added": ("info", "next", _("Added")), "changed": ("warn", "warn", _("Changed")), "removed": ("bad", "delete", _("Removed")),
-  "unchanged": ("ok", "ok", _("No change"))
+  "unchanged": ("ok", "ok", _("No change")),
+  "current": ("info", "next", _("Next")), "todo": ("muted", "todo", _("To do")), "unknown": ("muted", "unknown", _("Unknown"))
 } -%}
 {%- set m = map.get(v, ("muted", "info", value or _("unknown"))) -%}
 <span class="badge badge-{{ m[0] }}">{{ icon(m[1]) }}<span class="badge-text">{{ m[2] }}</span></span>

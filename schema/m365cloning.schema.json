@@ -1376,13 +1376,14 @@
         "drift",
         "fitcheck",
         "intune-backup",
+        "setup-check",
         "plan-apply",
         "plan-baseline",
         "plan-users",
         "plan-reset",
         "apply"
       ],
-      "description": "What a job does (issue #14). drift: drift report; fitcheck: suitability check; intune-backup: read-only backup of the Intune configuration of both tenants into the configuration repository (issue #68); plan-*: a preview plan of that kind (changes nothing); apply: applies one plan after the confirmation (reset plans need the role Resetter and a second confirmation)."
+      "description": "What a job does (issue #14). drift: drift report; fitcheck: suitability check; intune-backup: read-only backup of the Intune configuration of both tenants into the configuration repository (issue #68); setup-check: read-only check of this instance (issue #18); plan-*: a preview plan of that kind (changes nothing); apply: applies one plan after the confirmation (reset plans need the role Resetter and a second confirmation)."
     },
     "JobStatus": {
       "enum": [
@@ -1457,6 +1458,13 @@
         "planHash": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
+        },
+        "scope": {
+          "enum": [
+            "All",
+            "Config"
+          ],
+          "description": "setup-check only: All signs in to both tenants, Config checks the config only."
         }
       },
       "additionalProperties": false
@@ -1798,6 +1806,13 @@
           "type": "string",
           "maxLength": 100,
           "description": "apply of a reset plan only: the Dev tenant ID typed by the person (second confirmation). Never stored, only its hash."
+        },
+        "scope": {
+          "enum": [
+            "All",
+            "Config"
+          ],
+          "description": "setup-check only; default All. Config: no sign-in."
         }
       },
       "additionalProperties": false,
@@ -2004,6 +2019,160 @@
         },
         "backup": {
           "$ref": "#/$defs/IntuneBackup"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SetupCheckItem": {
+      "type": "object",
+      "required": [
+        "Id",
+        "Group",
+        "Tenant",
+        "Status",
+        "Title",
+        "Detail",
+        "Hint"
+      ],
+      "properties": {
+        "Id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,60}$"
+        },
+        "Group": {
+          "enum": [
+            "Config",
+            "Certificates",
+            "Permissions",
+            "UTCM",
+            "BreakGlass",
+            "Licences"
+          ]
+        },
+        "Tenant": {
+          "enum": [
+            "",
+            "Prod",
+            "Dev"
+          ]
+        },
+        "Status": {
+          "$ref": "#/$defs/FitStatus"
+        },
+        "Title": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "Detail": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "Hint": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "What to do; empty when nothing is to do."
+        },
+        "ReportId": {
+          "type": "string",
+          "pattern": "^tenantfit-[0-9]{8}-[0-9]{6}$",
+          "description": "Licences only: the suitability check the result is taken from."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One check of the setup check. No tenant ID, client ID, thumbprint or account name: break-glass entries are named by their position in the config."
+    },
+    "SetupCheck": {
+      "type": "object",
+      "required": [
+        "SchemaVersion",
+        "Kind",
+        "CreatedUtc",
+        "Scope",
+        "Status",
+        "Summary",
+        "Checks"
+      ],
+      "properties": {
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "const": "setupcheck"
+        },
+        "CreatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Scope": {
+          "enum": [
+            "All",
+            "Config"
+          ]
+        },
+        "Status": {
+          "$ref": "#/$defs/FitStatus"
+        },
+        "Summary": {
+          "type": "object",
+          "required": [
+            "Green",
+            "Yellow",
+            "Red",
+            "Grey"
+          ],
+          "properties": {
+            "Green": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Yellow": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Red": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "Grey": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "Checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/SetupCheckItem"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "File History/reports/setup-check-<yyyyMMdd-HHmmss>.json (issue #18): read-only check of this instance (config, certificates, sign-in and permissions, UTCM service principal, break-glass accounts, licences). Status is the worst of the checks: red, then yellow, then grey."
+    },
+    "SetupCheckResponse": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "createdUtc",
+        "check"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^setup-check-[0-9]{8}-[0-9]{6}$"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "check": {
+          "$ref": "#/$defs/SetupCheck"
         }
       },
       "additionalProperties": false

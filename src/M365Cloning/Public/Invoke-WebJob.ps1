@@ -15,6 +15,8 @@ function Invoke-WebJob {
         script itself. Steps: check the request, sign in to the tenants, run the script, record the result.
         - plan-* and the reports run the script without -Apply: nothing is changed in any tenant. intune-backup reads
           both tenants with IntuneCD and commits the files in the configuration repository (issue #68, ADR 0014).
+        - setup-check: read-only check of the instance (issue #18); it signs in to each tenant itself, so a failing
+          sign-in becomes a red check of the result instead of a failed job. An unreadable config is reported the same way.
         - apply: the plan file must exist, its hash must equal the hash the person confirmed in the browser, and for a
           reset plan the hash of the Dev tenant ID the person typed must equal the Dev tenant of the plan and of the
           config (second confirmation). The script then builds the plan again and applies it only if the hash is still
@@ -90,7 +92,11 @@ function Invoke-WebJob {
         # --- 1 check
         if (& $cancelled) { return }
         & $setStep 'check' 'running'; & $save
-        $config = Import-M365CloningConfig -Path $ConfigPath
+        # The setup check reports an unreadable config as its own red check (issue #18); every other action needs it.
+        $config = if ($job['action'] -eq 'setup-check') {
+            try { Import-M365CloningConfig -Path $ConfigPath } catch { & $log "config not readable; the setup check reports it"; @{ Dev = @{ TenantId = '' } } }
+        }
+        else { Import-M365CloningConfig -Path $ConfigPath }
         $params = [ordered]@{ ConfigPath = $ConfigPath; HistoryRoot = $HistoryRoot }
         $refuse = {
             param([string]$Why, [string]$Hash = '')
@@ -101,6 +107,7 @@ function Invoke-WebJob {
             'drift' { }
             'fitcheck' { $params['TakeProdSnapshot'] = $true }
             'intune-backup' { }
+            'setup-check' { $params['Scope'] = if ($options['scope']) { [string]$options['scope'] } else { 'All' } }
             'plan-apply' { $params['Plan'] = $true; $params['Area'] = if ($options['area']) { [string]$options['area'] } else { 'All' } }
             'plan-baseline' { $params['Plan'] = $true }
             'plan-users' { $params['Plan'] = $true }
@@ -172,7 +179,7 @@ function Invoke-WebJob {
         try { $exit = [int](& $runner $script $params $logPath | Select-Object -Last 1) }
         catch { & $finish 'failed' "The script stopped: $(($_.Exception.Message -split "`r?`n")[0])"; return }
         $job['result']['exitCode'] = $exit
-        $okExit = if ($job['action'] -eq 'fitcheck') { $exit -in 0, 1, 2, 3 } else { $exit -eq 0 }
+        $okExit = if ($job['action'] -in 'fitcheck', 'setup-check') { $exit -in 0, 1, 2, 3 } else { $exit -eq 0 }
         & $setStep 'run' $(if ($okExit) { 'done' } else { 'failed' }); & $save
 
         # --- 4 result
@@ -196,6 +203,7 @@ function Invoke-WebJob {
             'plan-*' { 'The plan is ready. Nothing was changed; open the plan to check and apply it.' }
             'apply' { 'The plan was applied. Compare again to see the new state.' }
             'intune-backup' { 'The Intune backup is saved in the configuration repository. Open Intune changes to see what changed.' }
+            'setup-check' { 'The setup check is ready. Nothing was changed; open Setup check to see what to do.' }
             default { 'The report is ready.' }
         }
         & $finish 'succeeded' $message

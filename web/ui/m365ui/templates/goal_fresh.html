@@ -8,6 +8,20 @@
 <p class="lead">{{ _("Clean Dev up and build it again in a controlled way. The reset is the only run that deletes; it needs a preview and two confirmations.") }}</p>
 {{ busy(running) }}
 
+<section class="card fresh-progress" aria-labelledby="fresh-progress">
+  <h2 class="card-title" id="fresh-progress">{{ icon("jobs") }} {{ _("Progress") }}</h2>
+  <p><progress max="100" value="{{ progress.percent }}" aria-labelledby="fresh-progress">{{ progress.percent }} %</progress>
+     <span class="meta">{{ progress.done }} {{ _("of") }} {{ progress.total }} {{ _("steps") }}{% if progress.plan %} · {{ _("reset plan of") }} {{ progress.plan.createdUtc|when }}{% endif %}</span></p>
+  <ol class="job-steps">
+    {% for s in progress.steps %}<li class="job-step job-step-{{ s.state }}">{{ badge(s.state) }} <a href="#{{ {'preview': 'reset-preview', 'confirm': 'reset-confirm', 'rebuild': 'rebuild'}[s.key] }}">{{ s.number }}. {{ s.label }}</a></li>{% endfor %}
+  </ol>
+  {% if progress.steps[1].state == "unknown" %}<p class="meta">{{ _("The audit log could not be read, so the later steps are not known.") }}</p>{% endif %}
+  <p class="meta">{{ icon("setup") }}
+    {% if setup %}{{ _("Setup check") }}: {{ badge(setup.check.Status) }} {{ setup.createdUtc|when }} · <a href="/settings/setup">{{ _("Open the setup check") }}</a>
+    {% elif setup_known %}{{ _("No setup check yet.") }} <a href="/settings/setup">{{ _("Check the setup before the first reset") }}</a>
+    {% else %}<a href="/settings/setup">{{ _("Open the setup check") }}</a>{% endif %}</p>
+</section>
+
 <section class="card flow-step" aria-labelledby="reset-preview">
   <h2 class="card-title" id="reset-preview"><span class="nav-step" aria-hidden="true">1</span> {{ _("Preview the reset") }}</h2>
   {% call start_form("plan-reset", _("Create the reset plan"), "fresh", "Resetter", running=running) %}

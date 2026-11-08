@@ -543,6 +543,147 @@
         }
       }
     },
+    "GET /api/setup-check/latest": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "setup-check-20261107-120000",
+        "createdUtc": "2026-11-07T12:00:00Z",
+        "check": {
+          "SchemaVersion": "2",
+          "Kind": "setupcheck",
+          "CreatedUtc": "2026-11-07T12:00:00Z",
+          "Scope": "All",
+          "Status": "yellow",
+          "Summary": {
+            "Green": 10,
+            "Yellow": 3,
+            "Red": 0,
+            "Grey": 0
+          },
+          "Checks": [
+            {
+              "Id": "config-readable",
+              "Group": "Config",
+              "Tenant": "",
+              "Status": "green",
+              "Title": "The config is readable",
+              "Detail": "config.psd1 was read and has a valid Prod/Dev pair.",
+              "Hint": ""
+            },
+            {
+              "Id": "config-tenants",
+              "Group": "Config",
+              "Tenant": "",
+              "Status": "green",
+              "Title": "Prod and Dev are set",
+              "Detail": "Prod is only read; every write goes to the Dev tenant of the config. Apply allowed: no. Reset allowed: no.",
+              "Hint": "To apply or reset from the web interface, set Dev.ApplyAllowed and Dev.AllowReset to $true in config.psd1."
+            },
+            {
+              "Id": "certificate-prod",
+              "Group": "Certificates",
+              "Tenant": "Prod",
+              "Status": "green",
+              "Title": "Certificate valid",
+              "Detail": "Valid until 2027-06-30, with private key.",
+              "Hint": ""
+            },
+            {
+              "Id": "certificate-dev",
+              "Group": "Certificates",
+              "Tenant": "Dev",
+              "Status": "yellow",
+              "Title": "Certificate expires soon",
+              "Detail": "The certificate is valid until 2026-11-28 (20 days).",
+              "Hint": "Renew it before 2026-11-28 and put the new thumbprint into Dev.CertThumbprint."
+            },
+            {
+              "Id": "breakglass-list",
+              "Group": "BreakGlass",
+              "Tenant": "",
+              "Status": "green",
+              "Title": "Break-glass accounts listed",
+              "Detail": "1 account(s), 1 group(s) and 1 protected account(s) in the config.",
+              "Hint": ""
+            },
+            {
+              "Id": "signin-prod",
+              "Group": "Permissions",
+              "Tenant": "Prod",
+              "Status": "green",
+              "Title": "Sign-in works",
+              "Detail": "The app registration signed in with its certificate.",
+              "Hint": ""
+            },
+            {
+              "Id": "permissions-prod",
+              "Group": "Permissions",
+              "Tenant": "Prod",
+              "Status": "green",
+              "Title": "Permissions complete",
+              "Detail": "5 application permission(s) granted.",
+              "Hint": ""
+            },
+            {
+              "Id": "utcm-prod",
+              "Group": "UTCM",
+              "Tenant": "Prod",
+              "Status": "green",
+              "Title": "UTCM ready",
+              "Detail": "Present and enabled; 6 application permission(s) granted to it.",
+              "Hint": ""
+            },
+            {
+              "Id": "signin-dev",
+              "Group": "Permissions",
+              "Tenant": "Dev",
+              "Status": "green",
+              "Title": "Sign-in works",
+              "Detail": "The app registration signed in with its certificate.",
+              "Hint": ""
+            },
+            {
+              "Id": "permissions-dev",
+              "Group": "Permissions",
+              "Tenant": "Dev",
+              "Status": "green",
+              "Title": "Permissions complete",
+              "Detail": "11 application permission(s) granted.",
+              "Hint": ""
+            },
+            {
+              "Id": "utcm-dev",
+              "Group": "UTCM",
+              "Tenant": "Dev",
+              "Status": "green",
+              "Title": "UTCM ready",
+              "Detail": "Present and enabled; 6 application permission(s) granted to it.",
+              "Hint": ""
+            },
+            {
+              "Id": "breakglass-dev",
+              "Group": "BreakGlass",
+              "Tenant": "Dev",
+              "Status": "yellow",
+              "Title": "Break-glass groups missing in Dev",
+              "Detail": "Not found in Dev: BreakGlassGroups entry 1.",
+              "Hint": "Apply the base state (Fill Dev): it creates the break-glass groups static and empty."
+            },
+            {
+              "Id": "licences",
+              "Group": "Licences",
+              "Tenant": "",
+              "Status": "yellow",
+              "Title": "Suitability: yellow",
+              "Detail": "Dev is enough with gaps: the listed parts of Prod cannot be mirrored.",
+              "Hint": "Open the report: some features of Prod cannot be mirrored fully.",
+              "ReportId": "tenantfit-20261107-120000"
+            }
+          ]
+        }
+      }
+    },
     "GET /api/plans": {
       "status": 200,
       "body": {

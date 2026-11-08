@@ -21,6 +21,7 @@ ROUTE_SCHEMA = {
     "/api/plans/{id}": "PlanResponse",
     "/api/audit": "AuditPage",
     "/api/fitcheck/latest": "FitCheckResponse",
+    "/api/setup-check/latest": "SetupCheckResponse",
     "/api/status": "Status",
     "/api/intune-backups": "IntuneBackupList",
     "/api/intune-backups/{id}": "IntuneBackupResponse",

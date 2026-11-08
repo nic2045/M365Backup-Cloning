@@ -279,3 +279,19 @@ Claude never ran this against a tenant (IntuneCD replaced by a stand-in, invente
 | 7 | Failure | Remove a permission from the Dev registration (or use a wrong thumbprint for Dev) and back up | The job fails with the cause in the log; the repository is unchanged (`git status` clean, no commit); `History/tmp` has no folder left |
 | 8 | Audit | *History* > *Audit log*, filter "Intune backup" | One line per run with counts only and your name as Actor |
 | 9 | Tenants untouched | Intune audit logs of both tenants for the time of the runs | Only reads by the app registrations; no create, update or delete |
+
+# Part 16: setup check (issue #18)
+
+Claude never ran this against a tenant (Graph mocked, fake tokens, the certificate store replaced). The check only reads: no request other than GET, nothing is created, granted or changed; it writes one file `History/reports/setup-check-*.json`.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Config only | *Settings* > *Setup check* > "Check the config only" (role Applier), or `pwsh scripts/Invoke-SetupCheck.ps1 -Scope Config` | No sign-in in the job log; config, certificates, break-glass list and licences are shown; permissions and UTCM are grey "Not checked" |
+| 2 | Certificates | On the Windows computer of the job runner | Both certificates green with their end date, or yellow within 30 days; a wrong thumbprint in `config.psd1` gives red "Certificate not found" |
+| 3 | Full check | "Run the full check" | Sign-in of both registrations green; permissions compared with `src/M365Cloning/Data/SetupRequirements.psd1`: what is missing is listed with the feature that needs it. A permission you granted that is not listed: tell me |
+| 4 | Prod read only | Grant the Prod registration one write permission for a test (e.g. `Group.ReadWrite.All`), run the full check, then remove it again | Permissions of Prod red "Write permissions on Prod: Group.ReadWrite.All" |
+| 5 | UTCM | Full check | "UTCM ready" with the number of permissions of the TCM service principal in both tenants. Without `Application.Read.All` on a registration: grey "UTCM not checked" with the hint; a missing principal: red with the Learn page |
+| 6 | Break-glass | Full check | Your break-glass accounts found and enabled in Dev; a missing group yellow with the hint to apply the base state. The file names entries only by their position (`BreakGlass entry 1`), never by account |
+| 7 | Licences | After a suitability check (*Bring Dev in line*) | The licence row takes its status and links the report; older than 7 days: yellow |
+| 8 | Unreadable config | Rename `config.psd1` for a moment and run the config-only check | The job succeeds, the result is red "The config cannot be used" with the hint; the rest is grey. Rename it back |
+| 9 | Tenants untouched | Audit logs of both tenants for the time of the runs | Only sign-ins and reads of the two app registrations |

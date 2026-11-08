@@ -253,3 +253,12 @@ summary { cursor: pointer; min-height: 44px; display: flex; align-items: center;
 progress { width: min(100%, 16rem); height: 0.5rem; vertical-align: middle; accent-color: var(--brand); }
 pre.log { margin: 0; padding: var(--gap-m); max-height: 24rem; overflow: auto; border: 1px solid var(--line-2); border-radius: var(--radius-l); background: var(--bg-subtle); font: 0.8rem/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (prefers-color-scheme: dark) { .button-danger, .button-danger:hover { background: #c50f1f; border-color: #c50f1f; } }
+/* Setup check (issue #18): summary counts in one line, the same columns in every group, both runs side by side. */
+.setup-summary { display: flex; flex-wrap: wrap; gap: var(--gap-row) var(--gap-block); list-style: none; margin: 0; padding: 0; }
+.setup-summary li { display: flex; align-items: center; gap: var(--gap-xs); }
+.start-pair { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 var(--gap-block); }
+@media (min-width: 40.01rem) {
+  .setup-table { table-layout: fixed; }
+  .setup-table th:nth-child(1) { width: 9rem; } .setup-table th:nth-child(3) { width: 6rem; } .setup-table th:nth-child(2) { width: 42%; }
+}
+.fresh-progress { margin-bottom: var(--gap-block); }

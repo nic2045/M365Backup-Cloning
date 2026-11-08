@@ -151,6 +151,10 @@ def create_app(history_dir: Path | str | None = None, auth: AuthConfig | None = 
     def fitcheck_latest() -> JSONResponse:
         return respond("FitCheckResponse", store.latest_fitcheck)
 
+    @app.get("/api/setup-check/latest")
+    def setup_check_latest() -> JSONResponse:
+        return respond("SetupCheckResponse", store.latest_setup_check)
+
     @app.get("/api/intune-backups")
     def list_backups() -> JSONResponse:
         return respond("IntuneBackupList", store.list_backups)
