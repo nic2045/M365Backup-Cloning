@@ -120,7 +120,9 @@ def test_lists_filter_by_kind(client):
     assert {item["kind"] for item in plans} == {"reset"}
     assert {item["mode"] for item in plans} == {"Align", "Full"}
     reports = client.get("/api/reports", params={"kind": "drift"}).json()["items"]
-    assert [item["kind"] for item in reports] == ["drift"]
+    assert [item["kind"] for item in reports] == ["drift", "drift"]
+    # Issue #27 part 3: a drift report says where its desired side came from.
+    assert [item["source"] for item in reports] == ["Live", "Repository"]
 
 
 @pytest.mark.parametrize(

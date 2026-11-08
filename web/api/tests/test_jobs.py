@@ -67,6 +67,7 @@ def test_applier_starts_a_drift_report(app, idle, launcher):
     assert errors("Job", body) == []
     assert body["status"] == "queued" and body["actor"] == "Ada Admin" and body["role"] == "Applier"
     assert body["progress"] == {"done": 0, "total": 4}
+    assert body["options"] == {"source": "Live"}  # issue #27 part 3: Live stays the default (ADR 0019)
     assert len(launcher.started) == 1 and launcher.started[0].name == f"{body['id']}.json"
     stored = job_file(idle, body["id"])
     assert errors("JobFile", stored) == []
@@ -112,13 +113,20 @@ def test_plan_from_the_repository_is_stored(app, idle):
     assert body["role"] == "Applier"
 
 
+def test_sync_report_from_the_repository_is_stored(app, idle):
+    """Issue #27 part 3 (ADR 0020): the drift report may compare desired/ of the configuration repository with Dev."""
+    body = as_role(app, "Applier").post("/api/jobs", json={"action": "drift", "source": "Repository"}).json()
+    assert body["options"] == {"source": "Repository"}
+    assert body["role"] == "Applier"
+
+
 @pytest.mark.parametrize("body", [
     {"action": "nothing"},
     {"action": "drift", "area": "Intune"},
     {"action": "plan-reset", "deviceAction": "Wipe"},
     {"action": "plan-apply", "area": "Exchange"},
     {"action": "plan-apply", "source": "Prod"},
-    {"action": "drift", "source": "Repository"},
+    {"action": "drift", "source": "Prod"},
     {"action": "plan-reset", "source": "Repository"},
     {"action": "apply", "planId": APPLY_PLAN},
     {"action": "apply", "planId": "../x", "confirmPlanHash": "0" * 64},

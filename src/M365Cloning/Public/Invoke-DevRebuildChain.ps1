@@ -13,7 +13,8 @@ function Invoke-DevRebuildChain {
         -Runner runs a script (tests replace it): param($ScriptPath, [hashtable]$Arguments). -Prompt asks the person:
         param($StepName, $PlanHash, $PlanPath), returns the typed text. The users step is passed over without DevUsers.
         -Source (issue #27 part 2, ADR 0019): where the apply step reads the desired state, Live (Prod snapshot) or
-        Repository (desired/ of the configuration repository); the same value is passed with -Apply.
+        Repository (desired/ of the configuration repository); the same value is passed with -Apply. With Repository the
+        drift report at the end compares desired/ with Dev as well (sync report, issue #27 part 3, ADR 0020).
     #>
     [CmdletBinding()]
     param(
@@ -60,7 +61,8 @@ function Invoke-DevRebuildChain {
         $log.Add([ordered]@{ Step = $s.Name; Status = 'applied'; Message = '' })
     }
     $since = (Get-Date).ToUniversalTime().AddSeconds(-1)
-    $null = & $Runner (Join-Path $ScriptRoot 'Get-DriftReport.ps1') ($common + @{ ProdToken = $ProdToken; DevToken = $DevToken })
+    $driftArgs = if ($Source -eq 'Repository') { @{ DevToken = $DevToken; Source = 'Repository' } } else { @{ ProdToken = $ProdToken; DevToken = $DevToken } }
+    $null = & $Runner (Join-Path $ScriptRoot 'Get-DriftReport.ps1') ($common + $driftArgs)
     $report = & $newest 'drift-*.json' $since
     [pscustomobject]@{ Completed = $true; Steps = [object[]]@($log); Report = $(if ($report) { $report.FullName } else { $null }) }
 }

@@ -8,12 +8,19 @@ function Compare-TenantSnapshot {
         Removed = in Dev, missing in Prod (extra in Dev; an automatic run never deletes it, ADR 0001).
         Changed = in both, properties differ.
         IsIdentical is true when there is no difference at all (empty report).
+        Source (issue #27 part 3, ADR 0020): -SourceInfo @{ Kind = 'Repository'; Commit = '<commit>' } when the desired
+        side is desired/ of the configuration repository (Read-DesiredStateSnapshot). The report then carries it as
+        Source and its Direction names the repository. Without -SourceInfo the report keeps its shape (Prod -> Dev).
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.Collections.IDictionary]$Source,
-        [Parameter(Mandatory)][System.Collections.IDictionary]$Target
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Target,
+        [System.Collections.IDictionary]$SourceInfo
     )
+    if ($SourceInfo -and ([string]$SourceInfo['Kind'] -ne 'Repository' -or [string]$SourceInfo['Commit'] -notmatch '^[0-9a-f]{40}([0-9a-f]{24})?$')) {
+        throw 'SourceInfo needs Kind = Repository and the full commit ID of the configuration repository.'
+    }
 
     $index = {
         param($Snapshot)
@@ -80,10 +87,16 @@ function Compare-TenantSnapshot {
         Changed   = [int](($typeResults | ForEach-Object { $_.Changed.Count } | Measure-Object -Sum).Sum)
         Unchanged = [int](($typeResults | ForEach-Object { $_.Unchanged } | Measure-Object -Sum).Sum)
     }
-    [pscustomobject]@{
+    $result = [pscustomobject]@{
         Direction   = 'Prod -> Dev (Source = Prod, Target = Dev)'
         Types       = $typeResults
         Summary     = $summary
         IsIdentical = ($summary.Added + $summary.Removed + $summary.Changed) -eq 0
     }
+    if ($SourceInfo) {
+        $commit = [string]$SourceInfo['Commit']
+        $result.Direction = "Configuration repository -> Dev (Source = desired/ at commit $($commit.Substring(0, 12)), Target = Dev)"
+        $result | Add-Member -NotePropertyName Source -NotePropertyValue ([ordered]@{ Kind = 'Repository'; Commit = $commit })
+    }
+    $result
 }

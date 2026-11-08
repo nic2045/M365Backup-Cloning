@@ -44,9 +44,11 @@ def test_plan_page_of_a_live_plan_says_prod(web):
     assert "Configuration repository" not in html
 
 
-def test_job_request_passes_the_source_of_plan_apply_only():
+def test_job_request_passes_the_source_of_plan_apply_and_drift_only():
     assert view.job_request({"action": "plan-apply", "area": "All", "source": "Repository"}) == {
         "action": "plan-apply", "area": "All", "source": "Repository"}
-    assert view.job_request({"action": "drift", "source": "Repository"}) == {"action": "drift"}
+    # Issue #27 part 3 (ADR 0020): the drift report takes the source too; other actions drop it.
+    assert view.job_request({"action": "drift", "source": "Repository"}) == {"action": "drift", "source": "Repository"}
+    assert view.job_request({"action": "fitcheck", "source": "Repository"}) == {"action": "fitcheck"}
     with pytest.raises(view.FormError):
         view.job_request({"action": "plan-apply", "source": "Prod"})

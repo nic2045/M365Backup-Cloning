@@ -1,6 +1,6 @@
 # 0019. Dev is built from the desired state of the configuration repository
 
-Status: Accepted (2026-11-08, issue #27 part 2; implements the plan "part 2" of ADR 0018 and point 4 of ADR 0004 for the apply)
+Status: Accepted (2026-11-08, issue #27 part 2; implements the plan "part 2" of ADR 0018 and point 4 of ADR 0004 for the apply). The drift report at the end of the rebuild follows the source since ADR 0020.
 
 ## Context
 

@@ -79,7 +79,7 @@ class JobRequest:
 
 # Which fields belong to which action; anything else is refused, so a request never carries more than it means.
 FIELDS_OF = {
-    "drift": set(),
+    "drift": {"source"},
     "fitcheck": set(),
     "intune-backup": set(),
     "export-desired": set(),
@@ -270,6 +270,8 @@ class JobStore:
         options: dict[str, Any] = {}
         if request.action == "plan-apply":
             options["area"] = request.area or "All"
+            options["source"] = request.source or "Live"
+        if request.action == "drift":
             options["source"] = request.source or "Live"
         if request.action == "setup-check":
             options["scope"] = request.scope or "All"

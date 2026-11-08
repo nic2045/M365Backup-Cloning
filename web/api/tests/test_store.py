@@ -68,7 +68,7 @@ def test_lists_are_newest_first(client, history):
     source["CreatedUtc"] = "2026-11-08T08:00:00.1234567Z"  # 7 fraction digits, as the core writes them
     (history / "reports" / "drift-20261108-080000.json").write_text(json.dumps(source), encoding="utf-8")
     items = client.get("/api/reports", params={"kind": "drift"}).json()["items"]
-    assert [item["id"] for item in items] == ["drift-20261108-080000", "drift-20261107-120000"]
+    assert [item["id"] for item in items] == ["drift-20261108-080000", "drift-20261107-120000", "drift-20261107-113000"]
     assert client.get("/api/status").json()["reportId"] == "drift-20261108-080000"
 
 

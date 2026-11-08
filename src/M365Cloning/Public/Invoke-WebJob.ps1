@@ -25,7 +25,8 @@ function Invoke-WebJob {
           refused request writes an audit line 'refused'.
         - Source (issue #27 part 2, ADR 0019): plan-apply with source Repository builds the plan from the desired state
           of the configuration repository; only Dev is signed in to (tenantsBySource). Its apply takes the source from
-          the plan.
+          the plan. drift with source Repository is the sync report desired/ -> Dev (issue #27 part 3, ADR 0020), also
+          signed in to Dev only.
         - Tokens: Graph tokens from the certificate of each app registration through Az.Accounts (Get-WebJobGraphToken,
           ADR 0013), only for the tenants the action reads; they stay in memory.
         - Actor: the person who started the job is written into every audit line of the run (M365CLONING_ACTOR).
@@ -79,8 +80,9 @@ function Invoke-WebJob {
     if ($job['action'] -eq 'apply') {
         $kindDef = $def['byPlanKind'][[string]$options['planKind']]
     }
-    # Source (ADR 0019): from the request for plan-apply, from the plan for its apply (set in the check step).
-    $source = if ($job['action'] -eq 'plan-apply' -and [string]$options['source'] -eq 'Repository') { 'Repository' } else { 'Live' }
+    # Source (ADR 0019, ADR 0020): from the request for plan-apply and drift, from the plan for its apply (set in the
+    # check step).
+    $source = if ($job['action'] -in 'plan-apply', 'drift' -and [string]$options['source'] -eq 'Repository') { 'Repository' } else { 'Live' }
     $runTitle = if (-not $kindDef) { 'Run the script' }
     elseif ($kindDef.Contains('runBySource') -and $kindDef['runBySource'].Contains($source)) { [string]$kindDef['runBySource'][$source] }
     else { [string]$kindDef['run'] }
@@ -112,7 +114,7 @@ function Invoke-WebJob {
             & $finish 'failed' "Refused: $Why"
         }
         switch ([string]$job['action']) {
-            'drift' { }
+            'drift' { if ($source -eq 'Repository') { $params['Source'] = 'Repository' } }
             'fitcheck' { $params['TakeProdSnapshot'] = $true }
             'intune-backup' { }
             'export-desired' { }

@@ -48,7 +48,7 @@
         },
         "Direction": {
           "type": "string",
-          "description": "Always 'Prod -> Dev' (desired -> actual)."
+          "description": "'Prod -> Dev (...)' for a live Prod snapshot; 'Configuration repository -> Dev (...)' when Source is set (desired -> actual)."
         },
         "Types": {
           "type": "array",
@@ -134,6 +134,27 @@
         },
         "IsIdentical": {
           "type": "boolean"
+        },
+        "Source": {
+          "type": "object",
+          "required": [
+            "Kind",
+            "Commit"
+          ],
+          "properties": {
+            "Kind": {
+              "enum": [
+                "Repository"
+              ]
+            },
+            "Commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$",
+              "description": "Full commit ID of the configuration repository the desired state was read from."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Optional (issue #27 part 3, ADR 0020): the sync report compared desired/ of the configuration repository with Dev; Prod was not read. Missing: a live Prod snapshot."
         }
       },
       "description": "Drift report as written by Export-DriftReport (History/reports/drift-*.json)."
@@ -1032,6 +1053,13 @@
         },
         "state": {
           "$ref": "#/$defs/ListItemState"
+        },
+        "source": {
+          "enum": [
+            "Live",
+            "Repository"
+          ],
+          "description": "Drift reports only (issue #27 part 3): where the desired side came from."
         }
       }
     },
@@ -1824,7 +1852,7 @@
             "Live",
             "Repository"
           ],
-          "description": "plan-apply only; default Live. Repository: the desired state of the configuration repository instead of Prod (issue #27 part 2, ADR 0019)."
+          "description": "plan-apply and drift only; default Live. Repository: the desired state of the configuration repository instead of Prod (issue #27 part 2 and 3, ADR 0019, ADR 0020)."
         },
         "mode": {
           "enum": [

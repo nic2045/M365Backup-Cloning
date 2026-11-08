@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, filter_form, select, crumbs, empty, type_badge, icon %}
+{% from "_macros.html" import badge, filter_form, select, crumbs, empty, type_badge, icon, source_tag %}
 {% block title %}{{ _("Compare and check") }}{% endblock %}
 {% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Compare and check"), "/reports")]) }}{% endblock %}
 {% block content %}
 <h1>{{ _("Compare and check") }}</h1>
-<p class="lead">{{ _("Drift reports compare Prod with Dev. Suitability reports say whether Dev can mirror what Prod uses. Both are written by the scripts and change nothing.") }}</p>
+<p class="lead">{{ _("Drift reports compare the desired state (Prod, or the configuration repository) with Dev. Suitability reports say whether Dev can mirror what Prod uses. Both are written by the scripts and change nothing.") }}</p>
 {% call filter_form("/reports", []) %}
   {{ select("kind", _("Kind"), kinds, kind, _("All kinds")) }}
 {% endcall %}
@@ -17,7 +17,7 @@
   {% for r in items %}
     <tr>
       <td data-label="{{ _('Report') }}"><a href="/reports/{{ r.id }}">{{ r.id }}</a></td>
-      <td data-label="{{ _('Kind') }}">{{ r.kind }}</td>
+      <td data-label="{{ _('Kind') }}">{{ r.kind }}{% if r.kind == "drift" and r.source %} {{ source_tag(r.source) }}{% endif %}</td>
       <td data-label="{{ _('Created') }}">{{ r.createdUtc|when }}</td>
       <td data-label="{{ _('Result') }}">{% if r.state == "outdated" %}{{ badge("outdated") }} <span class="meta">{{ _("Older format: regenerate the report with the script.") }}</span>{% elif r.kind == "tenantfit" %}{{ badge(r.status) }}{% elif r.isIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</td>
     </tr>

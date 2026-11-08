@@ -5,20 +5,21 @@
 {% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Goals"), ""), (_("Bring Dev in line"), "")]) }}{% endblock %}
 {% block content %}
 <h1>{{ _("Bring Dev in line") }}</h1>
-<p class="lead">{{ _("Make Dev match Prod: compare, check, plan, confirm. Every step before the last one only reads.") }}</p>
+<p class="lead">{{ _("Make Dev match the desired state (Prod or the configuration repository): compare, check, plan, confirm. Every step before the last one only reads.") }}</p>
 {{ busy(running) }}
 
 <ol class="steps-flow">
   <li class="card flow-step">
-    <h2 class="card-title"><span class="nav-step" aria-hidden="true">1</span> {{ _("Compare Prod and Dev") }}</h2>
+    <h2 class="card-title"><span class="nav-step" aria-hidden="true">1</span> {{ _("Compare with Dev") }}</h2>
+    <p class="meta">{{ _("Desired state: Prod (live) or the configuration repository, chosen below.") }}</p>
     {% if status.reportId %}
       <p>{% if status.differences == 0 %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}
          <span class="meta">{{ status.differences }} {{ _("differences") }} · {{ status.lastComparisonUtc|when }}</span></p>
       <p><a href="/reports/{{ status.reportId }}">{{ icon("reports") }} {{ _("Show the drift report") }}</a></p>
     {% else %}
-      <p class="meta">{{ _("Not compared yet. The report reads both tenants and changes nothing.") }}</p>
+      <p class="meta">{{ _("Not compared yet. The report reads the desired state and Dev and changes nothing.") }}</p>
     {% endif %}
-    {{ start_form("drift", _("Run the drift report"), "compare", "Applier", running=running, secondary=status.reportId and first.id != "stale-report" and first.id != "no-report") }}
+    {% call start_form("drift", _("Run the drift report"), "compare", "Applier", running=running, secondary=status.reportId and first.id != "stale-report" and first.id != "no-report") %}{{ source_choice() }}{% endcall %}
   </li>
   <li class="card flow-step">
     <h2 class="card-title"><span class="nav-step" aria-hidden="true">2</span> {{ _("Check the suitability") }}</h2>

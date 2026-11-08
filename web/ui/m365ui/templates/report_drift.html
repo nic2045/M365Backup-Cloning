@@ -1,17 +1,22 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, filter_form, select, short_type, icon, crumbs, empty, type_badge %}
+{% from "_macros.html" import badge, filter_form, select, short_type, icon, crumbs, empty, type_badge, source_tag %}
 {% block title %}{{ _("Drift report") }}{% endblock %}
 {% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Compare and check"), "/reports"), (env.id, "")]) }}{% endblock %}
 {% block content %}
+{#- Issue #27 part 3 (ADR 0020): the desired side is Prod (live) or desired/ of the configuration repository. -#}
+{%- set from_repo = report.Source and report.Source.Kind == "Repository" -%}
+{%- set desired = _("Desired state") if from_repo else _("Prod") -%}
+{%- set only_desired = _("only in the desired state") if from_repo else _("only in Prod") -%}
 <h1>{{ _("Drift report") }}</h1>
 <dl class="pairs">
   <dt>{{ _("Report") }}</dt><dd>{{ env.id }}</dd>
   <dt>{{ _("Created") }}</dt><dd>{{ env.createdUtc|when }}</dd>
+  <dt>{{ _("Desired state") }}</dt><dd>{{ source_tag("Repository" if from_repo else "Live") }}{% if from_repo %} <span class="meta">{{ _("commit") }}</span> <code class="hash" title="{{ report.Source.Commit }}">{{ report.Source.Commit[:12] }}</code>{% endif %}</dd>
   <dt>{{ _("Direction") }}</dt><dd>{{ report.Direction }}</dd>
   <dt>{{ _("Result") }}</dt><dd>{% if report.IsIdentical %}{{ badge("identical") }}{% else %}{{ badge("different") }}{% endif %}</dd>
 </dl>
 <ul class="counts">
-  <li><strong>{{ report.Summary.Added }}</strong> {{ _("only in Prod") }}</li>
+  <li><strong>{{ report.Summary.Added }}</strong> {{ only_desired }}</li>
   <li><strong>{{ report.Summary.Removed }}</strong> {{ _("only in Dev") }}</li>
   <li><strong>{{ report.Summary.Changed }}</strong> {{ _("changed") }}</li>
   <li><strong>{{ report.Summary.Unchanged }}</strong> {{ _("unchanged") }}</li>
@@ -24,14 +29,14 @@
 {% for t in rows %}
   <section class="type">
     <h2><span class="type-name">{{ short_type(t.ResourceType) }}</span> {{ type_badge(t.ResourceType) }}</h2>
-    <p class="meta">{{ t.Added|length }} {{ _("only in Prod") }} · {{ t.Removed|length }} {{ _("only in Dev") }} · {{ t.Changed|length }} {{ _("changed") }} · {{ t.Unchanged }} {{ _("unchanged") }}</p>
-    {% if t.Added %}<h3>{{ _("Only in Prod") }}</h3><ul>{% for n in t.Added %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+    <p class="meta">{{ t.Added|length }} {{ only_desired }} · {{ t.Removed|length }} {{ _("only in Dev") }} · {{ t.Changed|length }} {{ _("changed") }} · {{ t.Unchanged }} {{ _("unchanged") }}</p>
+    {% if t.Added %}<h3>{{ _("Only in the desired state") if from_repo else _("Only in Prod") }}</h3><ul>{% for n in t.Added %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
     {% if t.Removed %}<h3>{{ _("Only in Dev") }}</h3><ul>{% for n in t.Removed %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
     {% for c in t.Changed %}
       <h3>{{ _("Changed") }}: {{ c.Name }}</h3>
       <div class="table-wrap"><table>
-        <thead><tr><th scope="col">{{ _("Property") }}</th><th scope="col">{{ _("Prod") }}</th><th scope="col">{{ _("Dev") }}</th></tr></thead>
-        <tbody>{% for d in c.Differences %}<tr><td data-label="{{ _('Property') }}">{{ d.Property }}</td><td data-label="{{ _('Prod') }}">{{ d.Source }}</td><td data-label="{{ _('Dev') }}">{{ d.Target }}</td></tr>{% endfor %}</tbody>
+        <thead><tr><th scope="col">{{ _("Property") }}</th><th scope="col">{{ desired }}</th><th scope="col">{{ _("Dev") }}</th></tr></thead>
+        <tbody>{% for d in c.Differences %}<tr><td data-label="{{ _('Property') }}">{{ d.Property }}</td><td data-label="{{ desired }}">{{ d.Source }}</td><td data-label="{{ _('Dev') }}">{{ d.Target }}</td></tr>{% endfor %}</tbody>
       </table></div>
     {% endfor %}
   </section>
