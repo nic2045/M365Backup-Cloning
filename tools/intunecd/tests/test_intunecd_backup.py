@@ -53,6 +53,25 @@ def test_more_types_can_be_left_out(tmp_path):
     assert {"PowershellScripts", "ShellScripts", "ConditionalAccess"} <= set(start.args.exclude)
 
 
+def test_scripts_are_left_out_by_default(tmp_path):
+    start = FakeStart()
+    assert run(tmp_path, start) == 0
+    assert set(wrapper.SCRIPT_TYPES) <= set(start.args.exclude)
+
+
+def test_scripts_can_be_included_on_purpose(tmp_path):
+    start = FakeStart()
+    assert run(tmp_path, start, "--include-scripts") == 0
+    assert not set(wrapper.SCRIPT_TYPES) & set(start.args.exclude)
+    assert set(wrapper.DEFAULT_EXCLUDE) <= set(start.args.exclude)  # Conditional Access stays out
+
+
+def test_script_types_are_known_to_intunecd(tmp_path):
+    # an unknown name would make IntuneCD's parser refuse every run
+    start = FakeStart()
+    assert run(tmp_path, start, "--exclude", *wrapper.SCRIPT_TYPES) == 0
+
+
 def test_an_unknown_type_is_refused_by_intunecd(tmp_path, capsys):
     assert run(tmp_path, FakeStart(), "--exclude", "NoSuchType") == 2
     assert "does not know" in capsys.readouterr().err

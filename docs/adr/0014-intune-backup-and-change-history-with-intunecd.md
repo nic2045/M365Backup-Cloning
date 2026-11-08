@@ -1,7 +1,8 @@
 # 0014. Intune backup and change history with IntuneCD
 
 Status: Accepted (2026-11-07, issue #68, decided with the owner: IntuneCD for backup and change history only, applying
-stays with Microsoft365DSC; #68 before #18)
+stays with Microsoft365DSC; #68 before #18). The default for script types in point 2 is superseded by
+[ADR 0015](0015-intune-backup-leaves-scripts-out-by-default.md): scripts are left out unless `IncludeScripts` is set.
 
 ## Context
 

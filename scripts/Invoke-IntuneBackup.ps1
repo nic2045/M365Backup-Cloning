@@ -31,7 +31,7 @@ if ($DryRun) {
     $settings = Get-IntuneBackupSettings -Config $config
     Write-Host 'Dry run: nothing is read or written.'
     Write-Host "Configuration repository: $($settings.Repository) (folders intune/prod and intune/dev, one commit, no push)"
-    Write-Host "Python: $($settings.Python); IntuneCD backup only (read only), extra types left out: $(@($settings.Exclude) -join ', ')"
+    Write-Host "Python: $($settings.Python); IntuneCD backup only (read only), extra types left out: $(@($settings.Exclude) -join ', '); script types: $(if ($settings.IncludeScripts) { 'backed up (IncludeScripts)' } else { 'left out' })"
     return
 }
 if (-not $ProdToken -or -not $DevToken) { throw 'Pass -ProdToken and -DevToken.' }

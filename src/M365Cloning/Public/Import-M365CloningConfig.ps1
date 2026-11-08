@@ -149,9 +149,12 @@ function Import-M365CloningConfig {
         throw 'ConfigRepository must be the path of your private configuration repository (a string).'
     }
     if ($config.ContainsKey('IntuneBackup') -and $null -ne $config.IntuneBackup) {
-        if ($config.IntuneBackup -isnot [hashtable]) { throw 'IntuneBackup must be a table: @{ Python = ...; Exclude = ... }.' }
+        if ($config.IntuneBackup -isnot [hashtable]) { throw 'IntuneBackup must be a table: @{ Python = ...; Exclude = ...; IncludeScripts = ... }.' }
         foreach ($key in $config.IntuneBackup.Keys) {
-            if ([string]$key -notin 'Python', 'Exclude') { throw "IntuneBackup: unknown key '$key' (Python, Exclude)." }
+            if ([string]$key -notin 'Python', 'Exclude', 'IncludeScripts') { throw "IntuneBackup: unknown key '$key' (Python, Exclude, IncludeScripts)." }
+        }
+        if ($config.IntuneBackup.ContainsKey('IncludeScripts') -and $config.IntuneBackup.IncludeScripts -isnot [bool]) {
+            throw 'IntuneBackup.IncludeScripts must be $true or $false (scripts are left out by default, ADR 0015).'
         }
         if ($config.IntuneBackup.ContainsKey('Python') -and ($config.IntuneBackup.Python -isnot [string] -or [string]::IsNullOrWhiteSpace($config.IntuneBackup.Python))) {
             throw 'IntuneBackup.Python must be the Python command or path (a string).'
