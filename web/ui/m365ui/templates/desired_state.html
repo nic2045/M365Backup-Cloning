@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, empty, crumbs %}
+{% from "_macros.html" import start_form, busy with context %}
+{% block title %}{{ _("Desired state") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("History"), ""), (_("Desired state"), "")]) }}{% endblock %}
+{% block content %}
+<h1>{{ icon("desired") }} {{ _("Desired state") }}</h1>
+<p class="lead">{{ _("Each export reads Prod and saves its desired state as files in your configuration repository, one file per resource, without IDs and secrets, one commit per run. Here you see what changed since the export before. Nothing in the tenants is changed.") }}</p>
+{{ busy(running) }}
+
+<section class="card" aria-labelledby="export-now">
+  <h2 class="card-title" id="export-now">{{ icon("desired") }} {{ _("Export now") }}</h2>
+  <p class="meta">{{ _("Reads Prod (read only) and commits the folder desired in your configuration repository. Dev is not read, nothing is pushed.") }}</p>
+  {{ start_form("export-desired", _("Export the desired state"), "start", "Applier", running=running) }}
+  <details class="later"><summary>{{ _("Or run it on the admin machine") }}</summary><p><code class="cmd">scripts/Export-DesiredState.ps1</code></p></details>
+</section>
+
+{% if detail %}
+{% set e = detail.export %}
+<h2>{{ _("Export of") }} {{ detail.createdUtc|when }}</h2>
+<p class="meta">
+  {% if e.Unchanged %}{{ badge("unchanged") }} {{ _("Nothing changed since the export before; no commit.") }}
+  {% else %}{{ _("Commit in the configuration repository") }}: <code>{{ e.Commit[:12] }}</code>{% endif %}
+</p>
+<section class="cards" aria-label="{{ _('Counts') }}">
+  <article class="card">
+    <h3 class="card-title">{{ icon("intune") }} Prod</h3>
+    <dl class="pairs">
+      <dt>{{ _("Added") }}</dt><dd>{{ e.Added }}</dd>
+      <dt>{{ _("Changed") }}</dt><dd>{{ e.Changed }}</dd>
+      <dt>{{ _("Removed") }}</dt><dd>{{ e.Removed }}</dd>
+      <dt>{{ _("Files") }}</dt><dd>{{ e.Files }}</dd>
+    </dl>
+    <p class="meta">{{ _("Folder") }}: <code>{{ e.Folder }}</code></p>
+  </article>
+  <article class="card">
+    <h3 class="card-title">{{ icon("warn") }} {{ _("Not written") }}</h3>
+    <dl class="pairs">
+      <dt>{{ _("Skipped resources") }}</dt><dd>{{ skipped|length }}</dd>
+      <dt>{{ _("Files with a Prod object ID") }}</dt><dd>{{ e.WithObjectIds }}</dd>
+    </dl>
+    <p class="meta">{{ _("Skipped: secrets, excluded types, missing filters. Files with a Prod object ID are blocked by the apply until the reference is fixed.") }}</p>
+  </article>
+</section>
+
+<h3>{{ _("Changed files") }}</h3>
+{% if groups %}
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Changed files of the desired state") }}</caption>
+  <thead><tr><th scope="col">{{ _("Type") }}</th><th scope="col">{{ _("Name") }}</th><th scope="col">{{ _("Change") }}</th></tr></thead>
+  <tbody>
+  {% set ns = namespace(n=0) %}
+  {% for g in groups %}{% for r in g.rows %}{% set ns.n = ns.n + 1 %}{% if ns.n <= limit %}
+    <tr>
+      <td data-label="{{ _('Type') }}">{{ g.folder }}</td>
+      <td data-label="{{ _('Name') }}">{{ r.name }}</td>
+      <td data-label="{{ _('Change') }}">{{ badge(r.change) }}</td>
+    </tr>
+  {% endif %}{% endfor %}{% endfor %}
+  </tbody>
+</table></div>
+{% if ns.n > limit or e.Truncated %}<p class="meta">{{ _("More changes than shown: see the commit in your configuration repository.") }}</p>{% endif %}
+{% else %}
+{{ empty(_("No change"), _("The desired state is the same as at the export before."), "ok") }}
+{% endif %}
+
+{% if skipped %}
+<h3>{{ _("Not written") }}</h3>
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Resources the export did not write") }}</caption>
+  <thead><tr><th scope="col">{{ _("Type") }}</th><th scope="col">{{ _("Name") }}</th><th scope="col">{{ _("Why") }}</th></tr></thead>
+  <tbody>
+  {% for s in skipped[:limit] %}
+    <tr>
+      <td data-label="{{ _('Type') }}">{{ s.ResourceType }}</td>
+      <td data-label="{{ _('Name') }}">{{ s.Name }}</td>
+      <td data-label="{{ _('Why') }}">{{ s.Reason }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% else %}
+{{ empty(_("No export yet"), _("Start the first export above. It needs ConfigRepository in config.psd1 and Git on the server."), "desired", "scripts/Export-DesiredState.ps1") }}
+{% endif %}
+
+{% if runs %}
+<h2>{{ _("Exports") }}</h2>
+<div class="table-wrap"><table>
+  <caption class="sr-only">{{ _("Exports of the desired state") }}</caption>
+  <thead><tr><th scope="col">{{ _("Export") }}</th><th scope="col">{{ _("Result") }}</th><th scope="col" class="num">{{ _("Added") }}</th><th scope="col" class="num">{{ _("Changed") }}</th><th scope="col" class="num">{{ _("Removed") }}</th><th scope="col" class="num">{{ _("Skipped") }}</th></tr></thead>
+  <tbody>
+  {% for r in runs %}
+    <tr{% if r.id == chosen %} aria-current="true"{% endif %}>
+      <td data-label="{{ _('Export') }}">{% if r.state == "outdated" %}{{ r.createdUtc|when }}{% else %}<a href="/history/desired?id={{ r.id }}">{{ r.createdUtc|when }}</a>{% endif %}</td>
+      <td data-label="{{ _('Result') }}">{% if r.state == "outdated" %}{{ badge("outdated") }}{% elif r.unchanged %}{{ badge("unchanged") }}{% else %}{{ badge("different") }}{% endif %}</td>
+      <td data-label="{{ _('Added') }}" class="num">{{ r.added if r.added is defined else "–" }}</td>
+      <td data-label="{{ _('Changed') }}" class="num">{{ r.changed if r.changed is defined else "–" }}</td>
+      <td data-label="{{ _('Removed') }}" class="num">{{ r.removed if r.removed is defined else "–" }}</td>
+      <td data-label="{{ _('Skipped') }}" class="num">{{ r.skipped if r.skipped is defined else "–" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

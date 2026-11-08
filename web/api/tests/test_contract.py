@@ -25,6 +25,8 @@ ROUTE_SCHEMA = {
     "/api/status": "Status",
     "/api/intune-backups": "IntuneBackupList",
     "/api/intune-backups/{id}": "IntuneBackupResponse",
+    "/api/desired-exports": "DesiredExportList",
+    "/api/desired-exports/{id}": "DesiredExportResponse",
     "/api/jobs": {"get": "JobList", "post": "Job"},
     "/api/jobs/{id}": "Job",
     "/api/jobs/{id}/cancel": "Job",

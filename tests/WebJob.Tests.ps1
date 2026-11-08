@@ -37,6 +37,7 @@ BeforeAll {
         foreach ($k in @($p.Keys)) { if ($k -like '*Token') { $p.Remove($k) } }
         switch (Split-Path -Leaf $Path) {
             'Get-DriftReport.ps1' { $p['SourceSnapshotPath'] = $script:Prod; $p['TargetSnapshotPath'] = $script:Dev }
+            'Export-DesiredState.ps1' { $p['SnapshotPath'] = $script:Prod }
             'Invoke-ApplyDev.ps1' { $p['SourceSnapshotPath'] = $script:Prod; $p['TargetSnapshotPath'] = $script:Dev; $p['LicencePath'] = $script:Lic }
             'Invoke-DevReset.ps1' { $p['InventoryPath'] = $script:Inv; if ($p['Mode'] -eq 'Align') { $p['SourceSnapshotPath'] = $script:Prod; $p['TargetSnapshotPath'] = $script:Dev } }
         }
@@ -168,6 +169,23 @@ Describe 'Invoke-WebJob: preview jobs change nothing' {
         $script:Calls[0].Script | Should -Be 'Invoke-SetupCheck.ps1'
         $script:Calls[0].Parameters['Scope'] | Should -Be 'Config'
         $script:Signed.Count | Should -Be 0
+    }
+    It 'exports the desired state signed in to Prod only (issue #27)' {
+        $root = Join-Path $TestDrive 'export'
+        $repo = Join-Path $TestDrive 'export-repo'
+        $null = New-Item -ItemType Directory -Path $repo -Force
+        & git -C $repo init --quiet 2>&1 | Out-Null
+        & git -C $repo -c user.name=t -c user.email=t@localhost commit --quiet --allow-empty -m init 2>&1 | Out-Null
+        $cfgPath = Join-Path $TestDrive 'export-config.psd1'
+        (Get-Content $script:Valid -Raw) -replace '\}\s*$', "    ConfigRepository = '$($repo -replace "'", "''")'`n}" | Set-Content $cfgPath
+        $path = script:New-JobFile -Root $root -Action 'export-desired'
+        Invoke-WebJob -JobPath $path -HistoryRoot $root -ConfigPath $cfgPath -ScriptRoot $script:Scripts -TokenProvider $script:FakeToken -ScriptRunner $script:Offline
+        $job = script:Read-Job $path
+        $job['status'] | Should -Be 'succeeded' -Because $job['message']
+        $job['result']['reportId'] | Should -BeLike 'desired-export-*'
+        @($script:Signed) | Should -Be @('Prod')
+        $script:Calls[0].Script | Should -Be 'Export-DesiredState.ps1'
+        Test-Path (Join-Path $repo 'desired') | Should -BeTrue
     }
     It 'reports an unreadable config through the setup check instead of failing the job' {
         $root = Join-Path $TestDrive 'setup-noconfig'

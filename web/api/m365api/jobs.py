@@ -81,6 +81,7 @@ FIELDS_OF = {
     "drift": set(),
     "fitcheck": set(),
     "intune-backup": set(),
+    "export-desired": set(),
     "setup-check": {"scope"},
     "plan-apply": {"area"},
     "plan-baseline": set(),

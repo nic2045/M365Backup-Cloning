@@ -433,6 +433,27 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
                       tenants=tenants, chosen=chosen, running=active_job(request), changes=view.CHANGES,
                       limit=view.CHANGE_LIMIT)
 
+    @app.get("/history/desired", response_class=HTMLResponse)
+    def desired_state(request: Request, id: str | None = None):  # noqa: A002 - query name of the page
+        """Desired state (issue #27, ADR 0018): what the read-only export of Prod changed in the configuration repository."""
+        if id and not view.EXPORT_ID_RE.fullmatch(id):
+            return bad_id(request)
+        res = call(request, "/api/desired-exports")
+        if not res.ok:
+            return failed(request, res)
+        runs = view.newest_first(res.body.get("items", []), "createdUtc")
+        chosen = id or next((r["id"] for r in runs if r.get("state") != "outdated"), "")
+        detail = None
+        if chosen:
+            one = call(request, f"/api/desired-exports/{chosen}")
+            if not one.ok:
+                return failed(request, one)
+            detail = one.body
+        export = (detail or {}).get("export", {})
+        return render(request, "desired_state.html", nav="desired", runs=runs[:RECENT_BACKUPS], detail=detail,
+                      groups=view.export_groups(export) if detail else [], skipped=export.get("Skipped", []),
+                      chosen=chosen, running=active_job(request), limit=view.CHANGE_LIMIT)
+
     @app.get("/jobs", response_class=HTMLResponse)
     def jobs(request: Request):
         res = call(request, "/api/jobs")

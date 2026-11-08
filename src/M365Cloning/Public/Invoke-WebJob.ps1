@@ -15,6 +15,7 @@ function Invoke-WebJob {
         script itself. Steps: check the request, sign in to the tenants, run the script, record the result.
         - plan-* and the reports run the script without -Apply: nothing is changed in any tenant. intune-backup reads
           both tenants with IntuneCD and commits the files in the configuration repository (issue #68, ADR 0014).
+        - export-desired: reads Prod and commits the desired state in the configuration repository (issue #27, ADR 0018).
         - setup-check: read-only check of the instance (issue #18); it signs in to each tenant itself, so a failing
           sign-in becomes a red check of the result instead of a failed job. An unreadable config is reported the same way.
         - apply: the plan file must exist, its hash must equal the hash the person confirmed in the browser, and for a
@@ -107,6 +108,7 @@ function Invoke-WebJob {
             'drift' { }
             'fitcheck' { $params['TakeProdSnapshot'] = $true }
             'intune-backup' { }
+            'export-desired' { }
             'setup-check' { $params['Scope'] = if ($options['scope']) { [string]$options['scope'] } else { 'All' } }
             'plan-apply' { $params['Plan'] = $true; $params['Area'] = if ($options['area']) { [string]$options['area'] } else { 'All' } }
             'plan-baseline' { $params['Plan'] = $true }
@@ -203,6 +205,7 @@ function Invoke-WebJob {
             'plan-*' { 'The plan is ready. Nothing was changed; open the plan to check and apply it.' }
             'apply' { 'The plan was applied. Compare again to see the new state.' }
             'intune-backup' { 'The Intune backup is saved in the configuration repository. Open Intune changes to see what changed.' }
+            'export-desired' { 'The desired state is saved in the configuration repository. Open Desired state to see what changed.' }
             'setup-check' { 'The setup check is ready. Nothing was changed; open Setup check to see what to do.' }
             default { 'The report is ready.' }
         }

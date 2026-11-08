@@ -254,7 +254,8 @@
                 "reset",
                 "fitcheck",
                 "backup",
-                "setupcheck"
+                "setupcheck",
+                "export"
               ]
             }
           },
@@ -454,6 +455,92 @@
             "in": "path",
             "required": true,
             "description": "File base name below History/reports, e.g. intune-backup-20261107-120000.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            }
+          }
+        ],
+        "x-required-role": "Reader"
+      }
+    },
+    "/api/desired-exports": {
+      "get": {
+        "operationId": "listDesiredExports",
+        "summary": "List the exports of the Prod desired state (issue #27), newest first",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The exports; files in an older format are listed with state 'outdated'",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesiredExportList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-required-role": "Reader"
+      }
+    },
+    "/api/desired-exports/{id}": {
+      "get": {
+        "operationId": "getDesiredExport",
+        "summary": "Read one export of the desired state: what changed since the export before and which resources were not written (paths, names and counts only)",
+        "tags": [
+          "read"
+        ],
+        "responses": {
+          "200": {
+            "description": "The export",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesiredExportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "File base name below History/reports, e.g. desired-export-20261107-120000.",
             "schema": {
               "type": "string",
               "pattern": "^[a-z0-9-]+$"
@@ -744,6 +831,12 @@
       },
       "IntuneBackupResponse": {
         "$ref": "../schema/m365cloning.schema.json#/$defs/IntuneBackupResponse"
+      },
+      "DesiredExportList": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/DesiredExportList"
+      },
+      "DesiredExportResponse": {
+        "$ref": "../schema/m365cloning.schema.json#/$defs/DesiredExportResponse"
       },
       "SetupCheckResponse": {
         "$ref": "../schema/m365cloning.schema.json#/$defs/SetupCheckResponse"

@@ -314,3 +314,19 @@ browser for real; no tenant). Run it on your Windows admin machine. Nothing is w
 | 8 | Higher role refused | Set `LocalAccount.Role = 'Resetter'` and start | Start stops with "LocalAccount.Role ... break-glass account for management only"; set it back to `Reader` |
 | 9 | Stop | Ctrl+C in the window of the script | Both apps stop; ports 8000 and 8080 are free again (`-Check` says "Ports: free") |
 | 10 | Nothing secret in the window | Read the whole output of steps 3 to 9 | No tenant or client ID, no hash, no token secret |
+
+# Part 18: export of the desired state (issue #27 part 1, ADR 0018)
+
+Claude never ran this against a tenant (invented snapshots, a test repository only). Nothing is written to a tenant; the steps write to your configuration repository.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Host | Git on the path of the job runner; `ConfigRepository` in `config.psd1` = a private Git repository with at least one commit | `scripts/Export-DesiredState.ps1 -DryRun` names the repository, the number of resource types and "Dev is not read" |
+| 2 | First export | Web: *History* > *Desired state* > "Export the desired state" (role Applier); or the script with `-ProdToken` | Job succeeds; the repository has `desired/<type>/<name>.json`, one file per Prod resource, and one new commit "Desired state export <time>" by `M365Cloning export` with "Started by: <you>"; nothing was pushed |
+| 3 | No IDs, no secrets, no tenant | Search `desired/` for your Prod and Dev tenant IDs, `groupId`, `deviceAndAppManagementAssignmentFilterId`, `secretReferenceValueId`, `PreSharedKey`, `Password` | None. Assignments name groups (`groupDisplayName`) and filters (`deviceAndAppManagementAssignmentFilterDisplayName`) by name; Wi-Fi, VPN, certificate profiles and encrypted OMA-URI profiles are listed under "Not written" |
+| 4 | Clean diffs | Export again without a change in Prod | "Nothing changed since the export before; no commit"; `git status` clean |
+| 5 | Change | Change one setting of a test policy in Prod, add one test group, delete one test policy; export | The page shows one changed, one added, one removed file; `git show` shows only the changed setting |
+| 6 | Windows names | A test policy whose name has `/`, `:` or `?` | Its file name has `_` instead; the file opens on Windows |
+| 7 | Failure | Use a wrong thumbprint for Prod and export | The job fails with the cause in the log; the repository is unchanged; `History/tmp` has no folder left |
+| 8 | Audit | *History* > *Audit log*, filter "Desired state export" | One line per run with counts only and your name as Actor |
+| 9 | Tenants untouched | Audit logs of Prod for the time of the runs; Dev not read at all | Only reads by the Prod app registration; no create, update or delete |

@@ -16,10 +16,10 @@ from test_pages import MOCK_FILE, PAGES, signed_in
 NOW = datetime(2026, 11, 7, 14, 30, tzinfo=timezone.utc)
 NAV = {"/": "overview", "/reports": "reports", "/plans": "plans", "/audit": "audit", "/jobs": "jobs",
        "/goals/align": "align", "/goals/fresh": "fresh", "/goals/fill": "fill", "/areas/intune": "intune",
-       "/history/intune": "intune-changes", "/settings/setup": "setup"}
+       "/history/intune": "intune-changes", "/history/desired": "desired", "/settings/setup": "setup"}
 NAV_HREF = {"overview": "/", "reports": "/reports", "plans": "/plans", "audit": "/audit", "jobs": "/jobs",
             "align": "/goals/align", "fresh": "/goals/fresh", "fill": "/goals/fill", "intune": "/areas/intune",
-            "intune-changes": "/history/intune", "setup": "/settings/setup"}
+            "intune-changes": "/history/intune", "desired": "/history/desired", "setup": "/settings/setup"}
 
 
 @pytest.fixture()
