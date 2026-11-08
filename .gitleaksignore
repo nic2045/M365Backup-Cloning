@@ -1,0 +1,6 @@
+# Verified false positives only: one exact fingerprint (commit:file:rule:line) per line, each with its reason.
+# Never add a whole file, path or rule here.
+
+# Issue #79: "$apiPy = Initialize-M365WebVenv" (a variable name containing "api" and a function name, no secret).
+# Renamed in 1293105; the old line stays in the history of the PR branch.
+cd26c420c1514e0f1443361ad7f22f7dabab0914:scripts/M365CloningWeb.psm1:generic-api-key:413
