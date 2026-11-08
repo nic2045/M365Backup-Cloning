@@ -56,6 +56,31 @@ def test_the_check_is_a_job_for_the_applier(app, idle, roles, status):
     assert response.status_code == status, response.text
 
 
+@pytest.mark.parametrize("roles,scope,status,role", [
+    (["Reader"], "Config", 202, "Reader"),
+    (["Resetter"], "Config", 202, "Reader"),
+    (["Applier"], "Config", 202, "Reader"),
+    (["Reader"], "All", 403, None),
+    (["Resetter"], "All", 403, None),
+])
+def test_a_reader_may_check_the_config_only(app, idle, roles, scope, status, role):
+    """Issue #76: the config-only check signs in nowhere, so Reader is enough; the full check stays Applier."""
+    response = as_role(app, *roles).post("/api/jobs", json={"action": "setup-check", "scope": scope})
+    assert response.status_code == status, response.text
+    if role:
+        assert response.json()["role"] == role
+    else:
+        assert response.json()["code"] == "forbidden"
+
+
+def test_role_by_scope_comes_from_the_job_table():
+    from m365api.jobs import role_for
+    assert role_for("setup-check", scope="Config") == "Reader"
+    assert role_for("setup-check", scope="All") == "Applier"
+    assert role_for("setup-check") == "Applier"
+    assert role_for("drift", scope="Config") == "Applier"
+
+
 @pytest.mark.parametrize("sent,stored", [({}, "All"), ({"scope": "Config"}, "Config"), ({"scope": "All"}, "All")])
 def test_scope_is_stored(app, idle, sent, stored):
     body = as_role(app, "Applier").post("/api/jobs", json={"action": "setup-check", **sent}).json()

@@ -190,10 +190,11 @@ def create_app(history_dir: Path | str | None = None, auth: AuthConfig | None = 
             if req.action == "apply":
                 plan = store.get_plan(req.plan_id or "")
                 plan_kind = str(plan["kind"])
-            who = needs(request, role_for(req.action, plan_kind))
+            role = role_for(req.action, plan_kind, scope=req.scope)
+            who = needs(request, role)
             if plan is not None:
                 check_apply(req, plan)
-            return jobs.create(req, role_for(req.action, plan_kind), who.name, plan)
+            return jobs.create(req, role, who.name, plan)
 
         return respond("Job", produce, status=202)
 

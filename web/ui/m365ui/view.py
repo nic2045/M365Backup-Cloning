@@ -135,6 +135,7 @@ AUDIT_MODES = (
     ("reset", "Reset", "outdated"),
     ("fitcheck", "Suitability check", "ok"),
     ("backup", "Intune backup", "backup"),
+    ("setupcheck", "Setup check", "setup"),
 )
 # Period filter -> days back. Offered as a choice, not typed (docs: guided UX).
 AUDIT_PERIODS = (("1d", "Last 24 hours", 1), ("7d", "Last 7 days", 7), ("30d", "Last 30 days", 30))

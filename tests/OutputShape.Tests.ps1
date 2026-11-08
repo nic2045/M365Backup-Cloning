@@ -176,7 +176,7 @@ Describe 'Plan files of an older format (point 8)' {
 
 Describe 'Audit: the same counters in every line (point 6)' {
     It 'every line of the sample run has the fixed counter set' {
-        $expected = 'Applied,Blocked,Deleted,Excluded,Exists,Failed,Info,Invite,NotRun,Planned,Protected,Red,Retired,Skipped,Wiped,Yellow'
+        $expected = 'Applied,Blocked,Deleted,Excluded,Exists,Failed,Green,Grey,Info,Invite,NotRun,Planned,Protected,Red,Retired,Skipped,Wiped,Yellow'
         foreach ($l in Get-Content -LiteralPath (Join-Path $script:History 'audit.jsonl')) {
             @(($l | ConvertFrom-Json -AsHashtable)['Counts'].Keys | Sort-Object) -join ',' | Should -Be $expected
         }

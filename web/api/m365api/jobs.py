@@ -105,14 +105,19 @@ def parse_request(body: Any) -> JobRequest:
                       body.get("confirmPlanHash"), body.get("confirmTenant"), body.get("scope"))
 
 
-def role_for(action: str, plan_kind: str | None = None, table: dict[str, Any] | None = None) -> str:
-    """The role an action needs: from the job table; apply depends on the kind of the plan."""
+def role_for(action: str, plan_kind: str | None = None, table: dict[str, Any] | None = None,
+             scope: str | None = None) -> str:
+    """The role an action needs: from the job table; apply depends on the kind of the plan, the setup check on its
+    scope (issue #76: the config-only check signs in nowhere, so a Reader may start it; roleByScope in the table)."""
     entry = (table or definitions())["actions"][action]
     if action == "apply":
         by_kind = entry["byPlanKind"].get(plan_kind or "")
         if by_kind is None:
             raise StoreError(400, "invalid-parameter", "This plan kind cannot be applied.")
         return str(by_kind["role"])
+    by_scope = entry.get("roleByScope") or {}
+    if scope and scope in by_scope:
+        return str(by_scope[scope])
     return str(entry["role"])
 
 

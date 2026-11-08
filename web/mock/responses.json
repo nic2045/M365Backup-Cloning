@@ -7,6 +7,35 @@
         "schemaVersion": "2",
         "items": [
           {
+            "Timestamp": "2026-11-07T12:45:00Z",
+            "User": "DOMAIN\\operator",
+            "Mode": "setupcheck",
+            "PlanHash": "",
+            "TargetTenant": "",
+            "Counts": {
+              "Planned": 0,
+              "Blocked": 0,
+              "Skipped": 0,
+              "Excluded": 0,
+              "Exists": 0,
+              "Invite": 0,
+              "Protected": 0,
+              "Applied": 0,
+              "Failed": 0,
+              "Deleted": 0,
+              "Retired": 0,
+              "Wiped": 0,
+              "NotRun": 0,
+              "Red": 0,
+              "Yellow": 2,
+              "Info": 0,
+              "Green": 11,
+              "Grey": 1
+            },
+            "Reason": "setup check (All): yellow",
+            "Actor": "Example Admin"
+          },
+          {
             "Timestamp": "2026-11-07T12:41:00Z",
             "User": "DOMAIN\\operator",
             "Mode": "reset",
@@ -400,7 +429,7 @@
         ],
         "page": 1,
         "pageSize": 50,
-        "total": 15
+        "total": 16
       }
     },
     "GET /api/audit?pageSize=0": {

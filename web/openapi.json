@@ -252,7 +252,9 @@
                 "apply",
                 "refused",
                 "reset",
-                "fitcheck"
+                "fitcheck",
+                "backup",
+                "setupcheck"
               ]
             }
           },
@@ -531,7 +533,7 @@
       "post": {
         "operationId": "startJob",
         "summary": "Queue a job and start the job runner (preview, report or apply after confirmation)",
-        "description": "One job at a time (409 job-running). apply: confirmPlanHash must be the hash of the plan (409 plan-changed); a reset plan also needs confirmTenant, the Dev tenant ID typed by the person (409 tenant-mismatch). Role by action: see src/M365Cloning/Data/WebJobs.json (reset preview and reset apply: Resetter; all others: Applier).",
+        "description": "One job at a time (409 job-running). apply: confirmPlanHash must be the hash of the plan (409 plan-changed); a reset plan also needs confirmTenant, the Dev tenant ID typed by the person (409 tenant-mismatch). Role by action: see src/M365Cloning/Data/WebJobs.json (reset preview and reset apply: Resetter; setup-check with scope Config: Reader, issue #76; all others: Applier).",
         "tags": [
           "jobs"
         ],
@@ -575,7 +577,7 @@
             "$ref": "#/components/responses/Conflict"
           }
         },
-        "x-required-role": "Applier|Resetter"
+        "x-required-role": "Reader|Applier|Resetter"
       }
     },
     "/api/jobs/{id}": {
@@ -680,7 +682,7 @@
             }
           }
         ],
-        "x-required-role": "Applier|Resetter"
+        "x-required-role": "Reader|Applier|Resetter"
       }
     }
   },

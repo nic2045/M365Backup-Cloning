@@ -163,6 +163,21 @@ Describe 'Invoke-SetupCheck' {
         $l = script:Check (script:Invoke-Check -Root $root -Scope Config) 'licences'
         $l.Status | Should -Be $Status
     }
+    It 'writes one audit line with the colour and the count per colour only (issue #76)' {
+        $root = Join-Path $TestDrive 'audit'
+        $r = script:Invoke-Check -Root $root -Scope Config
+        $lines = @(Get-Content (Join-Path $root 'audit.jsonl'))
+        $lines.Count | Should -Be 1
+        $line = $lines[0] | ConvertFrom-Json -AsHashtable
+        $line.Mode | Should -Be 'setupcheck'
+        $line.Reason | Should -Be "setup check (Config): $($r.Status)"
+        $line.TargetTenant | Should -Be ''
+        foreach ($c in 'Red', 'Yellow', 'Green', 'Grey') { $line.Counts[$c] | Should -Be $r.Summary[$c] -Because $c }
+        $work = Join-Path $TestDrive 'schema-audit'; $null = New-Item -ItemType Directory $work -Force
+        Test-ContractJson -Json $lines[0] -Definition 'AuditEntry' -Folder $work | Should -BeNullOrEmpty
+        Get-ContractConfigLeak -Text $lines[0] | Should -BeNullOrEmpty
+        $lines[0] | Should -Not -Match 'tenant-(prod|dev)-0001'
+    }
     It 'writes no client ID, thumbprint or tenant ID of the config' {
         $r = script:Invoke-Check -Root (Join-Path $TestDrive 'leak')
         Get-ContractConfigLeak -Text (Get-Content $r.Path -Raw) | Should -BeNullOrEmpty

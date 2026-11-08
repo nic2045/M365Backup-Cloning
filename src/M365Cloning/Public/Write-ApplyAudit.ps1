@@ -1,5 +1,5 @@
-# Counters of an audit line (issue #51): one fixed set for every mode.
-$script:AuditCounterNames = @('Planned', 'Blocked', 'Skipped', 'Excluded', 'Exists', 'Invite', 'Protected', 'Applied', 'Failed', 'Deleted', 'Retired', 'Wiped', 'NotRun', 'Red', 'Yellow', 'Info')
+# Counters of an audit line (issue #51): one fixed set for every mode. Green and Grey came with the setup check (issue #76).
+$script:AuditCounterNames = @('Planned', 'Blocked', 'Skipped', 'Excluded', 'Exists', 'Invite', 'Protected', 'Applied', 'Failed', 'Deleted', 'Retired', 'Wiped', 'NotRun', 'Red', 'Yellow', 'Info', 'Green', 'Grey')
 
 function Write-ApplyAudit {
     <#
@@ -11,7 +11,7 @@ function Write-ApplyAudit {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$HistoryRoot,
-        [Parameter(Mandatory)][ValidateSet('report', 'plan', 'apply', 'refused', 'reset', 'fitcheck', 'backup')][string]$Mode,
+        [Parameter(Mandatory)][ValidateSet('report', 'plan', 'apply', 'refused', 'reset', 'fitcheck', 'backup', 'setupcheck')][string]$Mode,
         [string]$PlanHash = '',
         [string]$TargetTenantId = '',
         [System.Collections.IDictionary]$Counts = @{},

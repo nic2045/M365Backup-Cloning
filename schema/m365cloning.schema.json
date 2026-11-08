@@ -835,9 +835,10 @@
             "refused",
             "reset",
             "fitcheck",
-            "backup"
+            "backup",
+            "setupcheck"
           ],
-          "description": "backup: Intune backup with IntuneCD (issue #68); the counts are in Reason, no names."
+          "description": "backup: Intune backup with IntuneCD (issue #68); the counts are in Reason, no names. setupcheck: the setup check (issue #76); its result colour is in Reason, the counts per colour in Red, Yellow, Green and Grey, no IDs or names."
         },
         "PlanHash": {
           "type": "string",
@@ -932,10 +933,20 @@
             "Info": {
               "type": "integer",
               "minimum": 0
+            },
+            "Green": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Added with issue #76 (setup check); lines written before have no Green."
+            },
+            "Grey": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Added with issue #76 (setup check); lines written before have no Grey."
             }
           },
           "additionalProperties": false,
-          "description": "The same counters in every line, whatever the mode (issue #51); unused counters are 0."
+          "description": "The same counters in every line, whatever the mode (issue #51); unused counters are 0. Green and Grey are optional: lines written before issue #76 lack them."
         },
         "Reason": {
           "type": "string",
@@ -1499,6 +1510,7 @@
         },
         "role": {
           "enum": [
+            "Reader",
             "Applier",
             "Resetter"
           ],
@@ -1643,6 +1655,7 @@
         },
         "role": {
           "enum": [
+            "Reader",
             "Applier",
             "Resetter"
           ],
@@ -1812,7 +1825,7 @@
             "All",
             "Config"
           ],
-          "description": "setup-check only; default All. Config: no sign-in."
+          "description": "setup-check only; default All. Config: no sign-in, so the role Reader is enough (issue #76); All needs Applier."
         }
       },
       "additionalProperties": false,

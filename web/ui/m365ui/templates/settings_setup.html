@@ -23,8 +23,14 @@
     {{ empty(_("Not checked yet"), _("Run the check once after the setup and again after each change of the config, the certificates or the app registrations."), "setup", "scripts/Invoke-SetupCheck.ps1") }}
   {% endif %}
   <div class="start-pair">
+  {#- issue #76: the config-only check signs in nowhere, so a Reader may start it; without Applier it is the main button. -#}
+  {% if user and user.has("Applier") %}
   {{ start_form("setup-check", _("Run the full check"), "start", "Applier", fields={"scope": "All"}, running=running) }}
-  {{ start_form("setup-check", _("Check the config only"), "settings", "Applier", fields={"scope": "Config"}, running=running, secondary=True) }}
+  {{ start_form("setup-check", _("Check the config only"), "settings", "Reader", fields={"scope": "Config"}, running=running, secondary=True) }}
+  {% else %}
+  {{ start_form("setup-check", _("Check the config only"), "settings", "Reader", fields={"scope": "Config"}, running=running) }}
+  {{ start_form("setup-check", _("Run the full check"), "start", "Applier", fields={"scope": "All"}, running=running) }}
+  {% endif %}
   </div>
   <p class="meta">{{ _("The full check signs in to Prod and Dev with the certificate of each app registration and only sends read requests. The config-only check signs in nowhere.") }}</p>
 </section>
