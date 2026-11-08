@@ -200,7 +200,8 @@ Describe 'Config: ConfigRepository and IntuneBackup' {
         $p = script:Write-Cfg "IntuneBackup = @{ Update = `$true }"
         { Import-M365CloningConfig -Path $p } | Should -Throw "*unknown key 'Update'*"
     }
-XX
+    It 'refuses an exclude entry that is not a type name' {
+        $p = script:Write-Cfg "IntuneBackup = @{ Exclude = @('Power Shell') }"
         { Import-M365CloningConfig -Path $p } | Should -Throw '*not an IntuneCD type name*'
     }
 }
