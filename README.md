@@ -139,6 +139,21 @@ run, nothing pushed. A failed run leaves the repository as it was. What changed 
 `History/reports/intune-backup-*.json` and on the page *History > Intune changes*. Needs Python 3.12 with
 `pip install --require-hashes -r tools/intunecd/requirements.txt` and Git. Check on a real system: `validation/README.md`, part 15.
 
+## Desired state export (read only, issue #27 part 1, ADR 0018)
+
+```powershell
+pwsh scripts/Export-DesiredState.ps1 -DryRun                 # names the repository; Dev is not read
+pwsh scripts/Export-DesiredState.ps1 -ProdToken $p
+pwsh scripts/Export-DesiredState.ps1 -SnapshotPath <prod snapshot.json>   # offline, from a saved Prod snapshot
+```
+
+Reads Prod (one UTCM snapshot, the resource types of the apply) and writes one normalised file per resource to
+`desired/<type>/<name>.json` in your configuration repository: no IDs, no secrets, no tenant ID, groups and filters by
+name. One commit per run, nothing pushed; a failed run leaves the repository as it was. Resources that are not written
+(secrets, excluded types, missing filters) and what changed are listed in `History/reports/desired-export-*.json` and on
+the page *History > Desired state*. `desired/` is the desired state that a later part of issue #27 builds Dev from;
+`intune/` (IntuneCD) stays the Intune history. Needs Git. Check on a real system: `validation/README.md`, part 18.
+
 ## Setup check (read only, issue #18)
 
 ```powershell

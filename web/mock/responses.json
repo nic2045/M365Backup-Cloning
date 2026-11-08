@@ -3184,6 +3184,130 @@
         "code": "not-found",
         "message": "No Intune backup with this id."
       }
+    },
+    "GET /api/desired-exports": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "items": [
+          {
+            "id": "desired-export-20261107-123000",
+            "createdUtc": "2026-11-07T12:30:00Z",
+            "unchanged": false,
+            "commit": "7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
+            "files": 42,
+            "added": 2,
+            "changed": 1,
+            "removed": 1,
+            "skipped": 2
+          },
+          {
+            "id": "desired-export-20261106-123000",
+            "createdUtc": "2026-11-06T12:30:00Z",
+            "unchanged": true,
+            "commit": "",
+            "files": 41,
+            "added": 0,
+            "changed": 0,
+            "removed": 0,
+            "skipped": 2
+          }
+        ]
+      }
+    },
+    "GET /api/desired-exports/desired-export-20261107-123000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "desired-export-20261107-123000",
+        "createdUtc": "2026-11-07T12:30:00Z",
+        "export": {
+          "SchemaVersion": "2",
+          "Kind": "desiredexport",
+          "CreatedUtc": "2026-11-07T12:30:00Z",
+          "Commit": "7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
+          "Unchanged": false,
+          "Folder": "desired",
+          "Files": 42,
+          "Added": 2,
+          "Changed": 1,
+          "Removed": 1,
+          "WithObjectIds": 1,
+          "Changes": [
+            {
+              "Path": "microsoft.entra.conditionalaccesspolicy/CA require MFA.json",
+              "Change": "changed"
+            },
+            {
+              "Path": "microsoft.entra.group/SW-Ring2.json",
+              "Change": "added"
+            },
+            {
+              "Path": "microsoft.intune.deviceconfigurationpolicywindows10/Windows - Example baseline.json",
+              "Change": "added"
+            },
+            {
+              "Path": "microsoft.intune.devicecompliancepolicywindows10/Compliance win (old).json",
+              "Change": "removed"
+            }
+          ],
+          "Skipped": [
+            {
+              "ResourceType": "microsoft.intune.wificonfigurationpolicywindows10",
+              "Name": "Example Wi-Fi",
+              "Reason": "secret: Wi-Fi profile (pre-shared key) is never written"
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationcustompolicywindows10",
+              "Name": "Example custom profile",
+              "Reason": "secret: the profile holds an encrypted value (OMA-URI)"
+            }
+          ],
+          "Truncated": false
+        }
+      }
+    },
+    "GET /api/desired-exports/desired-export-20261106-123000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "desired-export-20261106-123000",
+        "createdUtc": "2026-11-06T12:30:00Z",
+        "export": {
+          "SchemaVersion": "2",
+          "Kind": "desiredexport",
+          "CreatedUtc": "2026-11-06T12:30:00Z",
+          "Commit": "",
+          "Unchanged": true,
+          "Folder": "desired",
+          "Files": 41,
+          "Added": 0,
+          "Changed": 0,
+          "Removed": 0,
+          "WithObjectIds": 1,
+          "Changes": [],
+          "Skipped": [
+            {
+              "ResourceType": "microsoft.intune.wificonfigurationpolicywindows10",
+              "Name": "Example Wi-Fi",
+              "Reason": "secret: Wi-Fi profile (pre-shared key) is never written"
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationcustompolicywindows10",
+              "Name": "Example custom profile",
+              "Reason": "secret: the profile holds an encrypted value (OMA-URI)"
+            }
+          ],
+          "Truncated": false
+        }
+      }
+    },
+    "GET /api/desired-exports/desired-export-19990101-000000": {
+      "status": 404,
+      "body": {
+        "code": "not-found",
+        "message": "No desired state export with this id."
+      }
     }
   }
 }

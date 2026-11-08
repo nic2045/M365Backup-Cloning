@@ -4,6 +4,7 @@ Layout (written by the PowerShell core, see docs/web-contract.md):
     History/reports/<prefix>-<yyyyMMdd-HHmmss>.json   drift reports, suitability checks, plan files
     History/reports/intune-backup-<yyyyMMdd-HHmmss>.json   what changed in the Intune backup (issue #68)
     History/reports/setup-check-<yyyyMMdd-HHmmss>.json     the setup check of this instance (issue #18)
+    History/reports/desired-export-<yyyyMMdd-HHmmss>.json  what changed in the export of the desired state (issue #27)
     History/audit.jsonl                              one audit entry per line, append only
 Files in another or an unknown format are refused with 409 in detail and listed as 'outdated' (issue #59).
 The store only reads. Ids are file base names; they are checked against a fixed pattern and a known prefix
@@ -36,6 +37,7 @@ PREFIXES: list[tuple[str, str, str, str | None]] = [
     ("tenantfit-", "reports", "tenantfit", None),
     ("drift-", "reports", "drift", None),
     ("intune-backup-", "backups", "intunebackup", None),
+    ("desired-export-", "exports", "desiredexport", None),
     ("setup-check-", "setup", "setupcheck", None),
 ]
 
@@ -154,7 +156,7 @@ class Store:
         for entry in self._entries(group):
             if kind and entry.kind != kind:
                 continue
-            definition_for = definition if group in ("plans", "backups", "setup") else ("FitCheck" if entry.kind == "tenantfit" else "DriftReport")
+            definition_for = definition if group in ("plans", "backups", "exports", "setup") else ("FitCheck" if entry.kind == "tenantfit" else "DriftReport")
             try:
                 content = self._load_checked(entry, definition_for)
             except StoreError as exc:
@@ -254,6 +256,29 @@ class Store:
         entry = self._resolve("backups", file_id, "Intune backup")
         content = self._load_checked(entry, "IntuneBackup")
         return {"schemaVersion": contract.schema_version(), "id": entry.id, "createdUtc": content["CreatedUtc"], "backup": content}
+
+    # --- exports of the desired state (issue #27, ADR 0018) ---------------------------------------------------
+
+    def list_exports(self) -> dict[str, Any]:
+        items = []
+        for entry, content, created in self._load_many("exports", "DesiredExport", None, include_outdated=True):
+            item: dict[str, Any] = {"id": entry.id, "createdUtc": created}
+            if content is None:
+                item["state"] = "outdated"
+            else:
+                item["unchanged"] = bool(content["Unchanged"])
+                item["commit"] = content["Commit"]
+                item["files"] = int(content["Files"])
+                for key in ("Added", "Changed", "Removed"):
+                    item[key.lower()] = int(content[key])
+                item["skipped"] = len(content["Skipped"])
+            items.append(item)
+        return {"schemaVersion": contract.schema_version(), "items": items}
+
+    def get_export(self, file_id: str) -> dict[str, Any]:
+        entry = self._resolve("exports", file_id, "desired state export")
+        content = self._load_checked(entry, "DesiredExport")
+        return {"schemaVersion": contract.schema_version(), "id": entry.id, "createdUtc": content["CreatedUtc"], "export": content}
 
     # --- setup check (issue #18) -------------------------------------------------------------------------------
 

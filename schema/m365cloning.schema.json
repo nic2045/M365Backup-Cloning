@@ -836,9 +836,10 @@
             "reset",
             "fitcheck",
             "backup",
-            "setupcheck"
+            "setupcheck",
+            "export"
           ],
-          "description": "backup: Intune backup with IntuneCD (issue #68); the counts are in Reason, no names. setupcheck: the setup check (issue #76); its result colour is in Reason, the counts per colour in Red, Yellow, Green and Grey, no IDs or names."
+          "description": "backup: Intune backup with IntuneCD (issue #68); the counts are in Reason, no names. setupcheck: the setup check (issue #76); its result colour is in Reason, the counts per colour in Red, Yellow, Green and Grey, no IDs or names. export: export of the Prod desired state to the configuration repository (issue #27); the counts are in Reason, no names."
         },
         "PlanHash": {
           "type": "string",
@@ -1387,6 +1388,7 @@
         "drift",
         "fitcheck",
         "intune-backup",
+        "export-desired",
         "setup-check",
         "plan-apply",
         "plan-baseline",
@@ -1394,7 +1396,7 @@
         "plan-reset",
         "apply"
       ],
-      "description": "What a job does (issue #14). drift: drift report; fitcheck: suitability check; intune-backup: read-only backup of the Intune configuration of both tenants into the configuration repository (issue #68); setup-check: read-only check of this instance (issue #18); plan-*: a preview plan of that kind (changes nothing); apply: applies one plan after the confirmation (reset plans need the role Resetter and a second confirmation)."
+      "description": "What a job does (issue #14). drift: drift report; fitcheck: suitability check; intune-backup: read-only backup of the Intune configuration of both tenants into the configuration repository (issue #68); export-desired: read-only export of the Prod desired state into the configuration repository (issue #27); setup-check: read-only check of this instance (issue #18); plan-*: a preview plan of that kind (changes nothing); apply: applies one plan after the confirmation (reset plans need the role Resetter and a second confirmation)."
     },
     "JobStatus": {
       "enum": [
@@ -2032,6 +2034,229 @@
         },
         "backup": {
           "$ref": "#/$defs/IntuneBackup"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DesiredExportChange": {
+      "type": "object",
+      "required": [
+        "Path",
+        "Change"
+      ],
+      "properties": {
+        "Path": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "File below the folder desired: resource type / display name.json."
+        },
+        "Change": {
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "One file of the desired state that differs from the last export (issue #27)."
+    },
+    "DesiredExportSkipped": {
+      "type": "object",
+      "required": [
+        "ResourceType",
+        "Name",
+        "Reason"
+      ],
+      "properties": {
+        "ResourceType": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "Name": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "Reason": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "additionalProperties": false,
+      "description": "A Prod resource that the export did not write, with the reason (unknown type, excluded, secret, needs-filter, tenant id)."
+    },
+    "DesiredExport": {
+      "type": "object",
+      "required": [
+        "SchemaVersion",
+        "Kind",
+        "CreatedUtc",
+        "Commit",
+        "Unchanged",
+        "Folder",
+        "Files",
+        "Added",
+        "Changed",
+        "Removed",
+        "WithObjectIds",
+        "Changes",
+        "Skipped",
+        "Truncated"
+      ],
+      "properties": {
+        "SchemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "Kind": {
+          "const": "desiredexport"
+        },
+        "CreatedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Commit": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})?$",
+          "description": "The commit in the configuration repository; empty when nothing changed."
+        },
+        "Unchanged": {
+          "type": "boolean"
+        },
+        "Folder": {
+          "const": "desired"
+        },
+        "Files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "WithObjectIds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Written files that still hold a value that looks like a Prod object ID; the apply blocks them (ADR 0006)."
+        },
+        "Changes": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/DesiredExportChange"
+          }
+        },
+        "Skipped": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/DesiredExportSkipped"
+          }
+        },
+        "Truncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "File History/reports/desired-export-<yyyyMMdd-HHmmss>.json (issue #27, ADR 0018): what changed in the desired state of Prod since the last export and which resources were not written. Only paths, names and counts; the content stays in the configuration repository."
+    },
+    "DesiredExportListItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "createdUtc"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^desired-export-[0-9]{8}-[0-9]{6}$"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "unchanged": {
+          "type": "boolean"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})?$"
+        },
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "$ref": "#/$defs/ListItemState"
+        }
+      },
+      "additionalProperties": false,
+      "description": "One export of the desired state in the list."
+    },
+    "DesiredExportList": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "items"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DesiredExportListItem"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "DesiredExportResponse": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "createdUtc",
+        "export"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^desired-export-[0-9]{8}-[0-9]{6}$"
+        },
+        "createdUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "export": {
+          "$ref": "#/$defs/DesiredExport"
         }
       },
       "additionalProperties": false

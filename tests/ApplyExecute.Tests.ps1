@@ -172,6 +172,6 @@ Describe 'Write-ApplyAudit' {
         $root = Join-Path $TestDrive 'audit-report'
         Write-ApplyAudit -HistoryRoot $root -Mode report -TargetTenantId 'tenant-dev-0001' -Reason 'drift Prod -> Dev (offline): 1 added, 0 removed, 2 changed'
         (script:Read-Audit $root)[0].Mode | Should -Be 'report'
-        { Write-ApplyAudit -HistoryRoot $root -Mode export } | Should -Throw
+        { Write-ApplyAudit -HistoryRoot $root -Mode deleteall } | Should -Throw
     }
 }

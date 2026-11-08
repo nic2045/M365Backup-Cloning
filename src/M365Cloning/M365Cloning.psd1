@@ -10,6 +10,8 @@
         'Get-WebJobDefinition'
         'Invoke-WebJob'
         'Invoke-IntuneBackup'
+        'Invoke-DesiredStateExport'
+        'ConvertTo-DesiredStateFile'
         'Invoke-SetupCheck'
         'Get-IntuneBackupSettings'
         'Get-TenantIdHash'

@@ -163,6 +163,14 @@ def create_app(history_dir: Path | str | None = None, auth: AuthConfig | None = 
     def get_backup(id: str) -> JSONResponse:  # noqa: A002 - name from web/openapi.json
         return respond("IntuneBackupResponse", lambda: store.get_backup(id))
 
+    @app.get("/api/desired-exports")
+    def list_exports() -> JSONResponse:
+        return respond("DesiredExportList", store.list_exports)
+
+    @app.get("/api/desired-exports/{id}")
+    def get_export(id: str) -> JSONResponse:  # noqa: A002 - name from web/openapi.json
+        return respond("DesiredExportResponse", lambda: store.get_export(id))
+
     @app.get("/api/status")
     def status() -> JSONResponse:
         return respond("Status", store.status)

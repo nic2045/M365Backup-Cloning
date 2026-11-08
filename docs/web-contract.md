@@ -32,6 +32,7 @@ The `id` is the file base name below `History/reports` (for example `apply-plan-
 | `dev-reset-plan-align-`, `dev-reset-plan-full-` | `reset` (with `mode`) | `/api/plans` |
 | `dev-users-plan-` | `users` | `/api/plans` |
 | `intune-backup-` | `intunebackup` | `/api/intune-backups` (issue #68, ADR 0014): what changed in the Intune backup per tenant, paths and counts only |
+| `desired-export-` | `desiredexport` | `/api/desired-exports` (issue #27, ADR 0018): what changed in the export of the Prod desired state, paths, skipped resources and counts only |
 | `setup-check-` | `setupcheck` | `/api/setup-check/latest` (issue #18): read-only setup check, the newest current file; no IDs, thumbprints or account names |
 
 `/api/status` is the optional read-only status for consumers (ADR 0002 point 8): time of the latest drift report, number of differences, suitability status.
@@ -61,6 +62,7 @@ Invoke-Pester tests/WebContract.Tests.ps1
 | `2` | #14, #66 (ADR 0012) | Same version, only additions: `Plan.Area` and `PlanListItem.area` (`Intune`; missing = all areas); job formats `JobFile` (History/jobs/<id>.json), `Job`, `JobList`, `JobRequest`; routes `GET /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs` (202), `POST /api/jobs/{id}/cancel` (202); `x-required-role` of the write routes is `Applier|Resetter` (by action, see `src/M365Cloning/Data/WebJobs.json`); 409 codes `job-running`, `plan-changed`, `tenant-mismatch`, `job-finished`; 500 `job-start-failed`. Audit lines of a web job carry `Actor`. |
 | `2` | #13 | Same version, only additions: audit mode `report` (one line per drift report, counts only); an apply writes one line per result (`applied`, `unchanged` or `failed to apply` with resource type and name; no properties, IDs or error text) before its summary line; `GET /api/audit` takes `planHash` (64 lowercase hex characters) to list the entries of one plan. Before/after values stay in the plan, found by its hash. |
 | `2` | #76 | Same version, only additions: audit `Mode` `setupcheck` and the optional counters `Green` and `Grey`; the audit filter `mode` also takes `backup` and `setupcheck`; a `setup-check` job with `scope` `Config` needs only `Reader`, so `x-required-role` of the job routes is `Reader|Applier|Resetter` and a job's `role` may be `Reader`. |
+| `2` | #27 (ADR 0018) | Same version, only additions: file `desired-export-*.json` (schema `DesiredExport`), routes `GET /api/desired-exports` and `GET /api/desired-exports/{id}`, job action `export-desired` (role Applier), audit `Mode` `export` (also as filter `mode`). |
 
 ## Start with one command (issue #79, ADR 0016)
 

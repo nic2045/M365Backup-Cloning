@@ -31,6 +31,8 @@ ALLOWED_PATHS = (
     re.compile(r"^/api/status$"),
     re.compile(r"^/api/intune-backups$"),
     re.compile(r"^/api/intune-backups/[a-z0-9-]{1,100}$"),
+    re.compile(r"^/api/desired-exports$"),
+    re.compile(r"^/api/desired-exports/[a-z0-9-]{1,100}$"),
     re.compile(r"^/api/jobs$"),
     re.compile(r"^/api/jobs/job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$"),
 )

@@ -85,6 +85,9 @@ def test_applier_starts_a_drift_report(app, idle, launcher):
     (["Reader"], "intune-backup", 403),
     (["Resetter"], "intune-backup", 403),
     (["Applier"], "intune-backup", 202),
+    (["Reader"], "export-desired", 403),
+    (["Resetter"], "export-desired", 403),
+    (["Applier"], "export-desired", 202),
 ])
 def test_roles_by_action(app, idle, roles, action, status):
     response = as_role(app, *roles).post("/api/jobs", json={"action": action})
@@ -229,7 +232,7 @@ def as_local(app, *roles: str) -> TestClient:
 
 
 @pytest.mark.parametrize("roles", [("Applier",), ("Resetter",), ("Applier", "Resetter")])
-@pytest.mark.parametrize("action", ["drift", "plan-apply", "plan-reset", "intune-backup"])
+@pytest.mark.parametrize("action", ["drift", "plan-apply", "plan-reset", "intune-backup", "export-desired"])
 def test_the_local_account_starts_no_report_apply_or_reset(app, idle, launcher, roles, action):
     response = as_local(app, *roles).post("/api/jobs", json={"action": action})
     assert response.status_code == 403

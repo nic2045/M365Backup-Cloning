@@ -32,7 +32,7 @@ ICON_FILES = {
     "time": "clock", "todo": "circle",
     "align": "target_arrow", "fresh": "arrow_reset", "fill": "people_add", "jobs": "task_list_ltr", "start": "play",
     "stop": "stop", "running": "arrow_clockwise", "licences": "key", "later": "lock_closed", "delete": "delete",
-    "backup": "archive", "changes": "document_bullet_list_clock",
+    "backup": "archive", "changes": "document_bullet_list_clock", "desired": "document_checkmark",
     "settings": "settings", "setup": "clipboard_checkmark", "certificate": "certificate", "breakglass": "lock_closed",
 }
 
@@ -136,6 +136,7 @@ AUDIT_MODES = (
     ("fitcheck", "Suitability check", "ok"),
     ("backup", "Intune backup", "backup"),
     ("setupcheck", "Setup check", "setup"),
+    ("export", "Desired state export", "desired"),
 )
 # Period filter -> days back. Offered as a choice, not typed (docs: guided UX).
 AUDIT_PERIODS = (("1d", "Last 24 hours", 1), ("7d", "Last 7 days", 7), ("30d", "Last 30 days", 30))
@@ -318,6 +319,7 @@ HISTORY = (
     ("plans", "/plans", "Plans", "plans"),
     ("reports", "/reports", "Reports", "reports"),
     ("intune-changes", "/history/intune", "Intune changes", "changes"),
+    ("desired", "/history/desired", "Desired state", "desired"),
     ("audit", "/audit", "Audit log", "audit"),
 )
 
@@ -325,7 +327,8 @@ HISTORY = (
 # ---------------------------------------------------------------- jobs (#14)
 
 JOB_ACTIONS = {
-    "drift": "Drift report", "fitcheck": "Suitability check", "intune-backup": "Intune backup", "setup-check": "Setup check",
+    "drift": "Drift report", "fitcheck": "Suitability check", "intune-backup": "Intune backup",
+    "export-desired": "Desired state export", "setup-check": "Setup check",
     "plan-apply": "Plan Prod → Dev",
     "plan-baseline": "Base state plan", "plan-users": "Dev users plan", "plan-reset": "Reset plan", "apply": "Apply a plan",
 }
@@ -335,7 +338,7 @@ ACTIVE_JOB = ("queued", "running")
 APPLY_ROLE = {"apply": "Applier", "baseline": "Applier", "users": "Applier", "reset": "Resetter"}
 JOB_ID_RE = re.compile(r"^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$")
 FORM_FIELDS = {
-    "drift": (), "fitcheck": (), "intune-backup": (), "setup-check": ("scope",), "plan-apply": ("area",), "plan-baseline": (), "plan-users": (),
+    "drift": (), "fitcheck": (), "intune-backup": (), "export-desired": (), "setup-check": ("scope",), "plan-apply": ("area",), "plan-baseline": (), "plan-users": (),
     "plan-reset": ("mode", "deviceAction"), "apply": ("planId", "confirmPlanHash", "confirmTenant"),
 }
 CHOICES = {"area": ("All", "Intune"), "mode": ("Align", "Full"), "deviceAction": ("Keep", "Remove", "Retire"),
@@ -413,6 +416,16 @@ def change_groups(tenant: dict[str, Any]) -> list[dict[str, Any]]:
     order = {key: i for i, (key, _label) in enumerate(CHANGES)}
     return [{"folder": f, "rows": sorted(rows, key=lambda r: (order.get(r["change"], 9), r["name"].lower()))}
             for f, rows in sorted(groups.items(), key=lambda kv: kv[0].lower())]
+
+
+# ---------------------------------------------------------------- desired state (#27, ADR 0018)
+
+EXPORT_ID_RE = re.compile(r"^desired-export-[0-9]{8}-[0-9]{6}$")
+
+
+def export_groups(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """The changed files of an export grouped by resource type (the folder below desired/), like change_groups."""
+    return change_groups({"Changes": export.get("Changes", [])})
 
 
 # ---------------------------------------------------------------- setup check (#18)
