@@ -296,3 +296,21 @@ Claude never ran this against a tenant (Graph mocked, fake tokens, the certifica
 | 8 | Unreadable config | Rename `config.psd1` for a moment and run the config-only check | The job succeeds, the result is red "The config cannot be used" with the hint; the rest is grey. Rename it back |
 | 9 | Tenants untouched | Audit logs of both tenants for the time of the runs | Only sign-ins and reads of the two app registrations |
 | 10 | Reader and audit line (issue #76) | Sign in with the app role Reader only, open *Setup check*; then *Audit log*, filter "Setup check" | "Check the config only" is the main button and starts; the full check says it needs Applier. Each run left one audit line "setup check (Config|All): <colour>" with the counts per colour, no tenant, no IDs or names |
+
+# Part 17: start with one command and the break-glass account (issue #79, ADR 0016)
+
+Claude ran the start script only on Linux with the break-glass account and without Entra ID (processes, ports and the
+browser for real; no tenant). Run it on your Windows admin machine. Nothing is written into a tenant.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Check without settings | `pwsh scripts/Start-M365CloningWeb.ps1 -Check` before `web.settings.psd1` exists | "No settings file ... Copy web.settings.example.psd1 to web.settings.psd1"; exit code 2 |
+| 2 | Python | Run once on a machine with Python 3.12 (also through `py -3.12`), once without | With: "Python 3.12: ok"; without: "Python 3.12 is needed" with what was found |
+| 3 | Settings | Fill in `web.settings.psd1` as in `docs/getting-started.md`, step 3; then put a wrong ID into `Entra.TenantId` and `-Check` again | Correct: "Settings: ok", no ID in the output; wrong: the field `Entra.TenantId` with what to do. Put the right ID back |
+| 4 | First start | `pwsh scripts/Start-M365CloningWeb.ps1` | Environments under `web.local\` set up once; "Ready: http://localhost:8080/"; the browser opens. A second start skips the setup |
+| 5 | Token secret | Properties of `web.local\token.secret` > Security | Only your account has access; the file is not in `git status` |
+| 6 | Entra sign-in | "Sign in with Microsoft" with your account in the Resetter group | Overview, your name and `Roles: Reader, Resetter`; no break-glass notice |
+| 7 | Break-glass account | `LocalAccount.Enabled = $true`, `-SetLocalPassword`, start, sign in with the local form | Notice "Break-glass account: management only" on every page; *Setup check* > "Check the config only" starts; buttons for drift report, apply, reset and Intune backup are refused with "This needs the role ..." |
+| 8 | Higher role refused | Set `LocalAccount.Role = 'Resetter'` and start | Start stops with "LocalAccount.Role ... break-glass account for management only"; set it back to `Reader` |
+| 9 | Stop | Ctrl+C in the window of the script | Both apps stop; ports 8000 and 8080 are free again (`-Check` says "Ports: free") |
+| 10 | Nothing secret in the window | Read the whole output of steps 3 to 9 | No tenant or client ID, no hash, no token secret |
