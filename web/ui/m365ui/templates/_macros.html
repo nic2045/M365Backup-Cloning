@@ -113,7 +113,8 @@
 {%- endif -%}
 {%- endmacro %}
 
-{#- Where a plan of Prod -> Dev takes the desired state from (issue #27 part 2, ADR 0019). Inside start_form. -#}
+{#- Where a plan or a drift report takes the desired state from (issue #27 part 2 and 3, ADR 0019, ADR 0020). Inside
+    start_form. -#}
 {% macro source_choice() -%}
 <fieldset class="choice-group">
   <legend>{{ _("Desired state") }}</legend>
@@ -134,4 +135,10 @@
 <a href="/plans/{{ p.id }}">{{ p.id }}</a>
 {%- if p.summary %} <span class="meta">· {{ p.summary.Planned }} {{ _("planned") }}{% if p.summary.Blocked %} · {{ p.summary.Blocked }} {{ _("blocked") }}{% endif %}</span>{% endif %}
 <br><span class="meta">{{ p.createdUtc|when }}</span>
+{%- endmacro %}
+
+{#- Where the desired side of a drift report came from (issue #27 part 3, ADR 0020): a tag, never colour alone. -#}
+{% macro source_tag(source) -%}
+{%- if source == "Repository" -%}<span class="tag">{{ icon("desired") }}<span>{{ _("Configuration repository") }}</span></span>
+{%- else -%}<span class="tag">{{ icon("compare") }}<span>{{ _("Prod (live)") }}</span></span>{%- endif -%}
 {%- endmacro %}

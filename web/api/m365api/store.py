@@ -180,6 +180,8 @@ class Store:
                 item["state"] = "outdated"
             elif entry.kind == "drift":
                 item["isIdentical"] = bool(content["IsIdentical"])
+                source = content.get("Source")
+                item["source"] = "Repository" if isinstance(source, dict) and source.get("Kind") == "Repository" else "Live"
             else:
                 item["status"] = content["Status"]
             items.append(item)

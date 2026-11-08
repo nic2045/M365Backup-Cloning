@@ -167,6 +167,20 @@ and the commit is part of the plan hash, so a changed desired state needs a new 
 stay. Default is `-Source Live` (Prod snapshot). In the web interface: *Bring Dev in line* or *Areas > Intune*, desired
 state "Configuration repository". Check on a real system: `validation/README.md`, part 19.
 
+## Sync report: configuration repository against Dev (issue #27 part 3, ADR 0020)
+
+```powershell
+pwsh scripts/Get-DriftReport.ps1 -Source Repository -DevToken $d                      # desired/ against Dev, Prod is not read
+pwsh scripts/Get-DriftReport.ps1 -Source Repository -TargetSnapshotPath dev.json      # offline
+pwsh scripts/Get-DriftReport.ps1 -Source Repository -DevToken $d -ReportExitCode      # schedule: 0 same, 1 differences, 3 not verified
+```
+
+The drift report with the repository as source shows what a plan from the same commit would change in Dev; it names
+the commit. Read only; a schedule only reports (docs/automation.md). A rebuild with `-RebuildSource Repository` ends
+with this report. What Prod changed since the last export is the commit diff of the next export (*History > Desired
+state*). Default stays `-Source Live`. In the web interface: *Bring Dev in line*, step 1, desired state "Configuration
+repository". Check on a real system: `validation/README.md`, part 20.
+
 ## Setup check (read only, issue #18)
 
 ```powershell

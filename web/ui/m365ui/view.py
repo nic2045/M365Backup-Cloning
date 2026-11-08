@@ -338,7 +338,7 @@ ACTIVE_JOB = ("queued", "running")
 APPLY_ROLE = {"apply": "Applier", "baseline": "Applier", "users": "Applier", "reset": "Resetter"}
 JOB_ID_RE = re.compile(r"^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$")
 FORM_FIELDS = {
-    "drift": (), "fitcheck": (), "intune-backup": (), "export-desired": (), "setup-check": ("scope",), "plan-apply": ("area", "source"), "plan-baseline": (), "plan-users": (),
+    "drift": ("source",), "fitcheck": (), "intune-backup": (), "export-desired": (), "setup-check": ("scope",), "plan-apply": ("area", "source"), "plan-baseline": (), "plan-users": (),
     "plan-reset": ("mode", "deviceAction"), "apply": ("planId", "confirmPlanHash", "confirmTenant"),
 }
 CHOICES = {"area": ("All", "Intune"), "mode": ("Align", "Full"), "deviceAction": ("Keep", "Remove", "Retire"),

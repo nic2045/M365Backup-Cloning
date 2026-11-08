@@ -7,10 +7,15 @@ function ConvertTo-DriftReportMarkdown {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add('# Drift report')
     $lines.Add('')
+    # Source (issue #27 part 3, ADR 0020): desired/ of the configuration repository instead of Prod.
+    $src = if ($Report -is [System.Collections.IDictionary]) { $Report['Source'] } elseif ($Report.PSObject.Properties.Name -contains 'Source') { $Report.Source } else { $null }
+    $fromRepo = $src -is [System.Collections.IDictionary] -and [string]$src['Kind'] -eq 'Repository'
+    $desired = if ($fromRepo) { 'Desired' } else { 'Prod' }
     $lines.Add("Direction: $($Report.Direction). Generated: $GeneratedAt. Read only: nothing was changed.")
+    if ($fromRepo) { $lines.Add(''); $lines.Add("Desired state: configuration repository, commit $([string]$src['Commit']). Prod was not read.") }
     $lines.Add('')
     if ($Report.IsIdentical) {
-        $lines.Add('**No differences.** Dev matches Prod for the compared resources.')
+        $lines.Add("**No differences.** Dev matches $(if ($fromRepo) { 'the desired state' } else { 'Prod' }) for the compared resources.")
         return ($lines -join "`n") + "`n"
     }
     $lines.Add('| Added (missing in Dev) | Removed (extra in Dev) | Changed | Unchanged |')
@@ -25,7 +30,7 @@ function ConvertTo-DriftReportMarkdown {
         foreach ($c in $type.Changed) {
             $lines.Add('')
             $lines.Add("### Changed: $($c.Name)")
-            $lines.Add('| Property | Prod | Dev |')
+            $lines.Add("| Property | $desired | Dev |")
             $lines.Add('|---|---|---|')
             foreach ($d in $c.Differences) {
                 $esc = { param($s) ([string]$s) -replace '\|', '\|' -replace "`r?`n", ' ' }

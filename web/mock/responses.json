@@ -2262,13 +2262,21 @@
             "id": "drift-20261107-120000",
             "kind": "drift",
             "createdUtc": "2026-11-07T12:00:00Z",
-            "isIdentical": false
+            "isIdentical": false,
+            "source": "Live"
           },
           {
             "id": "tenantfit-20261107-120000",
             "kind": "tenantfit",
             "createdUtc": "2026-11-07T12:00:00Z",
             "status": "yellow"
+          },
+          {
+            "id": "drift-20261107-113000",
+            "kind": "drift",
+            "createdUtc": "2026-11-07T11:30:00Z",
+            "isIdentical": false,
+            "source": "Repository"
           }
         ]
       }
@@ -2337,6 +2345,70 @@
             "Unchanged": 2
           },
           "IsIdentical": false
+        }
+      }
+    },
+    "GET /api/reports/drift-20261107-113000": {
+      "status": 200,
+      "body": {
+        "schemaVersion": "2",
+        "id": "drift-20261107-113000",
+        "kind": "drift",
+        "createdUtc": "2026-11-07T11:30:00Z",
+        "report": {
+          "SchemaVersion": "2",
+          "Kind": "drift",
+          "CreatedUtc": "2026-11-07T11:30:00Z",
+          "Direction": "Configuration repository -> Dev (Source = desired/ at commit 3f9c2a7b1d4e, Target = Dev)",
+          "Types": [
+            {
+              "ResourceType": "microsoft.entra.group",
+              "Added": [],
+              "Removed": [],
+              "Changed": [],
+              "Unchanged": 1
+            },
+            {
+              "ResourceType": "microsoft.intune.devicecompliancepolicywindows10",
+              "Added": [],
+              "Removed": [
+                "Old dev only policy"
+              ],
+              "Changed": [],
+              "Unchanged": 1
+            },
+            {
+              "ResourceType": "microsoft.intune.deviceconfigurationpolicywindows10",
+              "Added": [
+                "Windows Update ring"
+              ],
+              "Removed": [],
+              "Changed": [
+                {
+                  "Name": "Windows baseline",
+                  "Differences": [
+                    {
+                      "Property": "PasswordMinimumLength",
+                      "Source": "8",
+                      "Target": "12"
+                    }
+                  ]
+                }
+              ],
+              "Unchanged": 0
+            }
+          ],
+          "Summary": {
+            "Added": 1,
+            "Removed": 1,
+            "Changed": 1,
+            "Unchanged": 2
+          },
+          "IsIdentical": false,
+          "Source": {
+            "Kind": "Repository",
+            "Commit": "3f9c2a7b1d4e5f60718293a4b5c6d7e8f9012345"
+          }
         }
       }
     },

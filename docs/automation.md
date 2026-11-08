@@ -33,3 +33,17 @@ writes to Dev are a separate, later decision (issue #30) and are not covered her
   is needed.
 - The report contains no secrets and no tenant IDs beyond the shortened ID in the audit line; keep `History` private
   anyway.
+
+## Sync report on a schedule (issue #27 part 3, ADR 0020)
+
+The sync report (`scripts/Get-DriftReport.ps1 -Source Repository`) compares `desired/` of your configuration repository
+with Dev and only reads, so it may run on a schedule like the suitability check. It never applies anything; applying
+stays a confirmed action in the web interface or the console.
+
+- Runbook: get an app-only token for Dev only (Prod is not read) and run
+  `Get-DriftReport.ps1 -Source Repository -DevToken $d -ReportExitCode`. The runbook needs a clone of your private
+  configuration repository (read access, pulled before each run) and the path in `ConfigRepository` of `config.psd1`;
+  `desired/` must be committed, a local change stops the run.
+- Exit code: 0 no difference, 1 differences (an apply from the repository would change Dev), 3 not verified (Dev, the
+  repository or the config could not be read; the reason is printed and no report is written).
+- The report and its audit line name the commit; they contain no secrets. Keep `History` private anyway.

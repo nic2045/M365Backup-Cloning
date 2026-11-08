@@ -345,3 +345,17 @@ Claude never ran this against a tenant (invented snapshots, a test repository on
 | 6 | Changed after the preview | Plan from the repository, then change and commit one file in `desired/`, then apply the plan from step 2 | Refused: the plan built again has another hash; nothing applied; audit line `refused` |
 | 7 | Apply | Commit clean, plan from the repository, check, confirm the hash, apply | Dev has the planned objects; Conditional Access is Report-only with the break-glass exclusion; filters and groups match by name |
 | 8 | Rebuild | `scripts/Invoke-DevReset.ps1 ... -Apply -RebuildAfter -RebuildSource Repository` on a test Dev | The apply step's plan names the commit; base state and users as before |
+
+# Part 20: sync report, configuration repository against Dev (issue #27 part 3, ADR 0020)
+
+Claude never ran this against a tenant (invented snapshots, a test repository only). The report only reads Dev and the configuration repository; nothing is written to any tenant.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Before | Part 18 done: `desired/` exported and committed | `git status` in the repository is clean |
+| 2 | Sync report | Web: *Bring Dev in line* > step 1, desired state "Configuration repository" > "Run the drift report" (role Applier); or `scripts/Get-DriftReport.ps1 -Source Repository -DevToken $d` | Job log "signed in to Dev" only; the report page shows "Desired state: Configuration repository" with the first 12 characters of `git rev-parse HEAD`, columns "Desired state" / "Dev"; the report list tags it "Configuration repository" |
+| 3 | Same as a plan | Make a plan from the repository right after step 2 (part 19, step 2) | Every object the report lists as "only in the desired state" or "changed" is planned, blocked or skipped with a reason in the plan |
+| 4 | Prod not read | Sign-in logs of the Prod app registration for the time of step 2 | No sign-in of the Prod app registration |
+| 5 | Uncommitted change | Edit one file in `desired/` without committing, run the sync report | The job fails: "... not committed (...)"; no report |
+| 6 | Schedule | In a runbook or a console: `Get-DriftReport.ps1 -Source Repository -DevToken $d -ReportExitCode` with Dev equal to `desired/`, then with one difference, then with a wrong certificate | Exit code 0, then 1, then 3 with "Not verified: ..." and no report |
+| 7 | After a rebuild | `scripts/Invoke-DevReset.ps1 ... -Apply -RebuildAfter -RebuildSource Repository` on a test Dev | The last report of the run is a sync report (source configuration repository); empty except for what the export leaves out on purpose |

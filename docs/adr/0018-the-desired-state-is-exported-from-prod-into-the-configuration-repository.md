@@ -2,7 +2,7 @@
 
 Status: Accepted (2026-11-08, issue #27 part 1; implements points 2 and 3 of ADR 0004, plans points 4 and 5)
 
-Part 2 (build Dev from the repository) is implemented by ADR 0019.
+Part 2 (build Dev from the repository) is implemented by ADR 0019, part 3 (sync report) by ADR 0020.
 
 ## Context
 

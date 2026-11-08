@@ -4,9 +4,11 @@
     "drift": {
       "role": "Applier",
       "tenants": ["Prod", "Dev"],
+      "tenantsBySource": { "Repository": ["Dev"] },
       "script": "Get-DriftReport.ps1",
       "resultPrefix": "drift-",
-      "run": "Read both tenants and compare"
+      "run": "Read both tenants and compare",
+      "runBySource": { "Repository": "Read the desired state and Dev and compare" }
     },
     "fitcheck": {
       "role": "Applier",

@@ -63,7 +63,7 @@ def test_detail_pages_have_breadcrumbs(web, page):
 
 def test_counter_badges_from_the_list_routes(web):
     html = web.get("/audit").text
-    assert re.search(r'href="/reports"[^>]*>.*?<span class="count"[^>]*>2</span>', html, re.S)
+    assert re.search(r'href="/reports"[^>]*>.*?<span class="count"[^>]*>3</span>', html, re.S)
     assert re.search(r'href="/plans"[^>]*>.*?<span class="count"[^>]*>6</span>', html, re.S)
     # Jobs: only the active ones are counted (one running job in the examples).
     assert re.search(r'href="/jobs"[^>]*>.*?<span class="count"[^>]*>1</span>', html, re.S)
