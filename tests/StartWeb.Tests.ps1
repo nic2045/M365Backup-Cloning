@@ -73,10 +73,10 @@ Describe 'Test-M365WebSettings' {
         $p.Fix | Should -Match '-SetLocalPassword'
     }
     It 'refuses a password instead of a hash, without repeating it' {
-        $s = Settings @{ LocalAccount = @{ Enabled = $true; User = 'breakglass'; PasswordHash = 'my-plain-password'; Role = 'Reader' } }
+        $s = Settings @{ LocalAccount = @{ Enabled = $true; User = 'breakglass'; PasswordHash = 'plain words, no hash'; Role = 'Reader' } }
         $p = @(Test-M365WebSettings -Settings $s)
         Fields $p | Should -Contain 'LocalAccount.PasswordHash'
-        ($p | Out-String) | Should -Not -Match 'my-plain-password'
+        ($p | Out-String) | Should -Not -Match 'plain words, no hash'
     }
     It 'refuses the same port twice and ports out of range' {
         Fields (Test-M365WebSettings -Settings (Settings @{ Ports = @{ Api = 8080; Ui = 8080 } })) | Should -Contain 'Ports'

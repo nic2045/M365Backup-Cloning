@@ -102,23 +102,23 @@ function Test-M365WebSettings {
         }
     }
 
-    $apiPort = Get-M365WebValue $ports 'Api' 8000
-    $uiPort = Get-M365WebValue $ports 'Ui' 8080
-    foreach ($p in @(@('Ports.Api', $apiPort), @('Ports.Ui', $uiPort))) {
+    $backendPort = Get-M365WebValue $ports 'Api' 8000
+    $frontendPort = Get-M365WebValue $ports 'Ui' 8080
+    foreach ($p in @(@('Ports.Api', $backendPort), @('Ports.Ui', $frontendPort))) {
         if (-not ($p[1] -is [int]) -or $p[1] -lt 1024 -or $p[1] -gt 65535) {
             $out.Add((New-M365WebProblem $p[0] 'must be a whole number from 1024 to 65535.' 'Use the default (Api 8000, Ui 8080) or another free port.'))
         }
     }
-    if ($apiPort -eq $uiPort) {
+    if ($backendPort -eq $frontendPort) {
         $out.Add((New-M365WebProblem 'Ports' 'Api and Ui use the same port.' 'Give each app its own port.'))
     }
 
     if ($entraAll) {
-        $redirect = [string](Get-M365WebValue $entra 'RedirectUri' "http://localhost:$uiPort/auth/callback")
+        $redirect = [string](Get-M365WebValue $entra 'RedirectUri' "http://localhost:$frontendPort/auth/callback")
         if ($redirect -notmatch '^(http://localhost(:\d+)?|https://[^/]+)/auth/callback$') {
             $out.Add((New-M365WebProblem 'Entra.RedirectUri' 'must be http://localhost:<port>/auth/callback (or https://<host>/auth/callback).' 'Use the same address as in the app registration of the interface.'))
-        } elseif ($redirect -match '^http://localhost:(\d+)/' -and [int]$Matches[1] -ne $uiPort) {
-            $out.Add((New-M365WebProblem 'Entra.RedirectUri' "uses port $($Matches[1]), the interface runs on $uiPort." 'Make the port in RedirectUri and Ports.Ui the same, here and in the app registration.'))
+        } elseif ($redirect -match '^http://localhost:(\d+)/' -and [int]$Matches[1] -ne $frontendPort) {
+            $out.Add((New-M365WebProblem 'Entra.RedirectUri' "uses port $($Matches[1]), the interface runs on $frontendPort." 'Make the port in RedirectUri and Ports.Ui the same, here and in the app registration.'))
         }
     }
 
@@ -159,16 +159,16 @@ function ConvertTo-M365WebEnvironment {
     $entra = Get-M365WebSection $Settings 'Entra'
     $local = Get-M365WebSection $Settings 'LocalAccount'
     $ports = Get-M365WebSection $Settings 'Ports'
-    $apiPort = [int](Get-M365WebValue $ports 'Api' 8000)
-    $uiPort = [int](Get-M365WebValue $ports 'Ui' 8080)
+    $backendPort = [int](Get-M365WebValue $ports 'Api' 8000)
+    $frontendPort = [int](Get-M365WebValue $ports 'Ui' 8080)
 
     $api = [ordered]@{
         M365CLONING_API_HOST           = '127.0.0.1'
-        M365CLONING_API_PORT           = "$apiPort"
+        M365CLONING_API_PORT           = "$backendPort"
         M365CLONING_LOCAL_TOKEN_SECRET = $TokenSecret
     }
     $ui = [ordered]@{
-        M365_UI_API_BASE               = "http://127.0.0.1:$apiPort"
+        M365_UI_API_BASE               = "http://127.0.0.1:$backendPort"
         M365CLONING_LOCAL_TOKEN_SECRET = $TokenSecret
     }
     if (Test-M365WebEntraConfigured $Settings) {
@@ -178,7 +178,7 @@ function ConvertTo-M365WebEnvironment {
         $ui.M365_UI_OIDC_TENANT_ID = [string]$entra.TenantId
         $ui.M365_UI_OIDC_CLIENT_ID = [string]$entra.UiClientId
         $ui.M365_UI_OIDC_API_SCOPE = [string](Get-M365WebValue $entra 'ApiScope' "api://$apiId/access_as_user")
-        $ui.M365_UI_OIDC_REDIRECT_URI = [string](Get-M365WebValue $entra 'RedirectUri' "http://localhost:$uiPort/auth/callback")
+        $ui.M365_UI_OIDC_REDIRECT_URI = [string](Get-M365WebValue $entra 'RedirectUri' "http://localhost:$frontendPort/auth/callback")
     }
     if ([bool](Get-M365WebValue $local 'Enabled' $false)) {
         $ui.M365_UI_LOCAL_LOGIN = '1'
@@ -190,7 +190,7 @@ function ConvertTo-M365WebEnvironment {
     if ($history) { $api.M365CLONING_HISTORY = $history }
     $config = [string](Get-M365WebValue $Settings 'ConfigPath')
     if ($config) { $api.M365CLONING_CONFIG = $config }
-    @{ Api = $api; Ui = $ui; ApiPort = $apiPort; UiPort = $uiPort }
+    @{ Api = $api; Ui = $ui; ApiPort = $backendPort; UiPort = $frontendPort }
 }
 
 function Format-M365WebSummary {
@@ -198,11 +198,11 @@ function Format-M365WebSummary {
     [CmdletBinding()] param ([Parameter(Mandatory)][hashtable]$Settings)
     $local = Get-M365WebSection $Settings 'LocalAccount'
     $ports = Get-M365WebSection $Settings 'Ports'
-    $apiPort = Get-M365WebValue $ports 'Api' 8000
-    $uiPort = Get-M365WebValue $ports 'Ui' 8080
+    $backendPort = Get-M365WebValue $ports 'Api' 8000
+    $frontendPort = Get-M365WebValue $ports 'Ui' 8080
     @(
-        "Interface : http://localhost:$uiPort/"
-        "API       : http://127.0.0.1:$apiPort/ (only for the interface)"
+        "Interface : http://localhost:$frontendPort/"
+        "API       : http://127.0.0.1:$backendPort/ (only for the interface)"
         "Entra ID  : $(if (Test-M365WebEntraConfigured $Settings) { 'set up' } else { 'not set up (reports, apply and reset need it)' })"
         "Break-glass account : $(if ([bool](Get-M365WebValue $local 'Enabled' $false)) { "on, user '$($local.User)', role Reader, only on this machine" } else { 'off' })"
     )
@@ -381,10 +381,10 @@ function Invoke-M365CloningWeb {
     $hashEmpty = -not (Get-M365WebValue (Get-M365WebSection $settings 'LocalAccount') 'PasswordHash')
     if ($SetLocalPassword -or ($localOn -and $hashEmpty -and -not $Check)) {
         try {
-            $uiPy = Initialize-M365WebVenv -Python $python.Path -Venv $paths.UiVenv -Requirements (Join-Path $paths.UiDir 'requirements.txt')
+            $frontendPython = Initialize-M365WebVenv -Python $python.Path -Venv $paths.UiVenv -Requirements (Join-Path $paths.UiDir 'requirements.txt')
             Write-Host 'Password of the break-glass account (at least 12 characters; only the hash is stored):'
             Push-Location $paths.UiDir
-            try { $hash = & $uiPy -m m365ui.passwords } finally { Pop-Location }
+            try { $hash = & $frontendPython -m m365ui.passwords } finally { Pop-Location }
             if ($LASTEXITCODE -ne 0 -or -not $hash) { Write-Host 'No password set.' -ForegroundColor Yellow; return 2 }
             Set-M365WebPasswordHash -Path $paths.Settings -Hash ([string]@($hash)[-1]).Trim()
             Write-Host 'The hash is stored in web.settings.psd1.'
@@ -409,33 +409,33 @@ function Invoke-M365CloningWeb {
     }
 
     try {
-        $secret = Get-M365WebTokenSecret -Path $paths.TokenSecret
-        $apiPy = Initialize-M365WebVenv -Python $python.Path -Venv $paths.ApiVenv -Requirements (Join-Path $paths.ApiDir 'requirements.txt')
-        $uiPy = Initialize-M365WebVenv -Python $python.Path -Venv $paths.UiVenv -Requirements (Join-Path $paths.UiDir 'requirements.txt')
+        $sharedValue = Get-M365WebTokenSecret -Path $paths.TokenSecret
+        $backendPython = Initialize-M365WebVenv -Python $python.Path -Venv $paths.ApiVenv -Requirements (Join-Path $paths.ApiDir 'requirements.txt')
+        $frontendPython = Initialize-M365WebVenv -Python $python.Path -Venv $paths.UiVenv -Requirements (Join-Path $paths.UiDir 'requirements.txt')
     } catch { Write-Host $_.Exception.Message -ForegroundColor Yellow; return 2 }
 
-    $envs = ConvertTo-M365WebEnvironment -Settings $settings -TokenSecret $secret
-    $api = $null; $ui = $null
+    $envs = ConvertTo-M365WebEnvironment -Settings $settings -TokenSecret $sharedValue
+    $backend = $null; $frontend = $null
     try {
-        $api = Start-M365WebProcess -FilePath $apiPy -Arguments @('-m', 'm365api') -WorkingDirectory $paths.ApiDir -Environment $envs.Api
-        if (-not (Wait-M365WebReady -Url "http://127.0.0.1:$($envs.ApiPort)/api/status" -Process $api)) {
+        $backend = Start-M365WebProcess -FilePath $backendPython -Arguments @('-m', 'm365api') -WorkingDirectory $paths.ApiDir -Environment $envs.Api
+        if (-not (Wait-M365WebReady -Url "http://127.0.0.1:$($envs.ApiPort)/api/status" -Process $backend)) {
             Write-Host 'The API did not start; see its output above.' -ForegroundColor Yellow; return 2
         }
-        $ui = Start-M365WebProcess -FilePath $uiPy -Arguments @('-m', 'uvicorn', 'm365ui.main:app', '--host', '127.0.0.1', '--port', "$($envs.UiPort)") `
+        $frontend = Start-M365WebProcess -FilePath $frontendPython -Arguments @('-m', 'uvicorn', 'm365ui.main:app', '--host', '127.0.0.1', '--port', "$($envs.UiPort)") `
             -WorkingDirectory $paths.UiDir -Environment $envs.Ui
         $url = "http://localhost:$($envs.UiPort)/"
-        if (-not (Wait-M365WebReady -Url $url -Process $ui)) {
+        if (-not (Wait-M365WebReady -Url $url -Process $frontend)) {
             Write-Host 'The interface did not start; see its output above.' -ForegroundColor Yellow; return 2
         }
         Write-Host "Ready: $url  (Ctrl+C stops both apps)" -ForegroundColor Green
         if (-not $NoBrowser) { Open-M365WebBrowser $url }
-        while (-not $api.HasExited -and -not $ui.HasExited) { Start-Sleep -Milliseconds 500 }
-        if ($api.HasExited) { Write-Host 'The API has stopped.' -ForegroundColor Yellow; return 2 }
+        while (-not $backend.HasExited -and -not $frontend.HasExited) { Start-Sleep -Milliseconds 500 }
+        if ($backend.HasExited) { Write-Host 'The API has stopped.' -ForegroundColor Yellow; return 2 }
         Write-Host 'The interface has stopped.' -ForegroundColor Yellow
         return 2
     } finally {
-        Stop-M365WebProcess $ui
-        Stop-M365WebProcess $api
+        Stop-M365WebProcess $frontend
+        Stop-M365WebProcess $backend
     }
 }
 
