@@ -113,6 +113,15 @@
 {%- endif -%}
 {%- endmacro %}
 
+{#- Where a plan of Prod -> Dev takes the desired state from (issue #27 part 2, ADR 0019). Inside start_form. -#}
+{% macro source_choice() -%}
+<fieldset class="choice-group">
+  <legend>{{ _("Desired state") }}</legend>
+  <label class="choice"><input type="radio" name="source" value="Live" checked> <span><strong>{{ _("Prod (live)") }}</strong> <span class="meta">{{ _("(default) reads Prod now") }}</span></span></label>
+  <label class="choice"><input type="radio" name="source" value="Repository"> <span><strong>{{ _("Configuration repository") }}</strong> <span class="meta">{{ _("the committed export in desired/; Prod is not read") }}</span></span></label>
+</fieldset>
+{%- endmacro %}
+
 {#- A job is running: say so once at the top of a goal page and link to it. -#}
 {% macro busy(running) -%}
 {%- if running -%}

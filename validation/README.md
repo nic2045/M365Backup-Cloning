@@ -330,3 +330,18 @@ Claude never ran this against a tenant (invented snapshots, a test repository on
 | 7 | Failure | Use a wrong thumbprint for Prod and export | The job fails with the cause in the log; the repository is unchanged; `History/tmp` has no folder left |
 | 8 | Audit | *History* > *Audit log*, filter "Desired state export" | One line per run with counts only and your name as Actor |
 | 9 | Tenants untouched | Audit logs of Prod for the time of the runs; Dev not read at all | Only reads by the Prod app registration; no create, update or delete |
+
+# Part 19: build Dev from the configuration repository (issue #27 part 2, ADR 0019)
+
+Claude never ran this against a tenant (invented snapshots, a test repository only). The plan reads the configuration repository and Dev; only the confirmed apply writes to Dev.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Before | Part 18 done: `desired/` exported and committed in your configuration repository | `git status` in the repository is clean |
+| 2 | Plan from the repository | Web: *Bring Dev in line* > step 3, desired state "Configuration repository" > "Create a plan" (role Applier); or `scripts/Invoke-ApplyDev.ps1 -Source Repository -DevToken $d` | Job log "signed in to Dev" only; the plan page shows "Desired state: Configuration repository" and the first 12 characters of the commit of `git rev-parse HEAD`; nothing changed in any tenant |
+| 3 | Same as Prod | Make a plan of the same area with "Prod (live)" right after the export | Same planned and blocked entries in both plans (the hashes differ: the source is part of the plan) |
+| 4 | Prod not read | Sign-in logs of the Prod app registration for the time of step 2 | No sign-in of the Prod app registration |
+| 5 | Uncommitted change | Edit one file in `desired/` without committing, make a plan from the repository | The job fails: "The desired state has 1 change(s) that are not committed (...)"; no plan file |
+| 6 | Changed after the preview | Plan from the repository, then change and commit one file in `desired/`, then apply the plan from step 2 | Refused: the plan built again has another hash; nothing applied; audit line `refused` |
+| 7 | Apply | Commit clean, plan from the repository, check, confirm the hash, apply | Dev has the planned objects; Conditional Access is Report-only with the break-glass exclusion; filters and groups match by name |
+| 8 | Rebuild | `scripts/Invoke-DevReset.ps1 ... -Apply -RebuildAfter -RebuildSource Repository` on a test Dev | The apply step's plan names the commit; base state and users as before |

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, icon, empty, crumbs, plan_line %}
+{% from "_macros.html" import badge, icon, empty, crumbs, plan_line, source_choice %}
 {% from "_macros.html" import start_form, busy with context %}
 {% block title %}{{ _("Bring Dev in line") }}{% endblock %}
 {% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Goals"), ""), (_("Bring Dev in line"), "")]) }}{% endblock %}
@@ -35,7 +35,7 @@
     <h2 class="card-title"><span class="nav-step" aria-hidden="true">3</span> {{ _("Create a plan") }}</h2>
     <p class="meta">{{ _("The plan is a preview of everything that would be copied to Dev. It changes nothing.") }}</p>
     {% if plan %}<p>{{ _("Latest plan") }}: {{ plan_line(plan) }}</p>{% elif plans_ok %}<p class="meta">{{ _("No plan of all areas yet.") }}</p>{% endif %}
-    {{ start_form("plan-apply", _("Create a plan"), "plans", "Applier", fields={"area": "All"}, running=running, secondary=first.id != "differences") }}
+    {% call start_form("plan-apply", _("Create a plan"), "plans", "Applier", fields={"area": "All"}, running=running, secondary=first.id != "differences") %}{{ source_choice() }}{% endcall %}
   </li>
   <li class="card flow-step">
     <h2 class="card-title"><span class="nav-step" aria-hidden="true">4</span> {{ _("Check and apply") }}</h2>

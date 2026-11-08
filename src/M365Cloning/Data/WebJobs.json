@@ -42,9 +42,11 @@
     "plan-apply": {
       "role": "Applier",
       "tenants": ["Prod", "Dev"],
+      "tenantsBySource": { "Repository": ["Dev"] },
       "script": "Invoke-ApplyDev.ps1",
       "resultPrefix": "apply-plan-",
-      "run": "Read both tenants and build the plan"
+      "run": "Read both tenants and build the plan",
+      "runBySource": { "Repository": "Read the desired state and Dev and build the plan" }
     },
     "plan-baseline": {
       "role": "Applier",
@@ -70,7 +72,7 @@
     "apply": {
       "role": "Applier",
       "byPlanKind": {
-        "apply": { "role": "Applier", "tenants": ["Prod", "Dev"], "script": "Invoke-ApplyDev.ps1", "run": "Apply the plan to Dev" },
+        "apply": { "role": "Applier", "tenants": ["Prod", "Dev"], "tenantsBySource": { "Repository": ["Dev"] }, "script": "Invoke-ApplyDev.ps1", "run": "Apply the plan to Dev" },
         "baseline": { "role": "Applier", "tenants": ["Dev"], "script": "Invoke-DevBaseline.ps1", "run": "Apply the base state to Dev" },
         "users": { "role": "Applier", "tenants": ["Dev"], "script": "Invoke-DevUsers.ps1", "run": "Create and invite the Dev users" },
         "reset": { "role": "Resetter", "tenants": ["Prod", "Dev"], "script": "Invoke-DevReset.ps1", "run": "Reset Dev (delete)" }

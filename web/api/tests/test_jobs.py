@@ -98,11 +98,18 @@ def test_roles_by_action(app, idle, roles, action, status):
 
 def test_plan_options_are_stored(app, idle):
     body = as_role(app, "Applier").post("/api/jobs", json={"action": "plan-apply", "area": "Intune"}).json()
-    assert body["options"] == {"area": "Intune"}
+    assert body["options"] == {"area": "Intune", "source": "Live"}
     body2_client = as_role(app, "Resetter")
     (idle / "jobs" / f"{body['id']}.json").unlink()
     reset = body2_client.post("/api/jobs", json={"action": "plan-reset", "mode": "Full", "deviceAction": "Retire"}).json()
     assert reset["options"] == {"mode": "Full", "deviceAction": "Retire"} and reset["role"] == "Resetter"
+
+
+def test_plan_from_the_repository_is_stored(app, idle):
+    """Issue #27 part 2 (ADR 0019): plan-apply may name the configuration repository as its source."""
+    body = as_role(app, "Applier").post("/api/jobs", json={"action": "plan-apply", "area": "All", "source": "Repository"}).json()
+    assert body["options"] == {"area": "All", "source": "Repository"}
+    assert body["role"] == "Applier"
 
 
 @pytest.mark.parametrize("body", [
@@ -110,6 +117,9 @@ def test_plan_options_are_stored(app, idle):
     {"action": "drift", "area": "Intune"},
     {"action": "plan-reset", "deviceAction": "Wipe"},
     {"action": "plan-apply", "area": "Exchange"},
+    {"action": "plan-apply", "source": "Prod"},
+    {"action": "drift", "source": "Repository"},
+    {"action": "plan-reset", "source": "Repository"},
     {"action": "apply", "planId": APPLY_PLAN},
     {"action": "apply", "planId": "../x", "confirmPlanHash": "0" * 64},
     {"action": "drift", "token": "abc"},

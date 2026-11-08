@@ -505,6 +505,27 @@
             "Intune"
           ],
           "description": "Optional (issue #66): the plan covers one area only. Entries outside it are 'skipped' with a reason starting with 'area:'. Missing: all areas."
+        },
+        "Source": {
+          "type": "object",
+          "required": [
+            "Kind",
+            "Commit"
+          ],
+          "properties": {
+            "Kind": {
+              "enum": [
+                "Repository"
+              ]
+            },
+            "Commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$",
+              "description": "Full commit ID of the configuration repository the desired state was read from; part of the plan hash."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Optional (issue #27 part 2, ADR 0019): the plan was built from the desired state of the configuration repository (desired/) instead of a Prod snapshot. Missing: a live Prod snapshot."
         }
       },
       "description": "One plan of any kind (apply, baseline, reset, users) in one shape (schema version 2, issue #51). The plan hash is the SHA-256 of this object; it has no time, so the same tenants give the same hash.",
@@ -1447,6 +1468,12 @@
             "Intune"
           ]
         },
+        "source": {
+          "enum": [
+            "Live",
+            "Repository"
+          ]
+        },
         "mode": {
           "enum": [
             "Align",
@@ -1791,6 +1818,13 @@
             "Intune"
           ],
           "description": "plan-apply only; default All."
+        },
+        "source": {
+          "enum": [
+            "Live",
+            "Repository"
+          ],
+          "description": "plan-apply only; default Live. Repository: the desired state of the configuration repository instead of Prod (issue #27 part 2, ADR 0019)."
         },
         "mode": {
           "enum": [

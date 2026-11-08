@@ -22,7 +22,8 @@
     Dev.AllowDeviceWipe = $true. Devices with a name from Dev.ProtectedDevicePrefixes and devices of protected users
     are never touched. Pass the same device options with -Apply as with the preview, or the plan hash differs.
     -RebuildAfter: after a reset without failures, runs base state -> apply -> Dev users, each with its own plan and
-    its own confirmation (type the plan hash), and ends with the drift report.
+    its own confirmation (type the plan hash), and ends with the drift report. -RebuildSource Repository builds the
+    apply step from the desired state of the configuration repository instead of Prod (issue #27 part 2, ADR 0019).
     Offline preview: -InventoryPath <json> (Get-DevResetInventory saved as JSON); Align also needs
     -SourceSnapshotPath (Prod) and -TargetSnapshotPath (Dev).
 #>
@@ -41,6 +42,7 @@ param(
     [string]$ConfirmPlanHash,
     [string]$ConfirmTenant,
     [switch]$RebuildAfter,
+    [ValidateSet('Live', 'Repository')][string]$RebuildSource = 'Live',
     [ValidateSet('Keep', 'Remove', 'Retire', 'Wipe')][string]$DeviceAction = 'Keep',
     [string]$DeviceActionFile
 )
@@ -109,11 +111,11 @@ if ($result.Failed -gt 0) {
     exit 1
 }
 if ($RebuildAfter) {
-    $chain = Invoke-DevRebuildChain -ScriptRoot $PSScriptRoot -ConfigPath $ConfigPath -Config $config -HistoryRoot $HistoryRoot -ProdToken $ProdToken -DevToken $DevToken
+    $chain = Invoke-DevRebuildChain -ScriptRoot $PSScriptRoot -ConfigPath $ConfigPath -Config $config -HistoryRoot $HistoryRoot -ProdToken $ProdToken -DevToken $DevToken -Source $RebuildSource
     $chain.Steps | ForEach-Object { [pscustomobject]$_ } | Format-Table Step, Status, Message | Out-String | Write-Host
     if ($chain.Report) { Write-Host "Drift report: $([System.IO.Path]::ChangeExtension($chain.Report, '.md'))" }
     if (-not $chain.Completed) { exit 1 }
 }
 else {
-    Write-Host 'Rebuild next: scripts/Invoke-DevBaseline.ps1, then scripts/Invoke-ApplyDev.ps1, then scripts/Invoke-DevUsers.ps1 (or -RebuildAfter).'
+    Write-Host 'Rebuild next: scripts/Invoke-DevBaseline.ps1, then scripts/Invoke-ApplyDev.ps1 (-Source Repository builds from the configuration repository), then scripts/Invoke-DevUsers.ps1 (or -RebuildAfter).'
 }

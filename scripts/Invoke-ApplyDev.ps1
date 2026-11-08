@@ -16,6 +16,11 @@
     blocks every entry that needs a licence ('license: not verified').
     -Area Intune (issue #66): the plan covers only the Intune entries and the empty group copies their assignments need;
     the rest is skipped. Pass the same -Area with -Apply as with the preview, or the plan hash differs.
+    -Source Repository (issue #27 part 2, ADR 0019): the desired state is read from desired/ in the configuration
+    repository (ConfigRepository) instead of Prod; Prod is not read and -ProdToken is not needed. desired/ must have no
+    uncommitted change. The plan names the commit it was built from and the commit is part of the plan hash, so -Apply
+    refuses when the desired state changed since the preview. Pass the same -Source with -Apply as with the preview.
+    Default: Live (a Prod snapshot, as before).
 #>
 [CmdletBinding()]
 param(
@@ -29,7 +34,8 @@ param(
     [switch]$Plan,
     [switch]$Apply,
     [string]$ConfirmPlanHash,
-    [ValidateSet('All', 'Intune')][string]$Area = 'All'
+    [ValidateSet('All', 'Intune')][string]$Area = 'All',
+    [ValidateSet('Live', 'Repository')][string]$Source = 'Live'
 )
 
 Set-StrictMode -Version Latest
@@ -41,24 +47,37 @@ if ($Apply -and [string]::IsNullOrWhiteSpace($ConfirmPlanHash)) {
     throw 'Run without -Apply first, read the plan in History\reports, then pass its hash with -ConfirmPlanHash.'
 }
 
-$offline = $SourceSnapshotPath -or $TargetSnapshotPath
-if ($offline -and -not ($SourceSnapshotPath -and $TargetSnapshotPath)) {
-    throw 'Offline: pass both -SourceSnapshotPath and -TargetSnapshotPath.'
-}
-
 $config = Import-M365CloningConfig -Path $ConfigPath
 $resources = if ($config.ContainsKey('Resources') -and $config.Resources) { $config.Resources } else { Get-M365CloningDefaultResources -Config $config }
 
-if ($offline) {
-    $prodFile = $SourceSnapshotPath; $devFile = $TargetSnapshotPath
+if ($Source -eq 'Repository') {
+    # Desired state from the configuration repository (ADR 0019); Prod is not read. Dev is read live (or offline).
+    if ($SourceSnapshotPath) { throw '-Source Repository reads the desired state from the configuration repository; -SourceSnapshotPath is for -Source Live.' }
+    $desired = Read-DesiredStateSnapshot -Config $config
+    Write-Host "Desired state: configuration repository, commit $($desired.Commit.Substring(0, 12)) ($($desired.Files) files). Prod is not read."
+    if ($TargetSnapshotPath) { $devFile = $TargetSnapshotPath }
+    else {
+        if (-not $DevToken) { throw 'Pass -DevToken (or -TargetSnapshotPath for a saved Dev snapshot).' }
+        $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $config.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
+    }
+    $target = ConvertTo-DesiredComparableSnapshot -Snapshot (Read-UtcmSnapshotFile -Path $devFile)
+    $applyPlan = New-ApplyPlan -Source $desired.Snapshot -Target $target -Config $config -Area $Area -SourceInfo @{ Kind = 'Repository'; Commit = $desired.Commit }
 }
 else {
-    if (-not $ProdToken -or -not $DevToken) { throw 'Pass -ProdToken and -DevToken (or use the offline parameters).' }
-    $prodFile = Get-UtcmTenantSnapshot -Token $ProdToken -Side Prod -TenantId $config.Prod.TenantId -Resources $resources -HistoryRoot $HistoryRoot
-    $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $config.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
+    $offline = $SourceSnapshotPath -or $TargetSnapshotPath
+    if ($offline -and -not ($SourceSnapshotPath -and $TargetSnapshotPath)) {
+        throw 'Offline: pass both -SourceSnapshotPath and -TargetSnapshotPath.'
+    }
+    if ($offline) {
+        $prodFile = $SourceSnapshotPath; $devFile = $TargetSnapshotPath
+    }
+    else {
+        if (-not $ProdToken -or -not $DevToken) { throw 'Pass -ProdToken and -DevToken (or use the offline parameters).' }
+        $prodFile = Get-UtcmTenantSnapshot -Token $ProdToken -Side Prod -TenantId $config.Prod.TenantId -Resources $resources -HistoryRoot $HistoryRoot
+        $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $config.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
+    }
+    $applyPlan = New-ApplyPlan -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile) -Config $config -Area $Area
 }
-
-$applyPlan = New-ApplyPlan -Source (Read-UtcmSnapshotFile -Path $prodFile) -Target (Read-UtcmSnapshotFile -Path $devFile) -Config $config -Area $Area
 # Licence check (issue #32): entries whose licence Dev lacks are blocked before anything is applied.
 $applyPlan = Add-PlanLicenceCheck -Plan $applyPlan -Licences (Get-DevPlanLicences -DevToken $DevToken -LicencePath $LicencePath)
 $hash = Get-ApplyPlanHash -Plan $applyPlan
@@ -69,7 +88,7 @@ if (-not $Apply) {
     $applyPlan.Summary | Format-Table | Out-String | Write-Host
     Write-Host "Plan:      $($files.Markdown)"
     Write-Host "Plan hash: $hash"
-    Write-Host "Nothing was changed. To apply exactly this plan: scripts/Invoke-ApplyDev.ps1 -Apply -ConfirmPlanHash <hash>$(if ($Area -ne 'All') { " -Area $Area" })"
+    Write-Host "Nothing was changed. To apply exactly this plan: scripts/Invoke-ApplyDev.ps1 -Apply -ConfirmPlanHash <hash>$(if ($Area -ne 'All') { " -Area $Area" })$(if ($Source -ne 'Live') { " -Source $Source" })"
     return
 }
 

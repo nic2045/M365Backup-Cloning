@@ -11,6 +11,8 @@
   <dt>{{ _("Direction") }}</dt><dd>{{ plan.Direction }}</dd>
   <dt>{{ _("Target tenant") }}</dt><dd>{{ plan.TargetTenant }}</dd>
   {% if plan.Area %}<dt>{{ _("Area") }}</dt><dd><span class="tag">{{ icon("intune") }}<span>{{ plan.Area }}</span></span> <span class="meta">{{ _("only this area; the rest is skipped") }}</span></dd>{% endif %}
+  {% if plan.Source and plan.Source.Kind == "Repository" %}<dt>{{ _("Desired state") }}</dt><dd><span class="tag">{{ icon("desired") }}<span>{{ _("Configuration repository") }}</span></span> <span class="meta">{{ _("commit") }}</span> <code class="hash" title="{{ plan.Source.Commit }}">{{ plan.Source.Commit[:12] }}</code></dd>
+  {% elif env.kind == "apply" %}<dt>{{ _("Desired state") }}</dt><dd>{{ _("Prod (live)") }}</dd>{% endif %}
   <dt>{{ _("Plan hash") }}</dt><dd><code class="hash">{{ env.planHash }}</code>
     <br><a href="/audit?plan={{ env.planHash }}">{{ icon("audit") }} {{ _("Audit entries of this plan") }}</a></dd>
 </dl>
@@ -34,7 +36,11 @@
   {% if s.Planned == 0 %}
     <p>{{ badge("identical") }} {{ _("Nothing is planned; there is nothing to apply.") }}</p>
   {% elif user and user.has(role) %}
+  {% if plan.Source and plan.Source.Kind == "Repository" %}
+  <p>{{ _("Check the actions below first. When you confirm, the job reads the configuration repository and Dev again and builds the same plan; if the desired state or Dev changed since this preview, it refuses and you make a new plan.") }}</p>
+  {% else %}
   <p>{{ _("Check the actions below first. When you confirm, the job reads the tenants again and builds the same plan; if anything changed since this preview, it refuses and you make a new plan.") }}</p>
+  {% endif %}
   <form method="post" action="/jobs" class="form apply-form">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="apply">

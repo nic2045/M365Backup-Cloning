@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, icon, empty, crumbs, plan_line, short_type %}
+{% from "_macros.html" import badge, icon, empty, crumbs, plan_line, short_type, source_choice %}
 {% from "_macros.html" import start_form, busy with context %}
 {% block title %}{{ _("Intune") }}{% endblock %}
 {% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Areas"), ""), (_("Intune"), "")]) }}{% endblock %}
@@ -31,7 +31,7 @@
   {% if plan %}<p>{{ _("Latest Intune plan") }}: {{ plan_line(plan) }}</p>
   <p class="button-row"><a class="button" href="/plans/{{ plan.id }}#apply">{{ icon("next") }} {{ _("Open the plan to check and apply it") }}</a></p>
   {% else %}{{ empty(_("No Intune plan yet"), _("Create one; it changes nothing until you confirm it."), "plans") }}{% endif %}
-  {{ start_form("plan-apply", _("Create an Intune plan"), "plans", "Applier", fields={"area": "Intune"}, running=running, secondary=plan is not none) }}
+  {% call start_form("plan-apply", _("Create an Intune plan"), "plans", "Applier", fields={"area": "Intune"}, running=running, secondary=plan is not none) %}{{ source_choice() }}{% endcall %}
 </section>
 
 <h2>{{ _("Intune backup") }}</h2>
