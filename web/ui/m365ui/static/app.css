@@ -1,5 +1,5 @@
 /* Read-only interface, styled after Fluent 2 (ADR 0011). Own CSS, no framework.
-   Token values are taken from the Fluent 2 web themes (@fluentui/tokens 1.0.0-alpha.24, webLightTheme and
+   Token values are taken from the Fluent 2 web themes (brand ramp: own warm orange, ADR 0017) (@fluentui/tokens 1.0.0-alpha.24, webLightTheme and
    webDarkTheme); the names below are ours. Spacing: --gap-row inside a group (Fluent spacing S, 8 px),
    --gap-block before a button row (L, 16 px), --gap-section between sections (XXXL, 32 px). Targets >= 44 px. */
 :root {
@@ -10,10 +10,17 @@
   --size-caption: 0.875rem; --size-body: 1rem; --size-subtitle: 1.25rem; --size-title: 1.75rem;
   --side-width: 17.5rem;
 
+  /* Brand: warm orange, 16-step Fluent BrandVariants (ADR 0017). Key colour #c4500e at step 80. */
+  --brand-10: #290a00; --brand-20: #3e1401; --brand-30: #521c01; --brand-40: #692601;
+  --brand-50: #7f2f01; --brand-60: #973a00; --brand-70: #ac4303; --brand-80: #c4500e;
+  --brand-90: #dc6c38; --brand-100: #ee8558; --brand-110: #f69267; --brand-120: #fc9e76;
+  --brand-130: #feb393; --brand-140: #fec8b2; --brand-150: #fedbcc; --brand-160: #feeee8;
+
   --bg: #ffffff; --bg-page: #fafafa; --bg-subtle: #f5f5f5; --bg-strong: #f0f0f0; --bg-selected: #ebebeb;
   --fg: #242424; --fg-2: #424242; --muted: #616161; --line: #d1d1d1; --line-2: #e0e0e0;
-  --brand: #0f6cbd; --brand-hover: #115ea3; --brand-fg: #0f6cbd; --brand-soft: #ebf3fc; --on-brand: #ffffff;
-  --link: #115ea3; --focus: #000000; --focus-inner: #ffffff;
+  --brand: var(--brand-80); --brand-hover: var(--brand-70); --brand-pressed: var(--brand-40); --brand-fg: var(--brand-70);
+  --brand-soft: var(--brand-160); --on-brand: #ffffff;
+  --link: var(--brand-70); --link-hover: var(--brand-60); --focus: #000000; --focus-inner: #ffffff;
   --ok-bg: #f1faf1; --ok-fg: #0e700e; --ok-line: #9fd89f;
   --warn-bg: #fff9f5; --warn-fg: #8a3707; --warn-line: #fdcfb4;
   --bad-bg: #fdf3f4; --bad-fg: #b10e1c; --bad-line: #eeacb2;
@@ -27,8 +34,9 @@
   :root {
     --bg: #292929; --bg-page: #1f1f1f; --bg-subtle: #141414; --bg-strong: #333333; --bg-selected: #383838;
     --fg: #ffffff; --fg-2: #d6d6d6; --muted: #adadad; --line: #666666; --line-2: #525252;
-    --brand: #115ea3; --brand-hover: #0f6cbd; --brand-fg: #479ef5; --brand-soft: #082338; --on-brand: #ffffff;
-    --link: #479ef5; --focus: #ffffff; --focus-inner: #000000;
+    --brand: var(--brand-70); --brand-hover: var(--brand-80); --brand-pressed: var(--brand-40); --brand-fg: var(--brand-100);
+    --brand-soft: var(--brand-20); --on-brand: #ffffff;
+    --link: var(--brand-100); --link-hover: var(--brand-110); --focus: #ffffff; --focus-inner: #000000;
     --ok-bg: #052505; --ok-fg: #54b054; --ok-line: #107c10;
     --warn-bg: #4a1e04; --warn-fg: #faa06b; --warn-line: #bc4b09;
     --bad-bg: #3b0509; --bad-fg: #dc626d; --bad-line: #b10e1c;
@@ -42,7 +50,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; font: var(--size-body)/1.5 var(--font); color: var(--fg); background: var(--bg-page); overflow-wrap: break-word; }
 a { color: var(--link); text-underline-offset: 0.15em; }
-a:hover { color: var(--brand-hover); }
+a:hover { color: var(--link-hover); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 4px var(--focus-inner); border-radius: var(--radius-m); }
 main:focus { outline: none; }
 .skip { position: absolute; left: -999px; z-index: 10; }
@@ -164,6 +172,7 @@ select, input { min-height: 44px; max-width: 100%; font: inherit; padding: 0 var
 .filter-buttons { display: flex; flex-wrap: wrap; gap: var(--gap-row); margin-top: var(--gap-block); flex-basis: 100%; }
 .button { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 var(--gap-block); border: 1px solid var(--brand); border-radius: var(--radius-m); background: var(--brand); color: var(--on-brand); font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
 .button:hover { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--on-brand); }
+.button:not(.button-secondary):not(.button-subtle):not(.button-danger):active { background: var(--brand-pressed); border-color: var(--brand-pressed); color: var(--on-brand); }
 .button-secondary { background: var(--bg); color: var(--fg); border-color: var(--line); }
 .button-secondary:hover { background: var(--bg-subtle); color: var(--fg); border-color: var(--line); }
 .button-subtle { background: transparent; color: var(--fg); border-color: transparent; }

@@ -1,6 +1,6 @@
 # 0011 The web interface follows Fluent 2 with a workflow menu and guided next steps
 
-Status: Accepted (issues #63, #61). Point 4 (workflow navigation) and "the interface stays read only" in point 7 are superseded by ADR 0012.
+Status: Accepted (issues #63, #61). Point 4 (workflow navigation) and "the interface stays read only" in point 7 are superseded by ADR 0012; the brand colour in point 1 by ADR 0017.
 
 ## Context
 
