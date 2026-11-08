@@ -73,7 +73,10 @@
     # ConfigRepository = '<path-to-your-private-configuration-repository>'
     # IntuneBackup = @{
     #     Python  = 'python'              # default: python (Windows) / python3; needs tools/intunecd/requirements.txt
-    #     # More IntuneCD types to leave out, e.g. scripts if they may carry secrets:
-    #     Exclude = @('PowershellScripts', 'ProactiveRemediation', 'ShellScripts', 'ComplianceScripts')
+    #     # Script types (PowerShell, shell, remediation, compliance and custom attribute scripts) are left out by
+    #     # default: their contents may carry secrets (issue #74, ADR 0015). Back them up only on purpose:
+    #     IncludeScripts = $false
+    #     # More IntuneCD types to leave out (Conditional Access is always left out, ADR 0003):
+    #     Exclude = @('Applications')
     # }
 }

@@ -2,7 +2,7 @@
 
 Started by the PowerShell core (Invoke-IntuneBackup) once per tenant, in its own process:
 
-    python intunecd_backup.py --path <empty folder> [--exclude <type> ...]
+    python intunecd_backup.py --path <empty folder> [--exclude <type> ...] [--include-scripts]
 
 The Graph token of the tenant comes on stdin (one line) and is handed to IntuneCD in memory. It is never put on the
 command line (other users could read it in the process list), into an environment variable or into a file. Only the
@@ -28,6 +28,9 @@ from typing import Any, Callable, Sequence
 # Types that change on every read without a change of the configuration, and Conditional Access (outside Intune,
 # handled by the toolkit itself, ADR 0003). The operator can add more in config.psd1 (IntuneBackup.Exclude).
 DEFAULT_EXCLUDE = ("VPPusedLicenseCount", "GPlaySyncTime", "CompliancePartnerHeartbeat", "ConditionalAccess")
+# Script types: their contents may carry secrets, so they are left out unless the operator asks for them
+# (--include-scripts, config.psd1 IntuneBackup.IncludeScripts; issue #74, ADR 0015).
+SCRIPT_TYPES = ("PowershellScripts", "ShellScripts", "ProactiveRemediation", "ComplianceScripts", "CustomAttributes")
 MAX_TOKEN_CHARS = 20000
 
 
@@ -39,6 +42,7 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Read-only Intune backup of one tenant with IntuneCD (token on stdin).")
     parser.add_argument("--path", required=True, help="Empty folder the backup is written to.")
     parser.add_argument("--exclude", nargs="*", default=[], help="More IntuneCD types to leave out.")
+    parser.add_argument("--include-scripts", action="store_true", help="Back up the script types too (left out by default).")
     return parser.parse_args(list(argv))
 
 
@@ -51,9 +55,11 @@ def read_token(stream: Any) -> str:
     return token
 
 
-def intunecd_args(path: Path, exclude: Sequence[str], get_parser: Callable[..., argparse.ArgumentParser]) -> argparse.Namespace:
+def intunecd_args(path: Path, exclude: Sequence[str], get_parser: Callable[..., argparse.ArgumentParser],
+                  include_scripts: bool = False) -> argparse.Namespace:
     """The arguments of IntuneCD's backup, built with its own parser so an unknown type is refused by IntuneCD."""
-    types = list(dict.fromkeys([*DEFAULT_EXCLUDE, *exclude]))
+    scripts = () if include_scripts else SCRIPT_TYPES
+    types = list(dict.fromkeys([*DEFAULT_EXCLUDE, *scripts, *exclude]))
     argv = ["--output", "json", "--path", str(path) + "/", "--mode", "1", "--ignore-omasettings", "--skip-archive",
             "--exclude", *types]
     parser = get_parser(include_help=False)
@@ -85,7 +91,7 @@ def run(argv: Sequence[str], stdin: Any, start: Callable[[argparse.Namespace], A
         start = start or cd_start
         get_parser = get_parser or cd_parser
     try:
-        args = intunecd_args(path, options.exclude, get_parser)
+        args = intunecd_args(path, options.exclude, get_parser, options.include_scripts)
     except CallError as exc:
         print(f"intunecd_backup: {exc}", file=sys.stderr)
         return 2

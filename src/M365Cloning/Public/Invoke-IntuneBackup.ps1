@@ -2,7 +2,8 @@ function Get-IntuneBackupSettings {
     <#
     .SYNOPSIS
         Where and how the Intune backup runs (issue #68, ADR 0014): the configuration repository of the operator
-        (ConfigRepository, ADR 0004), the Python command and the extra IntuneCD types to leave out.
+        (ConfigRepository, ADR 0004), the Python command, the extra IntuneCD types to leave out and whether the script
+        types are backed up (IncludeScripts, default no: their contents may carry secrets; issue #74, ADR 0015).
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][hashtable]$Config)
@@ -16,6 +17,7 @@ function Get-IntuneBackupSettings {
         Repository = $repo
         Python     = $python
         Exclude    = @(if ($section.ContainsKey('Exclude')) { @($section.Exclude) | ForEach-Object { [string]$_ } })
+        IncludeScripts = [bool]($section.ContainsKey('IncludeScripts') -and $section.IncludeScripts -eq $true)
     }
 }
 
@@ -205,6 +207,7 @@ function Invoke-IntuneCdProcess {
     $wrapper = Join-Path $script:ModuleRoot '..' '..' 'tools' 'intunecd' 'intunecd_backup.py'
     $arguments = @($wrapper, '--path', $Folder)
     if ($Exclude.Count -gt 0) { $arguments += '--exclude'; $arguments += $Exclude }
+    if ($Settings.PSObject.Properties['IncludeScripts'] -and $Settings.IncludeScripts) { $arguments += '--include-scripts' }
     $plain = [System.Net.NetworkCredential]::new('', $Token).Password
     try {
         $plain | & $Settings.Python @arguments 2>&1 | ForEach-Object { Write-Host ("  [{0}] {1}" -f $Side, [string]$_) }

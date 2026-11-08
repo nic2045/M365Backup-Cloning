@@ -23,7 +23,7 @@ BeforeAll {
     # Stand-in for IntuneCD: per side the files of $script:Files[side] (path -> content).
     $script:Runner = {
         param($Side, $Folder, [securestring]$Token, [string[]]$Exclude, $Settings)
-        $script:Seen.Add([pscustomobject]@{ Side = $Side; Token = [System.Net.NetworkCredential]::new('', $Token).Password; Exclude = $Exclude })
+        $script:Seen.Add([pscustomobject]@{ Side = $Side; Token = [System.Net.NetworkCredential]::new('', $Token).Password; Exclude = $Exclude; IncludeScripts = $Settings.IncludeScripts })
         foreach ($rel in $script:Files[$Side].Keys) {
             $path = Join-Path $Folder $rel
             $null = New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force
@@ -142,6 +142,16 @@ Describe 'Invoke-IntuneBackup' {
         $null = Invoke-IntuneBackup -Config $cfg -HistoryRoot (Join-Path $TestDrive 'h7') -ProdToken $script:Prod -DevToken $script:Dev -BackupRunner $script:Runner
         @($script:Seen[0].Exclude) | Should -Be @('PowershellScripts', 'ShellScripts')
     }
+
+    It 'leaves the script types out unless IncludeScripts is set (issue #74)' {
+        $repo = script:New-ConfigRepo 'repo9'
+        $null = Invoke-IntuneBackup -Config (script:New-Config $repo) -HistoryRoot (Join-Path $TestDrive 'h9') -ProdToken $script:Prod -DevToken $script:Dev -BackupRunner $script:Runner
+        $script:Seen[0].IncludeScripts | Should -BeFalse
+        $script:Seen.Clear()
+        $repo2 = script:New-ConfigRepo 'repo10'
+        $null = Invoke-IntuneBackup -Config (script:New-Config $repo2 @{ IncludeScripts = $true }) -HistoryRoot (Join-Path $TestDrive 'h10') -ProdToken $script:Prod -DevToken $script:Dev -BackupRunner $script:Runner
+        $script:Seen[0].IncludeScripts | Should -BeTrue
+    }
 }
 
 Describe 'Invoke-IntuneBackup: where it may write' {
@@ -180,12 +190,17 @@ Describe 'Config: ConfigRepository and IntuneBackup' {
         $p = script:Write-Cfg "ConfigRepository = 'C:\repo'`nIntuneBackup = @{ Python = 'py'; Exclude = @('PowershellScripts') }"
         (Import-M365CloningConfig -Path $p).IntuneBackup.Python | Should -Be 'py'
     }
+    It 'accepts IncludeScripts as a boolean and refuses anything else' {
+        $p = script:Write-Cfg "IntuneBackup = @{ IncludeScripts = `$true }"
+        (Import-M365CloningConfig -Path $p).IntuneBackup.IncludeScripts | Should -BeTrue
+        $bad = script:Write-Cfg "IntuneBackup = @{ IncludeScripts = 'yes' }"
+        { Import-M365CloningConfig -Path $bad } | Should -Throw '*IncludeScripts must be*'
+    }
     It 'refuses an unknown key under IntuneBackup' {
         $p = script:Write-Cfg "IntuneBackup = @{ Update = `$true }"
         { Import-M365CloningConfig -Path $p } | Should -Throw "*unknown key 'Update'*"
     }
-    It 'refuses an exclude entry that is not a type name' {
-        $p = script:Write-Cfg "IntuneBackup = @{ Exclude = @('Power Shell') }"
+XX
         { Import-M365CloningConfig -Path $p } | Should -Throw '*not an IntuneCD type name*'
     }
 }
@@ -206,6 +221,10 @@ Describe 'Invoke-IntuneCdProcess' {
         foreach ($f in $files) {
             Get-Content -LiteralPath $f.FullName -Raw | Should -Not -Match '(?i)IntuneCD-startupdate|run_update|update_intune' -Because $f.Name
         }
+    }
+    It 'passes --include-scripts only when IncludeScripts is set' {
+        $text = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' 'src' 'M365Cloning' 'Public' 'Invoke-IntuneBackup.ps1') -Raw
+        $text | Should -Match 'IncludeScripts\) \{ \$arguments \+= ''--include-scripts'' \}'
     }
     It 'names the missing Python with the install hint' {
         $settings = [pscustomobject]@{ Python = 'no-such-python-3x'; Repository = ''; Exclude = @() }
