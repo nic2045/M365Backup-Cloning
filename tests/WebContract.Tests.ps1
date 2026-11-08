@@ -14,11 +14,11 @@ BeforeAll {
 Describe 'Core output files follow the schema' {
     It 'the offline run wrote every report and plan kind' {
         $names = $script:Files.Name
-        foreach ($prefix in 'drift-', 'tenantfit-', 'apply-plan-', 'dev-baseline-plan-', 'dev-reset-plan-align-', 'dev-reset-plan-full-', 'dev-users-plan-') {
+        foreach ($prefix in 'drift-', 'tenantfit-', 'setup-check-', 'apply-plan-', 'dev-baseline-plan-', 'dev-reset-plan-align-', 'dev-reset-plan-full-', 'dev-users-plan-') {
             @($names | Where-Object { $_ -like "$prefix*" }).Count | Should -BeGreaterThan 0 -Because "$prefix must be produced"
         }
     }
-    It '<_> is valid' -ForEach @('drift-', 'tenantfit-', 'apply-plan-', 'dev-baseline-plan-', 'dev-reset-plan-align-', 'dev-reset-plan-full-', 'dev-users-plan-') {
+    It '<_> is valid' -ForEach @('drift-', 'tenantfit-', 'setup-check-', 'apply-plan-', 'dev-baseline-plan-', 'dev-reset-plan-align-', 'dev-reset-plan-full-', 'dev-users-plan-') {
         $prefix = $_   # inside Where-Object, $_ is the file, not the prefix
         $file = @($script:Files | Where-Object { $_.Name -like "$prefix*" })[0]
         $file | Should -Not -BeNullOrEmpty -Because "$prefix must be produced"

@@ -66,11 +66,13 @@ def _pick(value: str | None, allowed: tuple[str, ...]) -> str:
     return value if value in allowed else ""
 
 
-NAV_PAGES = frozenset({"overview", "reports", "plans", "audit", "jobs", "align", "fresh", "fill", "intune", "intune-changes"})
+NAV_PAGES = frozenset({"overview", "reports", "plans", "audit", "jobs", "align", "fresh", "fill", "intune", "intune-changes",
+                       "setup"})
 RECENT_BACKUPS = 10
 JOB_POLL_SECONDS = 3
 RECENT_PLANS = 3
 RECENT_AUDIT = 5
+FRESH_AUDIT = 100  # audit lines of each mode read for the progress of Start Dev fresh (issue #18)
 PUBLIC_PATHS = frozenset({"/login", "/login/local", "/auth/start", "/auth/callback"})
 MAX_FORM_BYTES = 4096
 
@@ -98,7 +100,7 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
     icons = view.load_icons()
     templates.env.globals.update(_=_, mock=api.mock, icon_svg=lambda name, label="": view.icon_markup(icons, name, label),
                                  type_family=view.type_family, nav_goals=view.GOALS, nav_areas=view.AREAS,
-                                 nav_history=view.HISTORY, job_actions=view.JOB_ACTIONS, job_progress=view.job_progress,
+                                 nav_history=view.HISTORY, nav_settings=view.SETTINGS, job_actions=view.JOB_ACTIONS, job_progress=view.job_progress,
                                  apply_role=view.APPLY_ROLE, short_hash=view.short_hash)
     templates.env.filters["when"] = lambda value: view.time_markup(value, now())
 
@@ -266,7 +268,7 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
             counts["reports"] = len(reports_res.body.get("items", []))
         if active_job(request) is not None:
             counts["jobs"] = 1  # one job at a time (ADR 0012)
-        steps = view.next_steps(view.facts(status.body, fit_body, plans, now()))
+        steps = view.next_steps(view.facts(status.body, fit_body, plans, now(), setup=latest_setup(request)))
         return render(request, "overview.html", nav="overview", status=status.body, fit=fit_body, steps=steps,
                       counts=counts, recent_plans=plans[:RECENT_PLANS], recent_audit=audit,
                       plans_ok=plans_res.ok, audit_ok=audit_res.ok, stale_days=view.STALE_DAYS)
@@ -338,6 +340,23 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
                 return j
         return None
 
+    def latest_setup(request: Request) -> dict[str, Any] | None | bool:
+        """The newest setup check (issue #18): its answer, None when there is none yet, False when it cannot be read."""
+        res = call(request, "/api/setup-check/latest")
+        if res.ok and isinstance(res.body, dict):
+            return res.body
+        return None if res.status == 404 else False
+
+    @app.get("/settings/setup", response_class=HTMLResponse)
+    def setup_check(request: Request):
+        """Setup check (issue #18): read only; the check itself is a job (action setup-check)."""
+        res = call(request, "/api/setup-check/latest")
+        if not res.ok and res.status != 404:
+            return failed(request, res)
+        body = res.body if res.ok and isinstance(res.body, dict) else None
+        return render(request, "settings_setup.html", nav="setup", setup=body,
+                      groups=view.setup_groups((body or {}).get("check")), running=active_job(request))
+
     @app.get("/goals/align", response_class=HTMLResponse)
     def goal_align(request: Request):
         status = call(request, "/api/status")
@@ -357,7 +376,14 @@ def create_app(client: BaseClient | None = None, auth: UiAuth | None = None,
             return failed(request, call(request, "/api/plans", {"kind": "reset"}))
         # Only reset plans, even if a server or the mock answers with more than the filter asked for.
         plans = [p for p in plans if p.get("kind") == "reset"]
+        audit: list[dict[str, Any]] | None = []
+        for mode in ("reset", "apply"):
+            got = items(request, "/api/audit", {"mode": mode, "pageSize": FRESH_AUDIT})
+            audit = None if got is None or audit is None else audit + got
+        setup = latest_setup(request)
         return render(request, "goal_fresh.html", nav="fresh", plans=view.newest_first(plans, "createdUtc")[:3],
+                      progress=view.fresh_progress(plans, audit), setup=setup if isinstance(setup, dict) else None,
+                      setup_known=setup is not False,
                       running=active_job(request), modes=view.CHOICES["mode"], device_actions=view.CHOICES["deviceAction"])
 
     @app.get("/goals/fill", response_class=HTMLResponse)

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, empty, crumbs %}
+{% from "_macros.html" import start_form, busy with context %}
+{% block title %}{{ _("Setup check") }}{% endblock %}
+{% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Settings"), ""), (_("Setup check"), "")]) }}{% endblock %}
+{% block content %}
+<h1>{{ icon("setup") }} {{ _("Setup check") }}</h1>
+<p class="lead">{{ _("Is everything in place that the toolkit needs? The check only reads: it creates, grants and changes nothing. The config stays on this computer.") }}</p>
+{{ busy(running) }}
+
+<section class="card" aria-labelledby="setup-result">
+  <h2 class="card-title" id="setup-result">{{ _("Result") }}</h2>
+  {% if setup %}
+    {% set c = setup.check %}
+    <p>{{ badge(c.Status) }} <span class="meta">{{ setup.createdUtc|when }} · {% if c.Scope == "Config" %}{{ _("config only, no sign-in") }}{% else %}{{ _("full check, both tenants") }}{% endif %}</span></p>
+    <ul class="setup-summary" aria-label="{{ _('Summary') }}">
+      <li>{{ badge("red") }} <span class="num">{{ c.Summary.Red }}</span></li>
+      <li>{{ badge("yellow") }} <span class="num">{{ c.Summary.Yellow }}</span></li>
+      <li>{{ badge("grey") }} <span class="num">{{ c.Summary.Grey }}</span></li>
+      <li>{{ badge("green") }} <span class="num">{{ c.Summary.Green }}</span></li>
+    </ul>
+  {% else %}
+    {{ empty(_("Not checked yet"), _("Run the check once after the setup and again after each change of the config, the certificates or the app registrations."), "setup", "scripts/Invoke-SetupCheck.ps1") }}
+  {% endif %}
+  <div class="start-pair">
+  {{ start_form("setup-check", _("Run the full check"), "start", "Applier", fields={"scope": "All"}, running=running) }}
+  {{ start_form("setup-check", _("Check the config only"), "settings", "Applier", fields={"scope": "Config"}, running=running, secondary=True) }}
+  </div>
+  <p class="meta">{{ _("The full check signs in to Prod and Dev with the certificate of each app registration and only sends read requests. The config-only check signs in nowhere.") }}</p>
+</section>
+
+{% for g in groups %}
+<section aria-labelledby="group-{{ g.key|lower }}">
+  <h2 id="group-{{ g.key|lower }}">{{ icon(g.icon) }} {{ g.label }} {{ badge(g.status) }}</h2>
+  <div class="table-wrap"><table class="setup-table">
+    <thead><tr><th scope="col">{{ _("Status") }}</th><th scope="col">{{ _("Check") }}</th><th scope="col">{{ _("Tenant") }}</th><th scope="col">{{ _("What to do") }}</th></tr></thead>
+    <tbody>{% for r in g.rows %}<tr>
+      <td data-label="{{ _('Status') }}">{{ badge(r.Status) }}</td>
+      <td data-label="{{ _('Check') }}"><strong>{{ r.Title }}</strong><br><span class="meta">{{ r.Detail }}</span></td>
+      <td data-label="{{ _('Tenant') }}">{% if r.Tenant %}<span class="tag">{{ r.Tenant }}</span>{% else %}<span class="meta">{{ _("this instance") }}</span>{% endif %}</td>
+      <td data-label="{{ _('What to do') }}">{% if r.Hint %}{{ r.Hint }}{% else %}<span class="meta">{{ _("Nothing") }}</span>{% endif %}
+        {%- if r.ReportId %}<br><a href="/reports/{{ r.ReportId }}">{{ icon("reports") }} {{ _("Show the suitability report") }}</a>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endfor %}
+{% endblock %}

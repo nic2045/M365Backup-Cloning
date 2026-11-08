@@ -27,6 +27,7 @@ ALLOWED_PATHS = (
     re.compile(r"^/api/plans/[a-z0-9-]{1,100}$"),
     re.compile(r"^/api/audit$"),
     re.compile(r"^/api/fitcheck/latest$"),
+    re.compile(r"^/api/setup-check/latest$"),
     re.compile(r"^/api/status$"),
     re.compile(r"^/api/intune-backups$"),
     re.compile(r"^/api/intune-backups/[a-z0-9-]{1,100}$"),

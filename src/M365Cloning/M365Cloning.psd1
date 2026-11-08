@@ -10,6 +10,7 @@
         'Get-WebJobDefinition'
         'Invoke-WebJob'
         'Invoke-IntuneBackup'
+        'Invoke-SetupCheck'
         'Get-IntuneBackupSettings'
         'Get-TenantIdHash'
         'Read-ApplyPlanFile'

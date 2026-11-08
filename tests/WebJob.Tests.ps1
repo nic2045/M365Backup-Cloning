@@ -157,6 +157,28 @@ Describe 'Invoke-WebJob: preview jobs change nothing' {
         $script:Calls.Count | Should -Be 0
         $script:Signed.Count | Should -Be 0
     }
+    It 'runs the setup check with its scope and signs in nowhere itself (issue #18)' {
+        $root = Join-Path $TestDrive 'setup'
+        $path = script:New-JobFile -Root $root -Action 'setup-check' -Options @{ scope = 'Config' }
+        Invoke-WebJob -JobPath $path -HistoryRoot $root -ConfigPath $script:Valid -ScriptRoot $script:Scripts -TokenProvider $script:FakeToken -ScriptRunner $script:Offline
+        $job = script:Read-Job $path
+        $job['status'] | Should -Be 'succeeded' -Because $job['message']
+        $job['result']['reportId'] | Should -BeLike 'setup-check-*'
+        $job['result']['exitCode'] | Should -BeIn 0, 1, 2, 3
+        $script:Calls[0].Script | Should -Be 'Invoke-SetupCheck.ps1'
+        $script:Calls[0].Parameters['Scope'] | Should -Be 'Config'
+        $script:Signed.Count | Should -Be 0
+    }
+    It 'reports an unreadable config through the setup check instead of failing the job' {
+        $root = Join-Path $TestDrive 'setup-noconfig'
+        $path = script:New-JobFile -Root $root -Action 'setup-check' -Options @{ scope = 'Config' }
+        Invoke-WebJob -JobPath $path -HistoryRoot $root -ConfigPath (Join-Path $TestDrive 'nope.psd1') -ScriptRoot $script:Scripts -ScriptRunner $script:Offline
+        $job = script:Read-Job $path
+        $job['status'] | Should -Be 'succeeded' -Because $job['message']
+        $job['result']['exitCode'] | Should -Be 2
+        $check = Get-Content (Join-Path $root 'reports' "$($job['result']['reportId']).json") -Raw | ConvertFrom-Json
+        ($check.Checks | Where-Object Id -eq 'config-readable').Status | Should -Be 'red'
+    }
     It 'reports a failed sign-in without running the script' {
         $root = Join-Path $TestDrive 'signin'
         $path = script:New-JobFile -Root $root -Action drift

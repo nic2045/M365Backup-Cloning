@@ -101,7 +101,7 @@ function Get-SecretLikeKey {
 function Invoke-ContractSampleRun {
     <# Runs the scripts offline against the test fixtures (no tenant, no network) and returns the History folder
        with the files they wrote: drift report, apply/baseline/reset(Align, Full)/users plans, suitability check,
-       audit.jsonl. #>
+       setup check (config only, no sign-in), audit.jsonl. #>
     param([Parameter(Mandatory)][string]$HistoryRoot)
     $f = Join-Path $script:ContractRoot 'tests' 'fixtures'
     $s = Join-Path $script:ContractRoot 'scripts'
@@ -115,6 +115,7 @@ function Invoke-ContractSampleRun {
     $null = & (Join-Path $s 'Invoke-DevReset.ps1') -ConfigPath $cfg -Mode Align -InventoryPath $inv -SourceSnapshotPath $prod -TargetSnapshotPath $dev -HistoryRoot $HistoryRoot 6>$null
     $null = & (Join-Path $s 'Invoke-DevUsers.ps1') -ConfigPath (Join-Path $f 'contract' 'config.contract.psd1') -DirectoryPath (Join-Path $f 'contract' 'dev.directory.json') -LicencePath $lic -HistoryRoot $HistoryRoot 6>$null
     $null = & (Join-Path $s 'Invoke-TenantFitCheck.ps1') -ConfigPath $cfg -ProdLicencePath $lic -DevLicencePath $lic -ProdSnapshotPath $prod -HistoryRoot $HistoryRoot 6>$null
+    $null = & (Join-Path $s 'Invoke-SetupCheck.ps1') -ConfigPath $cfg -Scope Config -HistoryRoot $HistoryRoot 6>$null
     $HistoryRoot
 }
 
@@ -124,6 +125,7 @@ function Get-ContractDefinitionForFile {
     switch -Regex ($Name) {
         '^drift-' { 'DriftReport'; break }
         '^tenantfit-' { 'FitCheck'; break }
+        '^setup-check-' { 'SetupCheck'; break }
         '^(apply-plan|dev-baseline-plan|dev-reset-plan-(align|full)|dev-users-plan)-' { 'PlanFile'; break }
         default { $null }
     }

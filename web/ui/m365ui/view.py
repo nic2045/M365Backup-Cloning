@@ -1,5 +1,5 @@
-"""Pure view helpers of the interface (issues #61, #63, #14, #66): time format, next step, order of lists, icons,
-the menu by goals and areas, and the forms that start a job.
+"""Pure view helpers of the interface (issues #61, #63, #14, #66, #18): time format, next step, order of lists, icons,
+the menu by goals and areas, the forms that start a job, the setup check and the progress of Start Dev fresh.
 
 No FastAPI here: every function takes plain data and is tested on its own. The next step is
 derived only from what the read routes of the API already return; nothing is guessed.
@@ -33,6 +33,7 @@ ICON_FILES = {
     "align": "target_arrow", "fresh": "arrow_reset", "fill": "people_add", "jobs": "task_list_ltr", "start": "play",
     "stop": "stop", "running": "arrow_clockwise", "licences": "key", "later": "lock_closed", "delete": "delete",
     "backup": "archive", "changes": "document_bullet_list_clock",
+    "settings": "settings", "setup": "clipboard_checkmark", "certificate": "certificate",
 }
 
 
@@ -174,6 +175,9 @@ class Facts:
     fit_id: str
     report_id: str
     has_apply_plan: bool
+    # Status of the newest setup check (issue #18): green, yellow, red, grey, "" when there is none, None when the
+    # caller did not ask (then the setup rule never applies).
+    setup_status: str | None = None
 
 
 @dataclass(frozen=True)
@@ -191,6 +195,11 @@ class Rule:
 
 # The rules as data, first match is the next step; the order is the order of the work.
 RULES: tuple[Rule, ...] = (
+    Rule("setup", lambda f: f.setup_status in ("", "red"),
+         "Check the setup",
+         "There is no setup check yet, or it found something that blocks the work. It reads the config, the "
+         "certificates and both tenants and changes nothing.",
+         command="scripts/Invoke-SetupCheck.ps1", goal="/settings/setup", goal_text="Open the setup check"),
     Rule("no-report", lambda f: not f.has_report,
          "Run the drift report with the script",
          "There is no comparison of Prod and Dev yet. The report reads both tenants and changes nothing.",
@@ -230,7 +239,8 @@ class Step:
 
 
 def facts(status: dict[str, Any] | None, fit: dict[str, Any] | None, plans: list[dict[str, Any]],
-          now: datetime) -> Facts:
+          now: datetime, setup: dict[str, Any] | None | bool = False) -> Facts:
+    """``setup``: the answer of /api/setup-check/latest, None when there is none yet, False when not asked."""
     status = status or {}
     last = parse_utc(status.get("lastComparisonUtc"))
     report_id = str(status.get("reportId") or "")
@@ -248,6 +258,7 @@ def facts(status: dict[str, Any] | None, fit: dict[str, Any] | None, plans: list
         differences=int(status.get("differences") or 0),
         fit_status=fit_status, fit_id=fit_id, report_id=report_id,
         has_apply_plan=any(p.get("kind") == "apply" and p.get("state") != "outdated" for p in plans),
+        setup_status=None if setup is False else str(((setup or {}).get("check") or {}).get("Status") or ""),
     )
 
 
@@ -297,6 +308,10 @@ AREAS = (
     ("ca", "", "Conditional Access", "ca", False),
     ("licences", "", "Licences", "licences", False),
 )
+# Settings (ADR 0012: an item only once there is a page): the read-only setup check of issue #18.
+SETTINGS = (
+    ("setup", "/settings/setup", "Setup check", "setup"),
+)
 HISTORY = (
     ("jobs", "/jobs", "Jobs", "jobs"),
     ("plans", "/plans", "Plans", "plans"),
@@ -309,7 +324,8 @@ HISTORY = (
 # ---------------------------------------------------------------- jobs (#14)
 
 JOB_ACTIONS = {
-    "drift": "Drift report", "fitcheck": "Suitability check", "intune-backup": "Intune backup", "plan-apply": "Plan Prod → Dev",
+    "drift": "Drift report", "fitcheck": "Suitability check", "intune-backup": "Intune backup", "setup-check": "Setup check",
+    "plan-apply": "Plan Prod → Dev",
     "plan-baseline": "Base state plan", "plan-users": "Dev users plan", "plan-reset": "Reset plan", "apply": "Apply a plan",
 }
 ACTIVE_JOB = ("queued", "running")
@@ -318,10 +334,11 @@ ACTIVE_JOB = ("queued", "running")
 APPLY_ROLE = {"apply": "Applier", "baseline": "Applier", "users": "Applier", "reset": "Resetter"}
 JOB_ID_RE = re.compile(r"^job-[0-9]{8}-[0-9]{6}-[a-z0-9]{6}$")
 FORM_FIELDS = {
-    "drift": (), "fitcheck": (), "intune-backup": (), "plan-apply": ("area",), "plan-baseline": (), "plan-users": (),
+    "drift": (), "fitcheck": (), "intune-backup": (), "setup-check": ("scope",), "plan-apply": ("area",), "plan-baseline": (), "plan-users": (),
     "plan-reset": ("mode", "deviceAction"), "apply": ("planId", "confirmPlanHash", "confirmTenant"),
 }
-CHOICES = {"area": ("All", "Intune"), "mode": ("Align", "Full"), "deviceAction": ("Keep", "Remove", "Retire")}
+CHOICES = {"area": ("All", "Intune"), "mode": ("Align", "Full"), "deviceAction": ("Keep", "Remove", "Retire"),
+           "scope": ("All", "Config")}
 
 
 class FormError(ValueError):
@@ -395,3 +412,66 @@ def change_groups(tenant: dict[str, Any]) -> list[dict[str, Any]]:
     order = {key: i for i, (key, _label) in enumerate(CHANGES)}
     return [{"folder": f, "rows": sorted(rows, key=lambda r: (order.get(r["change"], 9), r["name"].lower()))}
             for f, rows in sorted(groups.items(), key=lambda kv: kv[0].lower())]
+
+
+# ---------------------------------------------------------------- setup check (#18)
+
+SETUP_ID_RE = re.compile(r"^setup-check-[0-9]{8}-[0-9]{6}$")
+# Groups of the setup check in the order of the work, with a readable name and an icon.
+SETUP_GROUPS = (
+    ("Config", "Config", "settings"),
+    ("Certificates", "Certificates", "certificate"),
+    ("Permissions", "Sign-in and permissions", "protected"),
+    ("UTCM", "UTCM service principal", "compare"),
+    ("BreakGlass", "Break-glass accounts", "ca"),
+    ("Licences", "Licences", "licences"),
+)
+STATUS_ORDER = {"red": 0, "yellow": 1, "grey": 2, "green": 3}
+
+
+def setup_groups(check: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """The checks of a setup check grouped as SETUP_GROUPS, each group with its worst status; inside a group the
+    order of the file (Prod before Dev). Groups without a check are left out."""
+    checks = list((check or {}).get("Checks", []))
+    out = []
+    for key, label, pic in SETUP_GROUPS:
+        rows = [c for c in checks if c.get("Group") == key]
+        if not rows:
+            continue
+        worst = min((str(c.get("Status", "grey")) for c in rows), key=lambda st: STATUS_ORDER.get(st, 2))
+        out.append({"key": key, "label": _(label), "icon": pic, "status": worst, "rows": rows})
+    return out
+
+
+# ---------------------------------------------------------------- progress of Start Dev fresh (#18, #66)
+
+def fresh_progress(reset_plans: list[dict[str, Any]], audit: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """Where the work of Start Dev fresh stands, from what the API already returns (nothing is guessed):
+    1 preview: a current reset plan exists; 2 confirm: an audit line 'reset' exists for the newest plan; 3 build
+    again: an audit line 'apply' is newer than that reset. ``audit`` None: the log could not be read, so steps 2
+    and 3 are unknown. Returns the steps (done, current, todo, unknown) and done/total for the bar."""
+    plan = latest_plan(reset_plans, "reset")
+    labels = (("preview", "Preview the reset"), ("confirm", "Check and confirm"), ("rebuild", "Build Dev again"))
+    done = [plan is not None, False, False]
+    known = audit is not None
+    if plan is not None and known:
+        resets = [a for a in audit or [] if a.get("Mode") == "reset" and a.get("PlanHash") == plan.get("planHash")]
+        reset_at = max((parse_utc(a.get("Timestamp")) for a in resets if parse_utc(a.get("Timestamp"))), default=None)
+        done[1] = reset_at is not None
+        if reset_at is not None:
+            done[2] = any(a.get("Mode") == "apply" and (parse_utc(a.get("Timestamp")) or reset_at) > reset_at for a in audit or [])
+    steps = []
+    current_found = False
+    for i, (key, label) in enumerate(labels):
+        if done[i]:
+            state = "done"
+        elif i > 0 and not known:
+            state = "unknown"
+        elif not current_found:
+            state, current_found = "current", True
+        else:
+            state = "todo"
+        steps.append({"key": key, "number": i + 1, "label": _(label), "state": state})
+    count = sum(1 for d in done if d)
+    return {"steps": steps, "done": count, "total": len(labels), "percent": round(100 * count / len(labels)),
+            "plan": plan}

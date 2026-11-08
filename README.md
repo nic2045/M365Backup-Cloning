@@ -139,6 +139,21 @@ run, nothing pushed. A failed run leaves the repository as it was. What changed 
 `History/reports/intune-backup-*.json` and on the page *History > Intune changes*. Needs Python 3.12 with
 `pip install --require-hashes -r tools/intunecd/requirements.txt` and Git. Check on a real system: `validation/README.md`, part 15.
 
+## Setup check (read only, issue #18)
+
+```powershell
+pwsh scripts/Invoke-SetupCheck.ps1 -Scope Config   # config, certificates, break-glass list, licences; no sign-in
+pwsh scripts/Invoke-SetupCheck.ps1                 # also signs in to Prod and Dev and reads with GET only
+```
+
+Checks the config, the certificate of each app registration (store of this computer, end date), the sign-in and the
+application permissions of both registrations (compared with `src/M365Cloning/Data/SetupRequirements.psd1`; Prod with a
+write permission is red), the UTCM service principal in each tenant, the break-glass accounts in Dev and the licences
+(the newest suitability check). Each check is green, yellow, red or grey (not checked) with what to do. It creates,
+grants and changes nothing and writes only `History/reports/setup-check-*.json` (no IDs, thumbprints or account names).
+In the web interface: *Settings* > *Setup check*. Exit code: 0 green, 1 yellow, 2 red, 3 grey. Check on a real system:
+`validation/README.md`, part 16.
+
 ## Web contract (issue #44, ADR 0008)
 
 The contract of the web server and interface (ADR 0002) is: `schema/m365cloning.schema.json` (formats the core writes and the API envelopes), `web/openapi.json` (read routes and the job routes) and `web/mock/responses.json` (example responses). `tests/WebContract.Tests.ps1` checks the core's files, the OpenAPI description and the mock against it. See [`docs/web-contract.md`](docs/web-contract.md).
