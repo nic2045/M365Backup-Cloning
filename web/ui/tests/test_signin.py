@@ -6,6 +6,7 @@ import logging
 import re
 from urllib.parse import parse_qs, urlparse
 
+import jwt as pyjwt
 import pytest
 from fastapi.testclient import TestClient
 
@@ -347,3 +348,36 @@ def test_unusable_local_config_is_dropped():
     assert UiAuth(local=LocalConfig("a", "not-a-hash", "Reader", uikit.LOCAL_SECRET)).local is None
     assert UiAuth(local=LocalConfig("a", uikit.LOCAL_HASH, "Admin", uikit.LOCAL_SECRET)).local is None
     assert UiAuth(local=LocalConfig("a", uikit.LOCAL_HASH, "Reader", b"short")).local is None
+
+
+# Break-glass account (issue #79, ADR 0016): the local account is for management only.
+
+@pytest.mark.parametrize("role", ["Applier", "Resetter"])
+def test_local_account_with_a_higher_role_is_refused(role, caplog):
+    caplog.set_level(logging.ERROR)
+    cfg = authmod.local_from_env({
+        "M365_UI_LOCAL_LOGIN": "1", "M365_UI_LOCAL_USER": "a", "M365_UI_LOCAL_PASSWORD_HASH": uikit.LOCAL_HASH,
+        "M365_UI_LOCAL_ROLE": role, "M365CLONING_LOCAL_TOKEN_SECRET": uikit.LOCAL_SECRET.decode(),
+    })
+    assert cfg is None
+    assert "break-glass" in caplog.text and role in caplog.text
+    assert uikit.LOCAL_HASH not in caplog.text and uikit.LOCAL_SECRET.decode() not in caplog.text
+    assert UiAuth(local=LocalConfig("a", uikit.LOCAL_HASH, role, uikit.LOCAL_SECRET)).local is None
+
+
+def test_local_session_only_reads_and_says_so():
+    client = TokenClient()
+    web, auth = local_web(client=client)
+    local_login(web)
+    page = web.get("/")
+    assert "Break-glass account: management only." in page.text
+    session = next(iter(auth._sessions.values()))
+    assert session.roles == {"Reader"}
+    claims = pyjwt.decode(client.tokens[-1], options={"verify_signature": False})
+    assert claims["roles"] == ["Reader"]
+
+
+def test_entra_session_shows_no_break_glass_notice():
+    web, auth = make(TokenClient(), uikit.ui_auth(uikit.FakeEntra(roles=["Resetter"], name="Alex Example")))
+    uikit.sign_in(web, auth)
+    assert "Break-glass account" not in web.get("/").text

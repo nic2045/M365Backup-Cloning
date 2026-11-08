@@ -10,3 +10,6 @@ History/
 exports/
 snapshots/
 *.log
+# Web app (issue #79): local settings, token secret and Python environments
+web.settings.psd1
+web.local/

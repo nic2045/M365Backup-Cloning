@@ -158,6 +158,17 @@ In the web interface: *Settings* > *Setup check*. Exit code: 0 green, 1 yellow, 
 
 The contract of the web server and interface (ADR 0002) is: `schema/m365cloning.schema.json` (formats the core writes and the API envelopes), `web/openapi.json` (read routes and the job routes) and `web/mock/responses.json` (example responses). `tests/WebContract.Tests.ps1` checks the core's files, the OpenAPI description and the mock against it. See [`docs/web-contract.md`](docs/web-contract.md).
 
+## Start the web app (issue #79, ADR 0016)
+
+```powershell
+Copy-Item web.settings.example.psd1 web.settings.psd1   # fill in the Entra IDs (git-ignored)
+pwsh scripts/Start-M365CloningWeb.ps1 -Check            # checks Python 3.12, settings and ports, starts nothing
+pwsh scripts/Start-M365CloningWeb.ps1                   # sets up once, starts API and interface, opens the browser
+```
+
+Both apps listen on `127.0.0.1` only; Ctrl+C stops both. Normal sign-in is Entra ID with app roles. The local account is
+a break-glass account for management only (role Reader). Step by step: [`docs/getting-started.md`](docs/getting-started.md).
+
 ## Web API (issues #55, #14)
 
 `web/api` is the API server (FastAPI) for the routes of `web/openapi.json`: reports, plans, audit, suitability check, status and jobs from `History/`. Tenant IDs and GUIDs are masked in every answer. Its only write routes queue a job, which runs the scripts in its own process after the role and the confirmation are checked (ADR 0012). Start and test: see `docs/web-contract.md`, section "Start the backend".

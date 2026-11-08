@@ -1,0 +1,8 @@
+# Verified false positives only: one exact fingerprint (commit:file:rule:line) per line, each with its reason.
+# Never add a whole file, path or rule here.
+
+# Issue #79: in scripts/M365CloningWeb.psm1 a variable whose name contains "api" was assigned the result of a
+# function call; the rule generic-api-key took the function name for a key. No secret. Renamed in 1293105.
+cd26c420c1514e0f1443361ad7f22f7dabab0914:scripts/M365CloningWeb.psm1:generic-api-key:413
+# Issue #79: the first version of this file quoted that line in its comment (same false positive). Reworded since.
+6963f3b0e845f57181f4acb7485061a6275bd3ae:.gitleaksignore:generic-api-key:4

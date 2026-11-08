@@ -220,3 +220,25 @@ def test_plan_list_names_the_area(client):
     items = {i["id"]: i for i in client.get("/api/plans").json()["items"]}
     assert items[APPLY_PLAN]["area"] == "Intune"
     assert "area" not in items["apply-plan-20261107-120000"]
+
+
+# Break-glass account (issue #79, ADR 0016): a local sign-in only reads, whatever its token says.
+
+def as_local(app, *roles: str) -> TestClient:
+    return TestClient(app, client=("127.0.0.1", 50000), headers=authkit.bearer(authkit.local_token(list(roles))))
+
+
+@pytest.mark.parametrize("roles", [("Applier",), ("Resetter",), ("Applier", "Resetter")])
+@pytest.mark.parametrize("action", ["drift", "plan-apply", "plan-reset", "intune-backup"])
+def test_the_local_account_starts_no_report_apply_or_reset(app, idle, launcher, roles, action):
+    response = as_local(app, *roles).post("/api/jobs", json={"action": action})
+    assert response.status_code == 403
+    assert response.json()["code"] == "forbidden"
+    assert launcher.started == []
+
+
+def test_the_local_account_may_check_the_configuration(app, idle, launcher):
+    response = as_local(app, "Reader").post("/api/jobs", json={"action": "setup-check", "scope": "Config"})
+    assert response.status_code == 202
+    full = as_local(app, "Applier").post("/api/jobs", json={"action": "setup-check"})
+    assert full.status_code == 403

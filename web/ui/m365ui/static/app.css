@@ -1,5 +1,5 @@
 /* Read-only interface, styled after Fluent 2 (ADR 0011). Own CSS, no framework.
-   Token values are taken from the Fluent 2 web themes (brand ramp: own warm orange, ADR 0017) (@fluentui/tokens 1.0.0-alpha.24, webLightTheme and
+   Token values are taken from the Fluent 2 web themes (brand ramp: own copper, ADR 0017) (@fluentui/tokens 1.0.0-alpha.24, webLightTheme and
    webDarkTheme); the names below are ours. Spacing: --gap-row inside a group (Fluent spacing S, 8 px),
    --gap-block before a button row (L, 16 px), --gap-section between sections (XXXL, 32 px). Targets >= 44 px. */
 :root {
@@ -10,15 +10,15 @@
   --size-caption: 0.875rem; --size-body: 1rem; --size-subtitle: 1.25rem; --size-title: 1.75rem;
   --side-width: 17.5rem;
 
-  /* Brand: warm orange, 16-step Fluent BrandVariants (ADR 0017). Key colour #c4500e at step 80. */
-  --brand-10: #290a00; --brand-20: #3e1401; --brand-30: #521c01; --brand-40: #692601;
-  --brand-50: #7f2f01; --brand-60: #973a00; --brand-70: #ac4303; --brand-80: #c4500e;
-  --brand-90: #dc6c38; --brand-100: #ee8558; --brand-110: #f69267; --brand-120: #fc9e76;
-  --brand-130: #feb393; --brand-140: #fec8b2; --brand-150: #fedbcc; --brand-160: #feeee8;
+  /* Brand: copper, 16-step Fluent BrandVariants (ADR 0017). Key colour #a65a3a at step 80. */
+  --brand-10: #2a0a00; --brand-20: #3d1200; --brand-30: #4f1b03; --brand-40: #622609;
+  --brand-50: #743214; --brand-60: #863f20; --brand-70: #944b2b; --brand-80: #a65a3a;
+  --brand-90: #bf7354; --brand-100: #d48b6e; --brand-110: #dd987c; --brand-120: #e5a489;
+  --brand-130: #efb59d; --brand-140: #f8c8b4; --brand-150: #fed9ca; --brand-160: #ffeee8;
 
   --bg: #ffffff; --bg-page: #fafafa; --bg-subtle: #f5f5f5; --bg-strong: #f0f0f0; --bg-selected: #ebebeb;
   --fg: #242424; --fg-2: #424242; --muted: #616161; --line: #d1d1d1; --line-2: #e0e0e0;
-  --brand: var(--brand-80); --brand-hover: var(--brand-70); --brand-pressed: var(--brand-40); --brand-fg: var(--brand-70);
+  --brand: var(--brand-80); --brand-hover: var(--brand-70); --brand-pressed: var(--brand-40); --brand-fg: var(--brand-80);
   --brand-soft: var(--brand-160); --on-brand: #ffffff;
   --link: var(--brand-70); --link-hover: var(--brand-60); --focus: #000000; --focus-inner: #ffffff;
   --ok-bg: #f1faf1; --ok-fg: #0e700e; --ok-line: #9fd89f;
