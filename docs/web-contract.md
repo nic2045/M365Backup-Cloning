@@ -63,6 +63,7 @@ Invoke-Pester tests/WebContract.Tests.ps1
 | `2` | #13 | Same version, only additions: audit mode `report` (one line per drift report, counts only); an apply writes one line per result (`applied`, `unchanged` or `failed to apply` with resource type and name; no properties, IDs or error text) before its summary line; `GET /api/audit` takes `planHash` (64 lowercase hex characters) to list the entries of one plan. Before/after values stay in the plan, found by its hash. |
 | `2` | #76 | Same version, only additions: audit `Mode` `setupcheck` and the optional counters `Green` and `Grey`; the audit filter `mode` also takes `backup` and `setupcheck`; a `setup-check` job with `scope` `Config` needs only `Reader`, so `x-required-role` of the job routes is `Reader|Applier|Resetter` and a job's `role` may be `Reader`. |
 | `2` | #27 (ADR 0018) | Same version, only additions: file `desired-export-*.json` (schema `DesiredExport`), routes `GET /api/desired-exports` and `GET /api/desired-exports/{id}`, job action `export-desired` (role Applier), audit `Mode` `export` (also as filter `mode`). |
+| `2` | #27 part 2 (ADR 0019) | Same version, only additions: `Plan.Source` (`{ Kind: Repository, Commit }`; missing = Prod snapshot), `JobRequest.source` and `JobOptions.source` (`Live`, `Repository`; plan-apply only). |
 
 ## Start with one command (issue #79, ADR 0016)
 
@@ -128,7 +129,7 @@ Both apps need sign-in. Nothing is configured: the API answers 401 to every requ
 
 ## Jobs (issue #14, ADR 0012)
 
-`POST /api/jobs` with a `JobRequest` (`{"action": "drift"}`, `{"action": "intune-backup"}`, `{"action": "setup-check", "scope": "Config"}`, `{"action": "plan-apply", "area": "Intune"}`, `{"action": "plan-reset", "mode": "Full", "deviceAction": "Retire"}`, `{"action": "apply", "planId": "...", "confirmPlanHash": "...", "confirmTenant": "<Dev tenant ID, reset only>"}`) writes `History/jobs/<id>.json` and starts the job runner; the answer is 202 with the job. The runner keeps state, steps and result in the same file and writes the script output to `<id>.log` (the process output goes to `<id>.out`). Only one job runs at a time.
+`POST /api/jobs` with a `JobRequest` (`{"action": "drift"}`, `{"action": "intune-backup"}`, `{"action": "setup-check", "scope": "Config"}`, `{"action": "plan-apply", "area": "Intune"}`, `{"action": "plan-apply", "area": "All", "source": "Repository"}` (desired state of the configuration repository, ADR 0019; default `Live`), `{"action": "plan-reset", "mode": "Full", "deviceAction": "Retire"}`, `{"action": "apply", "planId": "...", "confirmPlanHash": "...", "confirmTenant": "<Dev tenant ID, reset only>"}`) writes `History/jobs/<id>.json` and starts the job runner; the answer is 202 with the job. The runner keeps state, steps and result in the same file and writes the script output to `<id>.log` (the process output goes to `<id>.out`). Only one job runs at a time.
 
 | Variable | Meaning |
 |---|---|

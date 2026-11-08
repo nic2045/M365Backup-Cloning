@@ -96,5 +96,11 @@ function Complete-PlanShape {
     # Area (issue #66): only when the plan covers one area; a plan of all areas keeps its shape and its hash.
     $area = [string](& $get 'Area' '')
     if ($area) { $shaped['Area'] = $area }
+    # Source (issue #27 part 2, ADR 0019): only for a plan from the configuration repository; a plan from a live Prod
+    # snapshot keeps its shape and its hash.
+    $source = & $get 'Source' $null
+    if ($source -is [System.Collections.IDictionary] -and $source['Kind']) {
+        $shaped['Source'] = [ordered]@{ Kind = [string]$source['Kind']; Commit = [string]$source['Commit'] }
+    }
     $shaped
 }

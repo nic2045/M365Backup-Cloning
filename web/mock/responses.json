@@ -2605,7 +2605,8 @@
           ],
           "Protected": [],
           "Notes": [
-            "Area Intune: only Intune entries and the empty group copies their assignments need; the rest is skipped."
+            "Area Intune: only Intune entries and the empty group copies their assignments need; the rest is skipped.",
+            "Source: the desired state of the configuration repository, commit a1b2c3d4e5f6; Prod was not read."
           ],
           "Summary": {
             "Planned": 2,
@@ -2772,7 +2773,11 @@
             "Missing": [],
             "Warnings": []
           },
-          "Area": "Intune"
+          "Area": "Intune",
+          "Source": {
+            "Kind": "Repository",
+            "Commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
+          }
         }
       }
     },

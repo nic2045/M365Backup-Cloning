@@ -37,13 +37,18 @@ function New-ApplyPlan {
         Area (issue #66): -Area Intune keeps only the Intune entries (resource type microsoft.intune.*) and the empty
         group copies an Intune assignment needs; every other planned or blocked entry becomes 'skipped' with a reason
         starting with 'area:'. The plan carries Area = 'Intune', so its hash differs from the plan of all areas.
+        Source (issue #27 part 2, ADR 0019): -SourceInfo @{ Kind = 'Repository'; Commit = '<commit>' } when -Source is the
+        desired state of the configuration repository (Read-DesiredStateSnapshot) instead of a Prod snapshot. The plan
+        carries it as Source, so the commit is part of the plan hash: a changed desired state needs a new confirmation.
+        Without -SourceInfo (live Prod snapshot) the plan keeps its shape and its hash.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][System.Collections.IDictionary]$Source,
         [Parameter(Mandatory)][System.Collections.IDictionary]$Target,
         [Parameter(Mandatory)][System.Collections.IDictionary]$Config,
-        [ValidateSet('All', 'Intune')][string]$Area = 'All'
+        [ValidateSet('All', 'Intune')][string]$Area = 'All',
+        [System.Collections.IDictionary]$SourceInfo
     )
 
     foreach ($side in 'Prod', 'Dev') {
@@ -345,5 +350,12 @@ function New-ApplyPlan {
         }
     }
     if ($Area -ne 'All') { $shape['Area'] = $Area }
+    if ($SourceInfo) {
+        if ([string]$SourceInfo['Kind'] -ne 'Repository' -or [string]$SourceInfo['Commit'] -notmatch '^[0-9a-f]{40}([0-9a-f]{24})?$') {
+            throw 'SourceInfo needs Kind = Repository and the full commit ID of the configuration repository.'
+        }
+        $shape['Source'] = [ordered]@{ Kind = 'Repository'; Commit = [string]$SourceInfo['Commit'] }
+        $shape['Notes'] = [string[]]@(@($shape['Notes']) + "Source: the desired state of the configuration repository, commit $(([string]$SourceInfo['Commit']).Substring(0, 12)); Prod was not read." | Select-Object -Unique)
+    }
     Complete-PlanShape -Kind 'apply' -Plan $shape
 }

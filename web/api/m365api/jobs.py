@@ -74,6 +74,7 @@ class JobRequest:
     confirm_plan_hash: str | None = None
     confirm_tenant: str | None = None
     scope: str | None = None
+    source: str | None = None
 
 
 # Which fields belong to which action; anything else is refused, so a request never carries more than it means.
@@ -83,7 +84,7 @@ FIELDS_OF = {
     "intune-backup": set(),
     "export-desired": set(),
     "setup-check": {"scope"},
-    "plan-apply": {"area"},
+    "plan-apply": {"area", "source"},
     "plan-baseline": set(),
     "plan-users": set(),
     "plan-reset": {"mode", "deviceAction"},
@@ -103,7 +104,7 @@ def parse_request(body: Any) -> JobRequest:
     if action == "apply" and not (body.get("planId") and body.get("confirmPlanHash")):
         raise StoreError(400, "invalid-parameter", "apply needs planId and confirmPlanHash (the hash of the plan you looked at).")
     return JobRequest(action, body.get("area"), body.get("mode"), body.get("deviceAction"), body.get("planId"),
-                      body.get("confirmPlanHash"), body.get("confirmTenant"), body.get("scope"))
+                      body.get("confirmPlanHash"), body.get("confirmTenant"), body.get("scope"), body.get("source"))
 
 
 def role_for(action: str, plan_kind: str | None = None, table: dict[str, Any] | None = None,
@@ -269,6 +270,7 @@ class JobStore:
         options: dict[str, Any] = {}
         if request.action == "plan-apply":
             options["area"] = request.area or "All"
+            options["source"] = request.source or "Live"
         if request.action == "setup-check":
             options["scope"] = request.scope or "All"
         if request.action == "plan-reset":

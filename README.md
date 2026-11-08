@@ -151,8 +151,21 @@ Reads Prod (one UTCM snapshot, the resource types of the apply) and writes one n
 `desired/<type>/<name>.json` in your configuration repository: no IDs, no secrets, no tenant ID, groups and filters by
 name. One commit per run, nothing pushed; a failed run leaves the repository as it was. Resources that are not written
 (secrets, excluded types, missing filters) and what changed are listed in `History/reports/desired-export-*.json` and on
-the page *History > Desired state*. `desired/` is the desired state that a later part of issue #27 builds Dev from;
+the page *History > Desired state*. `desired/` is the desired state the apply can build Dev from (below);
 `intune/` (IntuneCD) stays the Intune history. Needs Git. Check on a real system: `validation/README.md`, part 18.
+
+## Build Dev from the configuration repository (issue #27 part 2, ADR 0019)
+
+```powershell
+pwsh scripts/Invoke-ApplyDev.ps1 -Source Repository -DevToken $d            # plan from desired/, Prod is not read
+pwsh scripts/Invoke-ApplyDev.ps1 -Source Repository -Apply -ConfirmPlanHash <hash> -DevToken $d
+pwsh scripts/Invoke-DevReset.ps1 -Apply ... -RebuildAfter -RebuildSource Repository
+```
+
+The plan reads the committed `desired/` (an uncommitted change stops it) and compares it with Dev; it names the commit,
+and the commit is part of the plan hash, so a changed desired state needs a new confirmation. All rules of the apply
+stay. Default is `-Source Live` (Prod snapshot). In the web interface: *Bring Dev in line* or *Areas > Intune*, desired
+state "Configuration repository". Check on a real system: `validation/README.md`, part 19.
 
 ## Setup check (read only, issue #18)
 

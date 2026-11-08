@@ -12,6 +12,8 @@ function Invoke-DevRebuildChain {
         the goal is an empty report except for what is excluded on purpose.
         -Runner runs a script (tests replace it): param($ScriptPath, [hashtable]$Arguments). -Prompt asks the person:
         param($StepName, $PlanHash, $PlanPath), returns the typed text. The users step is passed over without DevUsers.
+        -Source (issue #27 part 2, ADR 0019): where the apply step reads the desired state, Live (Prod snapshot) or
+        Repository (desired/ of the configuration repository); the same value is passed with -Apply.
     #>
     [CmdletBinding()]
     param(
@@ -21,13 +23,14 @@ function Invoke-DevRebuildChain {
         [Parameter(Mandatory)][string]$HistoryRoot,
         [securestring]$ProdToken,
         [securestring]$DevToken,
+        [ValidateSet('Live', 'Repository')][string]$Source = 'Live',
         [scriptblock]$Runner = { param($ScriptPath, [hashtable]$Arguments) & $ScriptPath @Arguments },
         [scriptblock]$Prompt = { param($StepName, $PlanHash, $PlanPath) Read-Host "[$StepName] Plan: $PlanPath`nType the plan hash to apply it (anything else stops)" }
     )
     $common = @{ ConfigPath = $ConfigPath; HistoryRoot = $HistoryRoot }
     $steps = [System.Collections.Generic.List[object]]::new()
     $steps.Add(@{ Name = 'Base state'; Script = 'Invoke-DevBaseline.ps1'; Prefix = 'dev-baseline-plan'; Args = @{ DevToken = $DevToken } })
-    $steps.Add(@{ Name = 'Apply Intune and Conditional Access'; Script = 'Invoke-ApplyDev.ps1'; Prefix = 'apply-plan'; Args = @{ ProdToken = $ProdToken; DevToken = $DevToken } })
+    $steps.Add(@{ Name = 'Apply Intune and Conditional Access'; Script = 'Invoke-ApplyDev.ps1'; Prefix = 'apply-plan'; Args = $(if ($Source -eq 'Repository') { @{ DevToken = $DevToken; Source = 'Repository' } } else { @{ ProdToken = $ProdToken; DevToken = $DevToken } }) })
     $hasUsers = $Config.Contains('DevUsers') -and @($Config['DevUsers'] | Where-Object { $_ }).Count -gt 0
     if ($hasUsers) { $steps.Add(@{ Name = 'Dev users'; Script = 'Invoke-DevUsers.ps1'; Prefix = 'dev-users-plan'; Args = @{ DevToken = $DevToken } }) }
 

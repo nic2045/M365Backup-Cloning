@@ -21,8 +21,11 @@ function Invoke-WebJob {
         - apply: the plan file must exist, its hash must equal the hash the person confirmed in the browser, and for a
           reset plan the hash of the Dev tenant ID the person typed must equal the Dev tenant of the plan and of the
           config (second confirmation). The script then builds the plan again and applies it only if the hash is still
-          the same (as on the console). Area, reset mode and device action come from the plan itself. A refused
-          request writes an audit line 'refused'.
+          the same (as on the console). Area, source, reset mode and device action come from the plan itself. A
+          refused request writes an audit line 'refused'.
+        - Source (issue #27 part 2, ADR 0019): plan-apply with source Repository builds the plan from the desired state
+          of the configuration repository; only Dev is signed in to (tenantsBySource). Its apply takes the source from
+          the plan.
         - Tokens: Graph tokens from the certificate of each app registration through Az.Accounts (Get-WebJobGraphToken,
           ADR 0013), only for the tenants the action reads; they stay in memory.
         - Actor: the person who started the job is written into every audit line of the run (M365CLONING_ACTOR).
@@ -76,7 +79,11 @@ function Invoke-WebJob {
     if ($job['action'] -eq 'apply') {
         $kindDef = $def['byPlanKind'][[string]$options['planKind']]
     }
-    $runTitle = if ($kindDef) { [string]$kindDef['run'] } else { 'Run the script' }
+    # Source (ADR 0019): from the request for plan-apply, from the plan for its apply (set in the check step).
+    $source = if ($job['action'] -eq 'plan-apply' -and [string]$options['source'] -eq 'Repository') { 'Repository' } else { 'Live' }
+    $runTitle = if (-not $kindDef) { 'Run the script' }
+    elseif ($kindDef.Contains('runBySource') -and $kindDef['runBySource'].Contains($source)) { [string]$kindDef['runBySource'][$source] }
+    else { [string]$kindDef['run'] }
     $job['steps'] = @(foreach ($s in $defs['steps']) { [ordered]@{ key = $s['key']; title = $(if ($s['key'] -eq 'run') { $runTitle } else { $s['title'] }); status = 'pending' } })
     $job['status'] = 'running'
     $job['message'] = ''
@@ -110,7 +117,11 @@ function Invoke-WebJob {
             'intune-backup' { }
             'export-desired' { }
             'setup-check' { $params['Scope'] = if ($options['scope']) { [string]$options['scope'] } else { 'All' } }
-            'plan-apply' { $params['Plan'] = $true; $params['Area'] = if ($options['area']) { [string]$options['area'] } else { 'All' } }
+            'plan-apply' {
+                $params['Plan'] = $true
+                $params['Area'] = if ($options['area']) { [string]$options['area'] } else { 'All' }
+                if ($source -eq 'Repository') { $params['Source'] = 'Repository' }
+            }
             'plan-baseline' { $params['Plan'] = $true }
             'plan-users' { $params['Plan'] = $true }
             'plan-reset' {
@@ -133,7 +144,13 @@ function Invoke-WebJob {
                 $params['Apply'] = $true
                 $params['ConfirmPlanHash'] = $hash
                 switch ([string]$options['planKind']) {
-                    'apply' { $params['Area'] = if ($plan.Contains('Area') -and $plan['Area']) { [string]$plan['Area'] } else { 'All' } }
+                    'apply' {
+                        $params['Area'] = if ($plan.Contains('Area') -and $plan['Area']) { [string]$plan['Area'] } else { 'All' }
+                        if ($plan.Contains('Source') -and $plan['Source'] -is [System.Collections.IDictionary] -and [string]$plan['Source']['Kind'] -eq 'Repository') {
+                            $source = 'Repository'
+                            $params['Source'] = 'Repository'
+                        }
+                    }
                     'reset' {
                         $devHash = Get-TenantIdHash -TenantId ([string]$config.Dev.TenantId)
                         if (-not $confirm['TenantHash'] -or $confirm['TenantHash'] -ne $devHash -or [string]$plan['TargetTenantHash'] -ne $devHash) {
@@ -159,7 +176,8 @@ function Invoke-WebJob {
             { param($Config, [string]$Side) $t = $Config[$Side]; Get-WebJobGraphToken -TenantId ([string]$t.TenantId) -ClientId ([string]$t.ClientId) -CertThumbprint ([string]$t.CertThumbprint) }
         }
         try {
-            foreach ($side in @($kindDef['tenants'])) { $params["${side}Token"] = & $provider $config $side; & $log "signed in to $side" }
+            $sides = if ($kindDef.Contains('tenantsBySource') -and $kindDef['tenantsBySource'].Contains($source)) { @($kindDef['tenantsBySource'][$source]) } else { @($kindDef['tenants']) }
+            foreach ($side in $sides) { $params["${side}Token"] = & $provider $config $side; & $log "signed in to $side" }
         }
         catch { & $finish 'failed' "Sign-in failed: $($_.Exception.Message)"; return }
         & $setStep 'signin' 'done'; & $save

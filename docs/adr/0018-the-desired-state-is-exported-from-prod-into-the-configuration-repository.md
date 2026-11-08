@@ -2,6 +2,8 @@
 
 Status: Accepted (2026-11-08, issue #27 part 1; implements points 2 and 3 of ADR 0004, plans points 4 and 5)
 
+Part 2 (build Dev from the repository) is implemented by ADR 0019.
+
 ## Context
 
 ADR 0004 decided that the desired state lives as files in the private configuration repository of the operator and

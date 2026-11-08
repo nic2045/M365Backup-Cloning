@@ -36,7 +36,7 @@ function ConvertTo-DesiredStateFile {
     $catalog = Get-ResourceTypeCatalog -Config $Config
     $index = Get-SnapshotResourceIndex -Snapshot $Snapshot
     $filterType = 'microsoft.intune.deviceandappmanagementassignmentfilter'
-    $connection = @('TenantId', 'ApplicationId', 'CertificateThumbprint', 'ApplicationSecret', 'Credential', 'ManagedIdentity', 'AccessTokens')
+    $connection = Get-DesiredStateConnectionProperty
 
     # Filter ID -> filter name, from the same snapshot.
     $filterNames = @{}
