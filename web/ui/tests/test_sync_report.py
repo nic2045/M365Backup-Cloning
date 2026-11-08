@@ -57,3 +57,17 @@ def test_report_list_tags_the_source_of_each_drift_report(web):
     assert row and "Configuration repository" in row.group(0)
     row = re.search(rf'<tr>(?:(?!</tr>).)*{LIVE_REPORT}.*?</tr>', html, re.S)
     assert row and "Prod (live)" in row.group(0)
+
+
+def test_compare_step_and_next_step_name_no_fixed_source(web):
+    """The comparison may start from Prod or the configuration repository: the texts do not name Prod alone."""
+    html = web.get("/goals/align").text
+    assert "Compare with Dev" in html and "Compare Prod and Dev" not in html
+    assert "Desired state: Prod (live) or the configuration repository, chosen below." in html
+
+
+def test_next_step_without_a_report_is_neutral():
+    from m365ui import view
+    rule = next(r for r in view.RULES if r.id == "no-report")
+    assert rule.goal_text == "Compare with Dev"
+    assert "Prod and Dev" not in rule.detail

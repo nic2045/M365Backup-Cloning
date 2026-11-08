@@ -204,8 +204,9 @@ RULES: tuple[Rule, ...] = (
          command="scripts/Invoke-SetupCheck.ps1", goal="/settings/setup", goal_text="Open the setup check"),
     Rule("no-report", lambda f: not f.has_report,
          "Run the drift report with the script",
-         "There is no comparison of Prod and Dev yet. The report reads both tenants and changes nothing.",
-         command="scripts/Get-DriftReport.ps1", goal="/goals/align", goal_text="Compare Prod and Dev"),
+         "There is no comparison with Dev yet. The report reads the desired state (Prod or the configuration "
+         "repository) and Dev and changes nothing.",
+         command="scripts/Get-DriftReport.ps1", goal="/goals/align", goal_text="Compare with Dev"),
     Rule("fit-check", lambda f: f.fit_status in ("red", "grey", ""),
          "Check the suitability report",
          "The suitability check is red, not verified or missing. Find out what Dev cannot mirror before you plan.",
