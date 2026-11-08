@@ -24,6 +24,9 @@
     },
     "setup-check": {
       "role": "Applier",
+      "roleByScope": {
+        "Config": "Reader"
+      },
       "tenants": [],
       "script": "Invoke-SetupCheck.ps1",
       "resultPrefix": "setup-check-",

@@ -11,6 +11,7 @@ from m365ui import view
 from m365ui.api_client import ApiResponse, MockClient
 from m365ui.main import create_app
 
+import uikit
 from test_pages import MOCK_FILE, RecordingClient
 
 NOW = datetime(2026, 11, 7, 12, 20, tzinfo=timezone.utc)
@@ -162,3 +163,20 @@ def test_fresh_page_shows_progress_and_the_setup_status(web, recorder):
     assert "job-step-done" in html and "job-step-current" in html
     assert 'href="/settings/setup"' in html and "Setup check" in html
     assert "/api/setup-check/latest" in recorder.paths
+
+
+def test_a_reader_may_check_the_config_only():
+    """Issue #76: the config-only check signs in nowhere, so a Reader sees that button; the full check needs Applier."""
+    auth = uikit.ui_auth(uikit.FakeEntra(roles=("Reader",)))
+    web = TestClient(create_app(MockClient(MOCK_FILE), auth, clock=lambda: NOW))
+    assert uikit.sign_in(web, auth).status_code == 303
+    html = web.get("/settings/setup").text
+    assert 'name="scope" value="Config"' in html
+    assert 'name="scope" value="All"' not in html
+    assert "needs the role Applier" in html
+
+
+def test_the_audit_log_knows_the_setup_check(web):
+    html = web.get("/audit?mode=setupcheck").text
+    assert '<option value="setupcheck" selected>' in html or 'value="setupcheck" selected' in html
+    assert "Setup check" in html and "setup check (All): yellow" in html

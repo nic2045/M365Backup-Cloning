@@ -82,7 +82,7 @@ def test_every_route_needs_sign_in():
     for path, ops in OPENAPI["paths"].items():
         for method, op in ops.items():
             assert op.get("security", OPENAPI["security"]) == OPENAPI["security"]
-            expected = "Applier|Resetter" if (method, path) in WRITE_ROUTES else "Reader"
+            expected = "Reader|Applier|Resetter" if (method, path) in WRITE_ROUTES else "Reader"
             assert op["x-required-role"] == expected
 
 

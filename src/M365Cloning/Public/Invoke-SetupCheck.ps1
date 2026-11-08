@@ -292,6 +292,10 @@ function Invoke-SetupCheck {
     $null = New-Item -ItemType Directory -Path $reports -Force
     $path = Join-Path $reports ("setup-check-{0}.json" -f $Now.ToString('yyyyMMdd-HHmmss'))
     ConvertTo-Json -InputObject $result -Depth 10 | Set-Content -LiteralPath $path -Encoding utf8
+    # One audit line (issue #76): the colour and the count per colour only - no tenant, no IDs, no names.
+    Write-ApplyAudit -HistoryRoot $HistoryRoot -Mode setupcheck -Reason "setup check ($Scope): $overall" -Counts ([ordered]@{
+            Red = [int]$summary.Red; Yellow = [int]$summary.Yellow; Green = [int]$summary.Green; Grey = [int]$summary.Grey
+        })
     $result['Path'] = $path
     $result
 }

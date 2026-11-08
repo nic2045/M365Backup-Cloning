@@ -286,7 +286,7 @@ Claude never ran this against a tenant (Graph mocked, fake tokens, the certifica
 
 | Step | What | How | Expected |
 |---|---|---|---|
-| 1 | Config only | *Settings* > *Setup check* > "Check the config only" (role Applier), or `pwsh scripts/Invoke-SetupCheck.ps1 -Scope Config` | No sign-in in the job log; config, certificates, break-glass list and licences are shown; permissions and UTCM are grey "Not checked" |
+| 1 | Config only | *Settings* > *Setup check* > "Check the config only" (role Reader is enough since issue #76), or `pwsh scripts/Invoke-SetupCheck.ps1 -Scope Config` | No sign-in in the job log; config, certificates, break-glass list and licences are shown; permissions and UTCM are grey "Not checked" |
 | 2 | Certificates | On the Windows computer of the job runner | Both certificates green with their end date, or yellow within 30 days; a wrong thumbprint in `config.psd1` gives red "Certificate not found" |
 | 3 | Full check | "Run the full check" | Sign-in of both registrations green; permissions compared with `src/M365Cloning/Data/SetupRequirements.psd1`: what is missing is listed with the feature that needs it. A permission you granted that is not listed: tell me |
 | 4 | Prod read only | Grant the Prod registration one write permission for a test (e.g. `Group.ReadWrite.All`), run the full check, then remove it again | Permissions of Prod red "Write permissions on Prod: Group.ReadWrite.All" |
@@ -295,3 +295,4 @@ Claude never ran this against a tenant (Graph mocked, fake tokens, the certifica
 | 7 | Licences | After a suitability check (*Bring Dev in line*) | The licence row takes its status and links the report; older than 7 days: yellow |
 | 8 | Unreadable config | Rename `config.psd1` for a moment and run the config-only check | The job succeeds, the result is red "The config cannot be used" with the hint; the rest is grey. Rename it back |
 | 9 | Tenants untouched | Audit logs of both tenants for the time of the runs | Only sign-ins and reads of the two app registrations |
+| 10 | Reader and audit line (issue #76) | Sign in with the app role Reader only, open *Setup check*; then *Audit log*, filter "Setup check" | "Check the config only" is the main button and starts; the full check says it needs Applier. Each run left one audit line "setup check (Config|All): <colour>" with the counts per colour, no tenant, no IDs or names |

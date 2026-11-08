@@ -58,7 +58,7 @@ function Get-OpenApiProblem {
         foreach ($m in $OpenApi['paths'][$p].Keys) {
             if ($m -ne 'get' -and "$m $p" -notin $script:WriteRoutes) { $problems.Add("$m $p is not a read route and not a job route (issue #14)") ; continue }
             $success = if ($m -eq 'get') { '200' } else { '202' }
-            if ($m -ne 'get' -and $OpenApi['paths'][$p][$m]['x-required-role'] -ne 'Applier|Resetter') { $problems.Add("$m $p does not name the write roles") }
+            if ($m -ne 'get' -and $OpenApi['paths'][$p][$m]['x-required-role'] -ne 'Reader|Applier|Resetter') { $problems.Add("$m $p does not name the write roles") }
             foreach ($code in $success, '400', '401', '403', '500') {
                 $name = Get-OpenApiResponseSchema -OpenApi $OpenApi -Method $m -Path $p -Status $code
                 if (-not $name) { $problems.Add("$m $p has no schema for $code") }

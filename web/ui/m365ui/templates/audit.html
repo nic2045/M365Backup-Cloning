@@ -4,7 +4,7 @@
 {% block crumbs %}{{ crumbs([(_("Overview"), "/"), (_("Audit log"), "/audit")]) }}{% endblock %}
 {% block content %}
 <h1>{{ _("Audit log") }}</h1>
-<p class="lead">{{ _("Every drift report, plan, apply, refusal, reset and suitability check writes an entry; an apply and a reset also one per changed object. Append only, newest first.") }}</p>
+<p class="lead">{{ _("Every drift report, plan, apply, refusal, reset, suitability check, Intune backup and setup check writes an entry; an apply and a reset also one per changed object. Append only, newest first.") }}</p>
 <p class="meta">{{ _("What exactly changed (before and after) is in the plan: open it from the entry.") }}</p>
 {% call filter_form("/audit", []) %}
   {{ choice("mode", _("Mode"), modes, mode, _("All modes")) }}
