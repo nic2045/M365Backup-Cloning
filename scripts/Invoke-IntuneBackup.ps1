@@ -34,6 +34,7 @@ if ($DryRun) {
     Write-Host "Python: $($settings.Python); IntuneCD backup only (read only), extra types left out: $(@($settings.Exclude) -join ', '); script types: $(if ($settings.IncludeScripts) { 'backed up (IncludeScripts)' } else { 'left out' })"
     return
 }
-if (-not $ProdToken -or -not $DevToken) { throw 'Pass -ProdToken and -DevToken.' }
+$ProdToken = Resolve-M365CloningToken -Config $config -Side Prod -Token $ProdToken
+$DevToken = Resolve-M365CloningToken -Config $config -Side Dev -Token $DevToken
 $result = Invoke-IntuneBackup -Config $config -HistoryRoot $HistoryRoot -ProdToken $ProdToken -DevToken $DevToken
 Write-Host "Report: $($result.Path)"

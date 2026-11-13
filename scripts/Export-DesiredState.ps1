@@ -34,7 +34,7 @@ if ($DryRun) {
     Write-Host "Prod: one UTCM snapshot (read only) of $($resources.Count) resource types; Dev is not read."
     return
 }
-if (-not $ProdToken -and -not $SnapshotPath) { throw 'Pass -ProdToken (or -SnapshotPath for a saved Prod snapshot).' }
+if (-not $SnapshotPath) { $ProdToken = Resolve-M365CloningToken -Config $config -Side Prod -Token $ProdToken }
 $result = Invoke-DesiredStateExport -Config $config -HistoryRoot $HistoryRoot -ProdToken $ProdToken -SnapshotPath $SnapshotPath
 $r = $result.Report
 Write-Host ("Files: {0}  added {1}, changed {2}, removed {3}, skipped {4}" -f $r.Files, $r.Added, $r.Changed, $r.Removed, @($r.Skipped).Count)

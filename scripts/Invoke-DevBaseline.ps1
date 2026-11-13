@@ -45,7 +45,7 @@ if ($TargetSnapshotPath) {
     $devFile = $TargetSnapshotPath
 }
 else {
-    if (-not $DevToken) { throw 'Pass -DevToken (Dev app registration) or -TargetSnapshotPath for an offline preview.' }
+    $DevToken = Resolve-M365CloningToken -Config $config -Side Dev -Token $DevToken
     $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $config.Dev.TenantId -Resources (Get-M365CloningBaselineResources) -HistoryRoot $HistoryRoot
 }
 

@@ -1,5 +1,7 @@
 # Copy to config.psd1 (git-ignored) and fill in. One Prod/Dev pair: your own tenants.
 # Placeholders only: never commit real IDs, names or certificate data.
+# Both app registrations are reached with a certificate (ADR 0021): CertThumbprint is the thumbprint of the certificate in the Windows certificate
+# store (current user or computer, with its private key). The scripts sign in with it when -ProdToken / -DevToken are not passed; there is no client secret.
 @{
     Prod = @{
         TenantId       = '<prod-tenant-guid>'

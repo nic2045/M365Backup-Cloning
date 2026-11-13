@@ -70,7 +70,7 @@ if ($Source -eq 'Repository') {
     Write-Host "Desired state: configuration repository, commit $($desired.Commit.Substring(0, 12)) ($($desired.Files) files). Prod is not read."
     if ($offline) { $devFile = $TargetSnapshotPath }
     else {
-        if (-not $DevToken) { throw 'Pass -DevToken (or -TargetSnapshotPath for a saved Dev snapshot).' }
+        $DevToken = Resolve-M365CloningToken -Config $config -Side Dev -Token $DevToken
         $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $entry.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
     }
     $target = ConvertTo-DesiredComparableSnapshot -Snapshot (Read-UtcmSnapshotFile -Path $devFile)
@@ -82,7 +82,8 @@ else {
         $prodFile = $SourceSnapshotPath; $devFile = $TargetSnapshotPath
     }
     else {
-        if (-not $ProdToken -or -not $DevToken) { throw 'Pass -ProdToken and -DevToken (or use the offline parameters).' }
+        $ProdToken = Resolve-M365CloningToken -Config $config -Side Prod -Token $ProdToken
+        $DevToken = Resolve-M365CloningToken -Config $config -Side Dev -Token $DevToken
         $prodFile = Get-UtcmTenantSnapshot -Token $ProdToken -Side Prod -TenantId $entry.Prod.TenantId -Resources $resources -HistoryRoot $HistoryRoot
         $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $entry.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot
     }
