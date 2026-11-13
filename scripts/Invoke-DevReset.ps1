@@ -64,7 +64,8 @@ if ($InventoryPath) {
     $inventory = Get-Content -LiteralPath $InventoryPath -Raw | ConvertFrom-Json -AsHashtable
 }
 else {
-    if (-not $ProdToken -or -not $DevToken) { throw 'Pass -ProdToken and -DevToken, or -InventoryPath for an offline preview.' }
+    $ProdToken = Resolve-M365CloningToken -Config $config -Side Prod -Token $ProdToken
+    $DevToken = Resolve-M365CloningToken -Config $config -Side Dev -Token $DevToken
     $inventory = Get-DevResetInventory -DevToken $DevToken -ProdToken $ProdToken -Config $config
 }
 
@@ -75,7 +76,8 @@ if ($Mode -eq 'Align') {
         $prodFile = $SourceSnapshotPath; $devFile = $TargetSnapshotPath
     }
     else {
-        if (-not $ProdToken -or -not $DevToken) { throw 'Mode Align needs the drift report: pass -ProdToken and -DevToken, or the two snapshot files.' }
+        $ProdToken = Resolve-M365CloningToken -Config $config -Side Prod -Token $ProdToken
+        $DevToken = Resolve-M365CloningToken -Config $config -Side Dev -Token $DevToken
         $resources = if ($config.ContainsKey('Resources') -and $config.Resources) { $config.Resources } else { Get-M365CloningDefaultResources -Config $config }
         $prodFile = Get-UtcmTenantSnapshot -Token $ProdToken -Side Prod -TenantId $config.Prod.TenantId -Resources $resources -HistoryRoot $HistoryRoot
         $devFile = Get-UtcmTenantSnapshot -Token $DevToken -Side Dev -TenantId $config.Dev.TenantId -Resources $resources -HistoryRoot $HistoryRoot

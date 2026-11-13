@@ -19,6 +19,7 @@ See [`THIRD-PARTY.md`](THIRD-PARTY.md). License: MIT.
 Copy-Item config.example.psd1 config.psd1        # fill in your Prod/Dev pair; git-ignored
 pwsh scripts/Get-DriftReport.ps1 -DryRun          # prints the plan, sends nothing
 pwsh scripts/Get-DriftReport.ps1 -ProdToken $p -DevToken $d
+pwsh scripts/Get-DriftReport.ps1                      # without a token: signs in with the certificate of Prod.CertThumbprint and Dev.CertThumbprint (ADR 0021)
 pwsh scripts/Get-DriftReport.ps1 -SourceSnapshotPath prod.json -TargetSnapshotPath dev.json   # offline compare
 ```
 

@@ -7,6 +7,7 @@
     PowerShellVersion = '7.0'
     FunctionsToExport = @(
         'Import-M365CloningConfig'
+        'Resolve-M365CloningToken'
         'Get-WebJobDefinition'
         'Invoke-WebJob'
         'Invoke-IntuneBackup'

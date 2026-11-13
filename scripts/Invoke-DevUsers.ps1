@@ -46,7 +46,7 @@ if ($DirectoryPath) {
     $directory = Get-Content -LiteralPath $DirectoryPath -Raw | ConvertFrom-Json -AsHashtable
 }
 else {
-    if (-not $DevToken) { throw 'Pass -DevToken (Dev app registration) or -DirectoryPath for an offline preview.' }
+    $DevToken = Resolve-M365CloningToken -Config $config -Side Dev -Token $DevToken
     $directory = Get-DevDirectory -Token $DevToken -Config $config
 }
 
