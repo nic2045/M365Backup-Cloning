@@ -359,3 +359,23 @@ Claude never ran this against a tenant (invented snapshots, a test repository on
 | 5 | Uncommitted change | Edit one file in `desired/` without committing, run the sync report | The job fails: "... not committed (...)"; no report |
 | 6 | Schedule | In a runbook or a console: `Get-DriftReport.ps1 -Source Repository -DevToken $d -ReportExitCode` with Dev equal to `desired/`, then with one difference, then with a wrong certificate | Exit code 0, then 1, then 3 with "Not verified: ..." and no report |
 | 7 | After a rebuild | `scripts/Invoke-DevReset.ps1 ... -Apply -RebuildAfter -RebuildSource Repository` on a test Dev | The last report of the run is a sync report (source configuration repository); empty except for what the export leaves out on purpose |
+
+---
+
+# Part 21: the console scripts sign in with the certificate (issue #87, ADR 0021; reads only)
+
+Claude never ran this against a tenant (fake sign-in in the unit tests only). Only sign-in and reads happen here; nothing is written in Prod or in Dev. Run it on the Windows computer that holds the certificates, in the PowerShell 7 session of the operator.
+
+| Step | What | How | Expected |
+|---|---|---|---|
+| 1 | Prerequisites | `Get-Module -ListAvailable Az.Accounts` | The module is found (`Install-Module Az.Accounts -Scope CurrentUser` otherwise). The certificates of both app registrations are in `Cert:\CurrentUser\My` or `Cert:\LocalMachine\My` with their private keys; `Prod.CertThumbprint` and `Dev.CertThumbprint` in `config.psd1` match them |
+| 2 | Certificates | `pwsh scripts/Invoke-SetupCheck.ps1 -Scope Config` | Both certificates green (found, private key, valid). A yellow expiry warning means: renew soon |
+| 3 | Sign-in as the web jobs do it | `pwsh scripts/Invoke-SetupCheck.ps1 -Scope All` | Sign-in of both app registrations green |
+| 4 | Dry run without a token | `pwsh scripts/Get-DriftReport.ps1 -DryRun` | Prints the plan, sends nothing, asks for no token |
+| 5 | Drift report without a token | `pwsh scripts/Get-DriftReport.ps1` (no `-ProdToken`, no `-DevToken`) | Both snapshots succeed and a report is written; no prompt and no browser window; the output shows no token and no thumbprint |
+| 6 | A passed token wins | `pwsh scripts/Get-DriftReport.ps1 -ProdToken $p -DevToken $d` with tokens from your own way | Works as before (no certificate sign-in is made for a side whose token is passed) |
+| 7 | Wrong certificate | Put a wrong thumbprint into `Dev.CertThumbprint` (a copy of the config via `-ConfigPath`), run the script without `-DevToken` | The script stops with "No -DevToken was passed and the sign-in of the Dev app registration with its certificate failed: ..." and names `Dev.TenantId`, `Dev.ClientId` and `Dev.CertThumbprint`; it shows neither the thumbprint nor a token |
+| 8 | Sign-in logs | Entra *Sign-in logs > Service principal sign-ins* of both app registrations | One sign-in per side and run, from the computer that runs the scripts, with the certificate as the credential type |
+| 9 | Tenants untouched | Entra audit log / Intune audit | Only the snapshot job of the report, no change |
+
+Report anything unexpected as an issue (the error text of step 7 and the sign-in log line, without tokens or IDs).
