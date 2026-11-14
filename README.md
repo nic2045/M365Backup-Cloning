@@ -26,7 +26,7 @@ pwsh scripts/Get-DriftReport.ps1 -SourceSnapshotPath prod.json -TargetSnapshotPa
 - UTCM snapshot per tenant (Microsoft Graph `createSnapshot`, the only POST; it reads), kept under `History\Tenants\<Prod|Dev>\<timestamp>\`.
 - Prod (desired) is compared with Dev (actual). Groups and assignments are matched by name, IDs and timestamps are ignored.
 - Report: `History\reports\drift-*.json` and `.md`. An empty report means identical.
-- Module: `src/M365Cloning`. Tests: `Invoke-Pester tests`. What needs a real tenant: `validation/README.md`.
+- Module: `src/M365Cloning`. Tests: `pwsh scripts/Test-Local.ps1` (Pester, the Python suites, gitleaks; GitHub Actions run only by hand, ADR 0022) or just `Invoke-Pester tests`. What needs a real tenant: `validation/README.md`.
 
 ## Apply Prod -> Dev (writes to the Dev tenant only)
 

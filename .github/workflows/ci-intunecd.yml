@@ -1,11 +1,7 @@
 name: ci-intunecd
+# Runs only by hand (Actions > Run workflow): no GitHub Actions budget (ADR 0022). The checks run locally: pwsh scripts/Test-Local.ps1
 on:
-  pull_request:
-    paths:
-      - "tools/intunecd/**"
-      - ".github/workflows/ci-intunecd.yml"
-  push:
-    branches: [main]
+  workflow_dispatch: {}
 permissions:
   contents: read
 jobs:
