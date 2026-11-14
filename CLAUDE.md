@@ -29,4 +29,7 @@ Dev tenant toolkit (origin: nic2045/SW-Depoyment#1585). Read and report differen
 - Reuse before building: UTCM, Microsoft365DSC, and MIT-licensed code (with attribution in `THIRD-PARTY.md`). Do not copy code without a license.
 
 ## Public-ready
-The repository starts private but is built as if public: secret scan in CI, no real data, license MIT.
+The repository starts private but is built as if public: secret scan (gitleaks, `scripts/Test-Local.ps1`), no real data, license MIT.
+
+## Tests
+- No budget for GitHub Actions (owner, 2026-11-14, ADR 0022): the workflows run only by hand. Test locally: `pwsh scripts/Test-Local.ps1` (owner, or me once PowerShell 7 runs in my environment), the Python suites in my environment before every PR. The PR text names what ran (command, result) and what stayed unchecked. A red or not started Actions run is no finding.
